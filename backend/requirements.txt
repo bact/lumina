@@ -1,0 +1,24 @@
+# SPDX-FileContributor: Arthit Suriyawongkul
+# SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
+# SPDX-FileType: SOURCE
+# SPDX-License-Identifier: Apache-2.0
+
+# Web framework
+fastapi==0.136.3
+uvicorn[standard]==0.48.0
+python-multipart>=0.0.9  # required by FastAPI for Form / File uploads
+
+# Task queue
+celery[redis]==5.6.3
+
+# SBOM parsing
+spdx-tools==0.8.5
+
+# Conformance checking
+# ntia-conformance-checker currently covers NTIA Minimum Elements only.
+# BSI TR-03183, G7 AI SBOM, and MOF are handled by LuminaInternalChecker
+# (see app/conformance.py) until the checker adds support for them.
+ntia-conformance-checker==5.0.2
+
+# Data validation
+pydantic==2.13.4

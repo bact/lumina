@@ -1,0 +1,332 @@
+/* =============================================================
+   LUMINA -- Colors & Type
+   Japanese minimal foundation. Sumi ink on washi paper, with
+   a single focused shu-red accent and two muted semantic tones.
+   ============================================================= */
+/*
+SPDX-FileContributor: Arthit Suriyawongkul
+SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
+SPDX-FileType: SOURCE
+SPDX-License-Identifier: Apache-2.0
+*/
+
+/* ---- Webfonts ---- */
+/* Geist (UI/Display) + Geist Mono + Instrument Serif (editorial italic).
+   These come from Google Fonts; the design system stores no .ttf files
+   currently -- flagged in README. */
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+
+:root {
+  /* ─────────────────────────────────────────────────────────
+     COLOR -- Base (washi paper → sumi ink)
+     ───────────────────────────────────────────────────────── */
+  --paper:        #F6F3EC;  /* primary canvas -- warm off-white */
+  --paper-2:      #EFEBE2;  /* recessed surface, table stripe */
+  --paper-3:      #E6E1D4;  /* hairline-thick divider, subtle panels */
+  --paper-edge:   #D8D2C2;  /* visible borders on paper bg */
+
+  --ink:          #161513;  /* primary text -- warm black, never pure */
+  --ink-2:        #3A3833;  /* secondary text */
+  --ink-3:        #605C53;  /* tertiary / metadata -- WCAG AA (~5.0:1 on paper) */
+  --ink-4:        #97928A;  /* placeholder / disabled -- non-text contrast only */
+  --ink-5:        #BFB9AD;  /* faintest readable -- decorative */
+
+  --white:        #FFFFFF;  /* used sparingly -- input fields, cards */
+  --border:       #DAD4C5;  /* default 1px hairline */
+  --border-soft:  #E8E2D3;
+  --border-strong:#A8A294;
+
+  /* ─────────────────────────────────────────────────────────
+     COLOR -- Accent (the single Lumina shu-red)
+     A hanko-stamp red. Use for one thing at a time, never as bg
+     across large areas. CTAs, focus rings, the brand mark.
+     ───────────────────────────────────────────────────────── */
+  --shu:          #C8392A;  /* primary accent */
+  --shu-deep:     #A82A1E;  /* pressed / hover */
+  --shu-soft:     #F5DAD4;  /* tinted bg for selection */
+  --shu-ink:      #5A1810;  /* text on shu-soft */
+
+  /* ─────────────────────────────────────────────────────────
+     COLOR -- Semantic (muted on purpose; we don't shout)
+     ───────────────────────────────────────────────────────── */
+  --moss:         #5F7A4F;  /* PRESENT / valid / conformant */
+  --moss-soft:    #E1E8D5;
+  --moss-ink:     #2E3D24;
+
+  --ochre:        #B68333;  /* MISSING / needs attention */
+  --ochre-soft:   #F1E5C9;
+  --ochre-ink:    #4F3A14;
+
+  --indigo:       #2F4A6B;  /* INFO / regulation pointer (rare use) */
+  --indigo-soft:  #DCE3EC;
+  --indigo-ink:   #15263C;
+
+  /* ─────────────────────────────────────────────────────────
+     SEMANTIC TOKENS -- use these in components by preference
+     ───────────────────────────────────────────────────────── */
+  --bg:               var(--paper);
+  --bg-raised:        var(--white);
+  --bg-recessed:      var(--paper-2);
+  --bg-overlay:       rgba(22, 21, 19, 0.42);
+
+  --fg:               var(--ink);
+  --fg-muted:         var(--ink-2);
+  --fg-subtle:        var(--ink-3);
+  --fg-faint:         var(--ink-4);
+  --fg-on-accent:     var(--paper);
+
+  --accent:           var(--shu);
+  --accent-hover:     var(--shu-deep);
+  --accent-bg:        var(--shu-soft);
+
+  --status-present:   var(--moss);
+  --status-missing:   var(--ochre);
+  --status-info:      var(--indigo);
+
+  /* ─────────────────────────────────────────────────────────
+     TYPE -- families
+     ───────────────────────────────────────────────────────── */
+  --font-sans:    'Geist', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  --font-mono:    'Geist Mono', ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+  /* No serif. The system has two families: Geist and Geist Mono. The "soft voice"
+     is Geist 300 (Light) with looser tracking, not a typeface switch.
+     --font-serif is kept as a fallback alias only for legacy references. */
+  --font-serif:   'Geist', ui-sans-serif, sans-serif;
+
+  /* ─────────────────────────────────────────────────────────
+     TYPE -- size scale (1.125 minor third -- quiet, calm)
+     ───────────────────────────────────────────────────────── */
+  --text-2xs:  10.5px;
+  --text-xs:   11.5px;
+  --text-sm:   13px;
+  --text-base: 14.5px;
+  --text-md:   16px;
+  --text-lg:   18px;
+  --text-xl:   21px;
+  --text-2xl:  26px;
+  --text-3xl:  34px;
+  --text-4xl:  48px;
+  --text-5xl:  64px;
+
+  /* tracking */
+  --tracking-tight: -0.018em;
+  --tracking-normal: 0;
+  --tracking-wide:  0.04em;
+  --tracking-eyebrow: 0.14em; /* eyebrow labels, uppercase */
+
+  /* leading */
+  --leading-tight: 1.12;
+  --leading-snug:  1.28;
+  --leading-body:  1.55;
+  --leading-loose: 1.7;
+
+  /* ─────────────────────────────────────────────────────────
+     SPACING (4px base) -- generous, MUJI-airy
+     ───────────────────────────────────────────────────────── */
+  --s-1:  4px;
+  --s-2:  8px;
+  --s-3:  12px;
+  --s-4:  16px;
+  --s-5:  20px;
+  --s-6:  24px;
+  --s-8:  32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+  --s-20: 80px;
+  --s-24: 96px;
+
+  /* ─────────────────────────────────────────────────────────
+     RADII -- sharp by default. Soft only for inputs/buttons.
+     ───────────────────────────────────────────────────────── */
+  --r-0: 0px;
+  --r-1: 2px;   /* inputs, chips */
+  --r-2: 4px;   /* buttons, cards */
+  --r-3: 6px;   /* dialogs */
+  --r-pill: 999px;
+
+  /* ─────────────────────────────────────────────────────────
+     BORDERS
+     ───────────────────────────────────────────────────────── */
+  --bw-hairline: 1px;
+  --bw-emphasis: 1.5px;
+
+  /* ─────────────────────────────────────────────────────────
+     SHADOWS -- almost none. Paper does not float much.
+     ───────────────────────────────────────────────────────── */
+  --shadow-0: none;
+  --shadow-1: 0 1px 0 0 rgba(22,21,19,0.04), 0 1px 2px 0 rgba(22,21,19,0.04);
+  --shadow-2: 0 1px 0 0 rgba(22,21,19,0.05), 0 2px 6px -1px rgba(22,21,19,0.06), 0 8px 18px -8px rgba(22,21,19,0.10);
+  --shadow-3: 0 2px 0 0 rgba(22,21,19,0.05), 0 8px 20px -6px rgba(22,21,19,0.12), 0 24px 44px -20px rgba(22,21,19,0.18);
+  --shadow-focus: 0 0 0 3px rgba(200, 57, 42, 0.18);
+
+  /* ─────────────────────────────────────────────────────────
+     MOTION -- short, restrained. No bouncing. Linear-ish.
+     ───────────────────────────────────────────────────────── */
+  --ease-out:   cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-in:    cubic-bezier(0.42, 0, 0.66, 0.40);
+  --ease-inout: cubic-bezier(0.45, 0.05, 0.30, 0.95);
+  --dur-quick:  120ms;
+  --dur-base:   180ms;
+  --dur-slow:   320ms;
+}
+
+/* =============================================================
+   SEMANTIC TYPOGRAPHY -- element-level defaults
+   ============================================================= */
+
+html, body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  letter-spacing: var(--tracking-normal);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Display -- for hero numbers, brand wordmark, rare statements */
+.display, h1.display {
+  font-family: var(--font-sans);
+  font-size: var(--text-5xl);
+  font-weight: 500;
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+  color: var(--fg);
+}
+
+h1, .h1 {
+  font-family: var(--font-sans);
+  font-size: var(--text-3xl);
+  font-weight: 500;
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+  color: var(--fg);
+}
+h2, .h2 {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xl);
+  font-weight: 500;
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-snug);
+  color: var(--fg);
+}
+h3, .h3 {
+  font-family: var(--font-sans);
+  font-size: var(--text-lg);
+  font-weight: 500;
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-snug);
+  color: var(--fg);
+}
+h4, .h4 {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: var(--leading-snug);
+}
+
+p, .p {
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  color: var(--fg-muted);
+}
+
+.lede {
+  font-size: var(--text-lg);
+  line-height: var(--leading-body);
+  color: var(--fg-muted);
+  letter-spacing: -0.005em;
+}
+
+.small, small {
+  font-size: var(--text-sm);
+  color: var(--fg-subtle);
+  line-height: var(--leading-snug);
+}
+
+.eyebrow {
+  font-size: var(--text-2xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--fg-subtle);
+}
+
+.soft-voice {
+  font-family: var(--font-sans);
+  font-weight: 300;
+  letter-spacing: -0.012em;
+  color: var(--ink-2);
+}
+
+/* legacy alias for any markup still using .serif-accent -- renders as soft-voice */
+.serif-accent {
+  font-family: var(--font-sans);
+  font-weight: 300;
+  font-style: normal;
+  letter-spacing: -0.012em;
+}
+
+code, kbd, samp, pre, .mono {
+  font-family: var(--font-mono);
+  font-size: 0.94em;
+  letter-spacing: -0.005em;
+}
+
+code {
+  background: var(--paper-2);
+  padding: 1px 5px;
+  border-radius: var(--r-1);
+  color: var(--ink);
+  border: 1px solid var(--border-soft);
+}
+
+a {
+  color: var(--fg);
+  text-decoration: underline;
+  text-decoration-color: var(--ink-4);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--dur-quick) var(--ease-out);
+}
+a:hover { text-decoration-color: var(--shu); }
+
+::selection { background: var(--shu-soft); color: var(--shu-ink); }
+
+/* =============================================================
+   ACCESSIBILITY UTILITIES
+   ============================================================= */
+
+/* Visually hidden but still announced by screen readers. */
+.sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Default focus ring -- works on any focusable element.
+   Keep keyboard-only via :focus-visible. */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+  box-shadow: var(--shadow-focus);
+  border-radius: var(--r-1);
+}
+
+/* Reduced motion respect -- disable transitions/animations. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

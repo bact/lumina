@@ -1,0 +1,56 @@
+ # SPDX-FileContributor: Arthit Suriyawongkul
+ # SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
+ # SPDX-FileType: SOURCE
+ # SPDX-License-Identifier: Apache-2.0
+services:
+
+  # ── Frontend: nginx serves the static frontend and proxies /api/ ─────────
+  nginx:
+    build: ./frontend
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend:/app:ro  # live updates without rebuild
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # ── API: FastAPI conformance-checking backend ────────────────────────────
+  api:
+    build: ./backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"       # exposed for direct API testing
+    volumes:
+      - ./backend/app:/app/app  # live-reload in dev
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Worker: Celery handles long-running SBOM-generation tasks ───────────
+  worker:
+    build: ./backend
+    command: celery -A app.worker worker --loglevel=info --concurrency=2
+    volumes:
+      - ./backend/app:/app/app
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Broker / cache: Redis (Valkey is a drop-in replacement) ─────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"       # exposed for inspection during dev
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
