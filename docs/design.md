@@ -29,7 +29,8 @@ Currently Lumina takes two types of input:
 
 The URL can be:
 
-- Any public link to an SBOM
-- Any public link to an AI model on Hugging Face Hub (no gate)
+a. Any link to a publicly-accessible SBOM
+b. Any link to a publicly-accessible AI model on Hugging Face Hub (no gate)
+c. Any link to a publicly-accessible Git repository (a Python project)
 
-An SBOM will be generated first if the URL is a link to an AI model.
+For (b) and (c), an SBOM will be generated, using Pitloom.
