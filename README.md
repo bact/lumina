@@ -1,2 +1,3 @@
 # lumina
-SBOM viewer
+
+A web-based SBOM viewer.
