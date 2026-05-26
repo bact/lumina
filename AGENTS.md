@@ -7,7 +7,8 @@ checker. Reads an SBOM; shows which fields each active regulation requires and
 whether they are present, missing, or unverified.
 
 Full design rationale: `docs/design.md`.
-Frontend (static React app + design tokens + nginx config): `frontend/`.
+Design source of truth: `ui-kits/lumina-app/` (dev Docker only, not in prod image).
+Production frontend: `frontend/` (canonical design tokens + assets live here).
 
 ---
 
@@ -19,7 +20,7 @@ Frontend (static React app + design tokens + nginx config): `frontend/`.
 | API | FastAPI (Python 3.14) |
 | Task queue | Celery + Redis (long-running SBOM generation) |
 | Broker/cache | Redis or Valkey (drop-in replacement) |
-| Dev environment | Docker Compose (`docker compose up`) |
+| Dev environment | Docker Compose (`docker compose up` — auto-loads override.yml) |
 
 Python minimum: **3.14**. Use `python3.14` when running outside Docker.
 
@@ -29,15 +30,22 @@ Python minimum: **3.14**. Use `python3.14` when running outside Docker.
 
 ```text
 lumina/
-├── docker-compose.yml
-├── frontend/                   Static web frontend (nginx + React 18)
-│   ├── Dockerfile              nginx image; copies nginx.conf + static files
-│   ├── nginx.conf              Serves frontend, proxies /api/ to FastAPI
-│   ├── index.html              App entry + router
-│   ├── colors-and-type.css     Design tokens (import this; do not redefine tokens)
-│   ├── assets/                 Logo SVGs
-│   ├── data.js                 Fixture SBOM + field-level conformance logic
-│   ├── conformance.py ← PORT   data.js logic → LuminaInternalChecker
+├── docker-compose.yml          Production compose (nginx target: prod)
+├── docker-compose.override.yml Dev overrides — auto-loaded; nginx target: dev,
+│                               mounts project root at /workspace
+├── .dockerignore               Keeps caches/git/docs out of Docker build context
+├── proxy/                      Reverse-proxy service (nginx)
+│   ├── Dockerfile              Multi-stage: dev (config only) / prod (self-contained)
+│   ├── prod.conf               Prod: root /app, frontend only
+│   └── dev.conf                Dev: root /workspace/frontend, aliases for ui-kit paths
+├── ui-kits/lumina-app/         Design source of truth — dev Docker only, not in prod image
+│   ├── index.html              Entry point; ../../ paths routed by nginx.dev.conf → frontend/
+│   ├── data.js                 Authoritative field list for all four regulations
+│   └── *.jsx / *.js            Screens and components
+├── frontend/                   Frontend source — always in the Docker image
+│   ├── index.html              Implementation entry + router
+│   ├── colors-and-type.css     Design tokens — canonical copy (import this)
+│   ├── assets/                 Logo SVGs — canonical copy
 │   └── *.jsx / *.js            Screens and components
 ├── backend/
 │   ├── Dockerfile
@@ -63,11 +71,11 @@ needs changing -- the `ConformanceResult` schema the API returns is identical
 regardless of which checker produced it.
 
 Do not change `ConformanceResult` or `FieldGap` fields without updating both
-the Pydantic models in `conformance.py` and the fixture schema in
-`ui-kits/lumina-app/data.js` (the JS prototype consumes the same shape).
+the Pydantic models in `conformance.py` and the fixture schemas in
+`ui-kits/lumina-app/data.js` and `frontend/data.js` (both consume the same shape).
 
 When implementing `LuminaInternalChecker` for BSI / G7 AI / MOF, port the
-field definitions and `regSummary()` logic from `frontend/data.js`.
+field definitions and `regSummary()` logic from `ui-kits/lumina-app/data.js`.
 That file is the authoritative field list for all four regulations.
 
 ---
@@ -112,9 +120,10 @@ That file is the authoritative field list for all four regulations.
   shu-red accent (`--shu` #C8392A). No large coloured backgrounds.
 - Icon set: Lucide via CDN (1.5px stroke). Do not substitute other icon sets
   without updating the `Icon` component in `components.jsx`.
-- The frontend in `frontend/` is the visual source of truth.
-  When implementing production screens, match it pixel-for-pixel before
-  deviating.
+- `ui-kits/lumina-app/` is the visual source of truth (design template).
+  When implementing or updating `frontend/`, match the ui-kit pixel-for-pixel
+  before deviating. Changes to ui-kit must be reviewed before promotion to
+  `frontend/`.
 
 ---
 

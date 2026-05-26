@@ -19,30 +19,40 @@ folder of PDFs.
 
 **Prerequisites:** Docker and Docker Compose (v2).
 
-```sh
+```shell
 git clone https://github.com/bact/lumina.git
 cd lumina
 docker compose up
 ```
 
+`docker compose up` auto-loads `docker-compose.override.yml` (development
+mode). The nginx image uses the `dev` stage, which also serves the UI kit.
+
 Then open **<http://localhost>** in your browser.
 
 | Service | URL | Notes |
 | - | - | - |
-| UI | <http://localhost> | Static SBOM viewer |
+| Frontend | <http://localhost> | Production frontend (implementation) |
+| UI kit | <http://localhost/ui-kits/lumina-app/> | Design source of truth (dev only) |
 | API | <http://localhost/api/> | Proxied by nginx |
 | API (direct) | <http://localhost:8000> | For development / curl |
 | Redis | localhost:6379 | Broker + Celery result backend |
 
+**Production mode** (UI kit excluded from image):
+
+```shell
+docker compose -f docker-compose.yml up
+```
+
 Stop everything:
 
-```sh
+```shell
 docker compose down
 ```
 
 Stop and remove volumes (wipes Redis state):
 
-```sh
+```shell
 docker compose down -v
 ```
 
@@ -52,29 +62,33 @@ docker compose down -v
 
 ### Rebuild after dependency changes
 
-```sh
+```shell
 docker compose build
 docker compose up
 ```
 
 ### Tail logs for a specific service
 
-```sh
+```shell
 docker compose logs -f api
 docker compose logs -f worker
 ```
 
 ### Serve the frontend locally (no Docker)
 
-```sh
+```shell
 python3.14 -m http.server 3000 --directory frontend
 ```
 
 Then open **<http://localhost:3000>**.
 
+> **UI kit:** the UI kit at `ui-kits/lumina-app/` requires the dev Docker
+> image to resolve its design-token paths correctly. Browse it via
+> `docker compose up` at **<http://localhost/ui-kits/lumina-app/>**.
+
 ### Run the API outside Docker (faster iteration)
 
-```sh
+```shell
 cd backend
 python3.14 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
@@ -85,7 +99,7 @@ Requires Python 3.14 and a local Redis instance (or `docker compose up redis`).
 
 ### Open a shell in a running container
 
-```sh
+```shell
 docker compose exec api bash
 docker compose exec worker bash
 ```
@@ -94,10 +108,11 @@ docker compose exec worker bash
 
 ## Services
 
-```
+```text
 nginx   → http://localhost:80
-          Serves the static frontend and proxies /api/ to FastAPI.
-          Built from frontend/Dockerfile.
+          Reverse proxy: serves the static frontend, proxies /api/ to FastAPI,
+          and (in dev) also serves the UI kit at /ui-kits/lumina-app/.
+          Built from proxy/Dockerfile.
 
 api     → http://localhost:8000
           FastAPI -- SBOM upload, conformance checking.
@@ -118,7 +133,7 @@ redis   → localhost:6379
 ## Conformance checking
 
 | Regulation | Checker (now) | When external support lands |
-|---|---|---|
+| - | -| - |
 | NTIA Minimum Elements | `ntia-conformance-checker` | already active |
 | BSI TR-03183 | Lumina internal (stub) | update `CHECKER_MAP` in `conformance.py` |
 | G7 AI SBOM | Lumina internal (stub) | update `CHECKER_MAP` in `conformance.py` |
@@ -130,28 +145,30 @@ See [docs/design.md](docs/design.md) for the full architecture.
 
 ## Project layout
 
-```
+```text
 lumina/
-├── docker-compose.yml
-├── frontend/                 Static web frontend (nginx + React 18)
-│   ├── Dockerfile            nginx image; copies nginx.conf + static files
-│   ├── nginx.conf            Serves frontend, proxies /api/ to FastAPI
-│   ├── index.html            App entry point + router
-│   ├── colors-and-type.css   Design tokens (CSS variables)
-│   ├── assets/               Logo SVGs
-│   ├── data.js               Fixture SBOM + field-level conformance logic
-│   ├── i18n.js               Locale strings
-│   ├── components.jsx        Shared UI components
-│   ├── app-shell.jsx         Navigation shell
-│   ├── view-primitives.jsx   Low-level view helpers
-│   └── screen-*.jsx          Individual screens
-├── backend/                  Python API + task worker
+├── docker-compose.yml          Production compose (nginx target: prod)
+├── docker-compose.override.yml Dev overrides — auto-loaded; nginx target: dev
+├── proxy/                      Reverse-proxy service (nginx)
+│   ├── Dockerfile              Multi-stage: dev (config only) / prod (self-contained)
+│   ├── prod.conf               Prod: root /app, frontend only
+│   └── dev.conf                Dev: root /workspace/frontend, aliases for ui-kit paths
+├── ui-kits/lumina-app/         Design source of truth — dev Docker only, not in prod image
+│   ├── index.html              Entry point; design-token paths routed by nginx.dev.conf
+│   ├── data.js                 Authoritative field list for all regulations
+│   └── *.jsx / *.js            Screens and components
+├── frontend/                   Frontend source — always in the Docker image
+│   ├── index.html              Implementation entry + router
+│   ├── colors-and-type.css     Design tokens (canonical copy)
+│   ├── assets/                 Logo SVGs
+│   └── *.jsx / *.js            Screens and components
+├── backend/                    Python API + task worker
 │   ├── Dockerfile
-│   ├── requirements.txt      Pinned deps for Docker / pip install -r
+│   ├── requirements.txt        Pinned deps for Docker / pip install -r
 │   └── app/
-│       ├── main.py           FastAPI app + endpoints
-│       ├── conformance.py    ConformanceEngine, CHECKER_MAP, schemas
-│       └── worker.py         Celery tasks (SBOM generation)
+│       ├── main.py             FastAPI app + endpoints
+│       ├── conformance.py      ConformanceEngine, CHECKER_MAP, schemas
+│       └── worker.py           Celery tasks (SBOM generation)
 └── docs/
-    └── design.md             Architecture and design decisions
+    └── design.md               Architecture and design decisions
 ```

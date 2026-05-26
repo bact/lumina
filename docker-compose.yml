@@ -6,11 +6,12 @@ services:
 
   # ── Frontend: nginx serves the static frontend and proxies /api/ ─────────
   nginx:
-    build: ./frontend
+    build:
+      context: .                        # project root — ui-kits/ reachable in dev
+      dockerfile: proxy/Dockerfile
+      target: prod                      # override.yml switches this to dev locally
     ports:
       - "80:80"
-    volumes:
-      - ./frontend:/app:ro  # live updates without rebuild
     depends_on:
       - api
     restart: unless-stopped
