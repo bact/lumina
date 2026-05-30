@@ -1,0 +1,91 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "ntia-conformance-checker",
+          "version": "5.0.2",
+          "rules": [
+            {
+              "id": "NTIA-DF-01",
+              "name": "NtiaComponentSupplierMissing",
+              "properties": {
+                "elementId": "supplier",
+                "slug": "ntia-supplier-name",
+                "status": "active"
+              }
+            },
+            {
+              "id": "NTIA-DF-02",
+              "name": "NtiaComponentNameMissing",
+              "properties": {
+                "elementId": "name",
+                "slug": "ntia-component-name",
+                "status": "active"
+              }
+            },
+            {
+              "id": "NTIA-DF-03",
+              "name": "NtiaComponentVersionMissing",
+              "properties": {
+                "elementId": "version",
+                "slug": "ntia-component-version",
+                "status": "active"
+              }
+            },
+            {
+              "id": "NTIA-DF-04",
+              "name": "NtiaComponentIdentifierMissing",
+              "properties": {
+                "elementId": "identifier",
+                "slug": "ntia-unique-identifier",
+                "status": "active"
+              }
+            },
+            {
+              "id": "NTIA-DF-05",
+              "name": "NtiaDependencyRelationshipsMissing",
+              "properties": {
+                "elementId": "dependency_relationship",
+                "slug": "ntia-dependency-relationship",
+                "status": "active"
+              }
+            },
+            {
+              "id": "NTIA-DF-06",
+              "name": "NtiaSbomAuthorMissing",
+              "properties": {
+                "elementId": "author",
+                "slug": "ntia-sbom-author",
+                "status": "active"
+              }
+            },
+            {
+              "id": "NTIA-DF-07",
+              "name": "NtiaSbomTimestampMissing",
+              "properties": {
+                "elementId": "timestamp",
+                "slug": "ntia-sbom-timestamp",
+                "status": "active"
+              }
+            }
+          ]
+        }
+      },
+      "results": [],
+      "invocations": [
+        {
+          "executionSuccessful": true,
+          "toolExecutionNotifications": []
+        }
+      ],
+      "properties": {
+        "complianceStandard": "ntia",
+        "sbomName": "example",
+        "sbomSpec": "spdx2"
+      }
+    }
+  ]
+}

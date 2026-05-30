@@ -16,10 +16,11 @@ from fastapi.responses import RedirectResponse
 from .conformance import (
     CHECKER_MAP,
     ConformanceEngine,
-    ConformanceResult,
     LuminaInternalChecker,
     RegulationId,
+    SbomCheckResponse,
 )
+from .sarif_ingest import SarifIngestError, parse_sarif
 
 app = FastAPI(
     title="Lumina",
@@ -63,14 +64,14 @@ def list_regulations() -> dict:
     }
 
 
-@app.post("/api/v1/sbom/check", response_model=ConformanceResult)
+@app.post("/api/v1/sbom/check", response_model=SbomCheckResponse)
 async def check_sbom(
     file: Annotated[
         UploadFile,
         File(description="SBOM file (SPDX 2.x / 3.0, JSON/XML/YAML/tag-value)"),
     ],
     regulation: Annotated[RegulationId, Form()] = "ntia",
-) -> ConformanceResult:
+) -> SbomCheckResponse:
     """
     Upload an SBOM file and check it against the requested regulation.
 
@@ -95,6 +96,22 @@ async def check_sbom(
         ) from exc
     finally:
         os.unlink(tmp_path)
+
+
+@app.post("/api/v1/sarif/import", response_model=SbomCheckResponse)
+async def import_sarif(sarif: dict) -> SbomCheckResponse:
+    """
+    Accept a SARIF 2.1.0 log produced by any conformance/static-analysis
+    tool that follows the exchange-format spec and return a ConformanceResult.
+
+    Lumina recognises ``ntia-conformance-checker`` as the producer name;
+    any other producer is reported as ``external-sarif`` so the UI can
+    flag it as a third-party source.
+    """
+    try:
+        return parse_sarif(sarif)
+    except SarifIngestError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 def _suffix(filename: str | None) -> str:

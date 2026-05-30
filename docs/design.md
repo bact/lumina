@@ -36,12 +36,23 @@ produced it. This lets the frontend consume results identically, and
 lets us swap in new checker support the moment it becomes available
 without touching the API contract or the UI.
 
-### ConformanceResult schema (canonical shape)
+### Response schema (canonical shape)
+
+The API envelope is `SbomCheckResponse`. It bundles the conformance
+verdict, run-level metadata, and (optionally) the source SBOM carried
+inside the SARIF log.
 
 ```text
-ConformanceResult
-  regulation_id : str           # "ntia" | "bsi" | "g7ai" | "mof"
-  source        : str           # "ntia-conformance-checker" | "lumina-internal"
+SbomCheckResponse
+  conformance   : ConformanceResult
+  run           : CheckRun
+  embedded_sbom : EmbeddedSbom?       # populated only on SARIF-import path
+                                      # when the producer chose to embed
+
+ConformanceResult                     # what was found
+  regulation_id : str                 # "ntia" | "bsi" | "g7ai" | "mof"
+  source        : str                 # "ntia-conformance-checker"
+                                      # | "lumina-internal" | "external-sarif"
   total         : int
   present       : int
   missing       : int
@@ -50,10 +61,35 @@ ConformanceResult
 
 FieldGap
   component_id  : str
-  field_key     : str           # e.g. "supplier", "ai.modelArchitecture"
+  field_key     : str                 # e.g. "supplier", "ai.modelArchitecture"
   level         : "missing" | "unverified"
   note          : str
+
+CheckRun                              # how the run went
+  tool_name             : str
+  tool_version          : str
+  execution_successful  : bool
+  notifications         : list[Notification]
+
+Notification                          # parse error / validation warning / etc.
+  level          : "error" | "warning" | "note"
+  message        : str
+  descriptor_id  : str                # e.g. "spdx.parsing-error",
+                                      # "spdx.validation-message",
+                                      # "pitloom.fetch-failed"
+
+EmbeddedSbom                          # SARIF artifact.contents (§3.24.7)
+  uri            : str                # basename / artifact URI
+  mime_type      : str                # see "MIME types" below
+  text           : str?               # set for textual SBOMs (most cases)
+  binary_base64  : str?               # set when the artifact is not UTF-8
 ```
+
+`run`, `conformance`, and `embedded_sbom` live on the envelope so the
+frontend can render all three concerns from a single backend
+round-trip.  The fields map 1:1 to SARIF concepts (see "SARIF exchange
+format" below) so an OSCAL exporter or a different SARIF producer can
+be slotted in without changing the response shape.
 
 ### Checker routing
 
@@ -80,26 +116,133 @@ When `ntia-conformance-checker` adds support for BSI, G7 AI SBOM, or
 MOF, update `checker_map` to point those keys at `NtiaCheckerAdapter`.
 The API response shape, the UI, and all downstream code remain unchanged.
 
-## Input
+## Input modes
 
-Currently Lumina takes two types of input:
+Lumina accepts three input modes.  All three converge on the **same**
+SARIF parser (`sarif_ingest.parse_sarif`) and the same response envelope
+(`SbomCheckResponse`), so adding a new input mode is a question of
+filling in the upstream half only -- the conformance pipeline never
+forks.
 
-1) SBOM file (upload)
-2) URL
+```text
+   Mode 1                    Mode 2                    Mode 3
+   ──────                    ──────                    ──────
+   Artefact URL              SBOM upload               SARIF upload
+   (HF Hub)                  / SBOM URL                / SARIF URL
+        │                          │                         │
+        ▼                          │                         │
+  ┌──────────────┐                 │                         │
+  │   Pitloom    │                 │                         │
+  │  (SBOM gen)  │ ────────────┐   │                         │
+  └──────────────┘             │   │                         │
+                               ▼   ▼                         │
+                         ┌──────────────────┐                │
+                         │ ntia-conformance │                │
+                         │     -checker     │                │
+                         │ output_sarif(    │                │
+                         │   embed_sbom=    │                │
+                         │   False)         │                │
+                         └────────┬─────────┘                │
+                                  │ SARIF                    │
+                                  ▼                          ▼
+                           ┌────────────────────────────────────┐
+                           │   parse_sarif(sarif)               │
+                           │   → SbomCheckResponse(             │
+                           │       conformance, run,            │
+                           │       embedded_sbom?               │
+                           │     )                              │
+                           └────────────────────────────────────┘
+```
 
-The URL can be:
+### Mode 1 — Artefact URL (Pitloom-mediated)
 
-a. Any link to a publicly-accessible SBOM
-b. Any link to a publicly-accessible AI model on Hugging Face Hub (no gate)
-c. Any link to a publicly-accessible Git repository (a Python project)
+* **Endpoint (planned):** `POST /api/v1/artifact/check`
+* **Body:** `{ "artifact_url": "...", "regulation_id": "ntia" }`
+* **Flow:** Lumina calls Pitloom with the artefact URL; Pitloom returns a
+  generated SBOM; Lumina writes it to a temp file and feeds it through
+  the same `NtiaCheckerAdapter` as mode 2.
+* **`embedded_sbom`:** absent.  Lumina holds the SBOM Pitloom just
+  returned; no need to round-trip via SARIF.
+* **Scope (initial):**
+  * **Hugging Face Hub URLs only.**  Pitloom reads HF metadata via the
+    HF API -- it does **not** download model files, so the host stays
+    light on disk and bandwidth.  HF auth is optional (lower quota
+    without a token, acceptable for now).
+  * **Git URLs are explicitly out of scope** in this phase.  A Git
+    artefact requires `git clone` into a managed work directory,
+    disk-space accounting, and lifecycle management of that directory.
+    None of that infrastructure exists yet, so the endpoint will reject
+    Git URLs until that work lands.
+* **Sync model:** **async**.  Pitloom calls run as background tasks
+  (FastAPI + Celery + Redis/Valkey, or equivalent).  The endpoint
+  returns a job id; the client polls a status endpoint or subscribes via
+  websocket / SSE.
+* **Failure surfacing:** Pitloom errors land in
+  `CheckRun.notifications` with `descriptor_id="pitloom.*"`
+  (e.g. `pitloom.fetch-failed`, `pitloom.url-unsupported`,
+  `pitloom.timeout`).  `execution_successful` flips to `false` for
+  fatal Pitloom errors; the conformance fields stay zeroed.
 
-For (b) and (c), an SBOM will be generated, using Pitloom.
+### Mode 2 — SBOM upload or SBOM URL
 
-In the initial stage, we will implement only (a) for simplicity.
-Then we will gradually implement (b) and (c)
-(c) can takes long time (can be longer than ten minutes), so need a task queue
-and worker architecture, like Celery.
+* **Endpoint:** `POST /api/v1/sbom/check`
+* **Body:** multipart file *or* `{ "sbom_url": "..." }`
+* **Flow:** Lumina holds the SBOM (either the upload payload or a fetch
+  of the URL) and passes the temp-file path to `NtiaCheckerAdapter`,
+  which calls `output_sarif(embed_sbom=False)` and feeds the SARIF log
+  through `parse_sarif`.
+* **`embedded_sbom`:** absent.  Lumina already has the SBOM the user
+  just supplied; embedding would double in-memory size for no benefit.
+* **Sync model:** synchronous for now.  May move behind the same queue
+  as mode 1 once we measure typical SBOM-parse latency on large inputs.
 
-We may try FastAPI + Celery + Redis (or Valkey) to see if it is sufficient.
-A Docker is required for local development.
-For deployment on public web, we may use Railway for simplicity initially.
+### Mode 3 — SARIF upload or SARIF URL
+
+* **Endpoint:** `POST /api/v1/sarif/import`
+* **Body:** SARIF 2.1.0 JSON body *or* `{ "sarif_url": "..." }`
+* **Flow:** SARIF goes straight into `parse_sarif`.  No checker call;
+  the SARIF log already contains the verdict.
+* **`embedded_sbom`:** **populated iff** the producer chose to embed.
+  When present, the frontend can render the source SBOM alongside the
+  findings without a separate fetch.  When absent, the frontend renders
+  conformance results only and the SBOM section stays empty.
+* **Sync model:** synchronous (parsing is cheap; no external calls).
+
+### SARIF exchange format
+
+The wire format between ntia-conformance-checker, Pitloom-mediated
+calls, third-party producers, and Lumina is **SARIF 2.1.0**.  Rule ids
+follow `[SPEC]-[CATEGORY]-[NN]` (see ntia-conformance-checker's
+`RULES.md`).  Identifiers are OSCAL-control-id-shaped so a future
+OSCAL exporter on either side can reuse them as `control` / `group`
+ids without remapping.
+
+`output_sarif(embed_sbom=...)` controls whether the producer attaches
+the source SBOM in `artifacts[0].contents` (SARIF §3.24.7).  Default is
+off (link-by-URI).  Lumina turns it off for modes 1 and 2 (it has the
+SBOM already) and consumes it when present on mode 3.
+
+### MIME types for embedded SBOMs
+
+When `embedded_sbom.mime_type` is populated, it comes from
+ntia-conformance-checker's MIME picker, which is registry-aware:
+
+| Format                   | MIME type                           | IANA status               |
+| ------------------------ | ----------------------------------- | ------------------------- |
+| SPDX 2 JSON              | `application/spdx+json`             | registered                |
+| SPDX 3 JSON-LD           | `application/ld+json`               | registered (generic)      |
+| SPDX 2 RDF/XML           | `application/rdf+xml`               | registered                |
+| SPDX 2 XML (non-RDF)     | `application/xml`                   | generic                   |
+| YAML                     | `application/yaml`                  | registered (generic)      |
+| SPDX 2 tag-value (.spdx) | `text/plain`                        | generic                   |
+| unknown                  | `application/octet-stream`          | generic                   |
+
+`application/spdx3+json` has been submitted to IANA but is not yet
+approved, so we fall back to `application/ld+json` for SPDX 3 until
+that registration lands.
+
+## Infrastructure notes
+
+We may try FastAPI + Celery + Redis (or Valkey) for the async queue
+that mode 1 needs.  Docker is required for local development.
+For public deployment, Railway is the initial target for simplicity.
