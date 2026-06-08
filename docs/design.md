@@ -7,19 +7,23 @@ SPDX-License-Identifier: CC0-1.0
 
 # Lumina design
 
-Lumina is a web-based software bill of materials (SBOM) viewer.
+Lumina is a web-based software bill of materials (SBOM) viewer and conformance
+checker. It shows information from the SBOM itself together with a conformance
+verdict for a chosen regulation.
 
-It shows information from the SBOM itself, together with additional information
-about conformance.
+Backend processing uses the SPDX Python toolchain:
 
-A lot of processing will be done in the backend by SPDX Python toolchain:
+- **Conformance checking** — [`ntia-conformance-checker`][ncc], with a Lumina
+  internal fallback for regulations the checker does not yet cover (see
+  [Checker routing](#checker-routing)).
+- **SBOM generation** — [Pitloom][pitloom], for the planned artefact-URL input
+  mode (see [Mode 1](#mode-1--artefact-url-pitloom-mediated)); not yet wired up.
 
-- SBOM generation is done by Pitloom
-  <https://github.com/bact/pitloom>
-- Conformance checking is done by NTIA Conformance Checker
-  <https://github.com/spdx/ntia-conformance-checker>
+The backend normalises every result to a single `SbomCheckResponse` envelope and
+passes it to the web UI.
 
-Results will be passed to the web UI.
+[ncc]: https://github.com/spdx/ntia-conformance-checker
+[pitloom]: https://github.com/bact/pitloom
 
 ## Conformance checking architecture
 
@@ -37,6 +41,10 @@ lets us swap in new checker support the moment it becomes available
 without touching the API contract or the UI.
 
 ### Response schema (canonical shape)
+
+These are Pydantic models in
+[`backend/app/conformance.py`](../backend/app/conformance.py) (the source of
+truth); the annotated shape below is the wire contract.
 
 The API envelope is `SbomCheckResponse`. It bundles the conformance
 verdict, run-level metadata, and (optionally) the source SBOM carried
@@ -93,28 +101,19 @@ be slotted in without changing the response shape.
 
 ### Checker routing
 
-A `ConformanceEngine` in the backend routes each regulation to the
-appropriate checker implementation:
+A `ConformanceEngine` routes each regulation to a checker via `CHECKER_MAP`
+in [`backend/app/conformance.py`](../backend/app/conformance.py) (the source of
+truth):
 
-```python
-checker_map = {
-    "ntia":  NtiaCheckerAdapter,       # wraps ntia-conformance-checker
-    "bsi":   LuminaInternalChecker,    # → NtiaCheckerAdapter once supported
-    "g7ai":  LuminaInternalChecker,    # → NtiaCheckerAdapter once supported
-    "mof":   LuminaInternalChecker,    # → NtiaCheckerAdapter once supported
-}
-```
+- `NtiaCheckerAdapter` wraps the `ntia-conformance-checker` library and
+  normalises its SARIF output into `ConformanceResult`. Bound to `ntia`.
+- `LuminaInternalChecker` is the fallback for regulations the external checker
+  does not yet cover (`bsi`, `g7ai`, `mof`); it raises *not yet implemented*
+  until that logic (or external support) lands.
 
-`NtiaCheckerAdapter` wraps the `ntia-conformance-checker` library and
-normalises its output into `ConformanceResult`.
-
-`LuminaInternalChecker` replicates the field-level logic from the UI
-prototype (`data.js`) in Python, as a fallback for regulations the
-external checker does not yet handle.
-
-When `ntia-conformance-checker` adds support for BSI, G7 AI SBOM, or
-MOF, update `checker_map` to point those keys at `NtiaCheckerAdapter`.
-The API response shape, the UI, and all downstream code remain unchanged.
+When `ntia-conformance-checker` adds support for one of those regulations, point
+its key at `NtiaCheckerAdapter` in `CHECKER_MAP` — the API response shape, the
+UI, and all downstream code stay unchanged.
 
 ## Input modes
 
@@ -242,8 +241,11 @@ ntia-conformance-checker's MIME picker, which is registry-aware:
 approved, so we fall back to `application/ld+json` for SPDX 3 until
 that registration lands.
 
-## Infrastructure notes
+## Infrastructure
 
-We may try FastAPI + Celery + Redis (or Valkey) for the async queue
-that mode 1 needs.  Docker is required for local development.
-For public deployment, Railway is the initial target for simplicity.
+The stack is **FastAPI + Celery + Redis/Valkey + nginx**, orchestrated with
+Docker Compose. Celery/Redis back the async queue that Mode 1 needs; the
+synchronous Mode 2 / Mode 3 paths do not use them.
+
+- **Local development:** see the [README](../README.md#quick-start-with-docker).
+- **Free public deployment:** see [INSTALL.md](../INSTALL.md).

@@ -58,6 +58,13 @@ docker compose down -v
 
 ---
 
+## Deploying publicly
+
+To run Lumina on the public internet for free (always-on VM + free HTTPS),
+follow **[INSTALL.md](INSTALL.md)**.
+
+---
+
 ## Development workflow
 
 ### Rebuild after dependency changes
@@ -168,7 +175,9 @@ lumina/
 │   └── app/
 │       ├── main.py             FastAPI app + endpoints
 │       ├── conformance.py      ConformanceEngine, CHECKER_MAP, schemas
+│       ├── sarif_ingest.py     SARIF 2.1.0 → SbomCheckResponse
 │       └── worker.py           Celery tasks (SBOM generation)
-└── docs/
-    └── design.md               Architecture and design decisions
+├── docs/
+│   └── design.md               Architecture and design decisions
+└── INSTALL.md                  Free public-deployment guide
 ```
