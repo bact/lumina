@@ -8,13 +8,18 @@
 Accepts a SARIF log dict produced by any tool that follows the rule-id
 convention documented in ``ntia-conformance-checker``'s ``RULES.md``:
 
-    [SPEC]-[CATEGORY]-[NN]
+    SBOM-[SPEC]-[CATEGORY]-[NNN]
 
-* ``SPEC`` is an uppercase short standard code (``NTIA``, ``FSCT``, ``CISA``,
-  ``G7AI``, ``MOF``).  It drives ``ConformanceResult.regulation_id``.
+* ``SBOM`` is a fixed namespace prefix shared by every rule id.
+* ``SPEC`` is an uppercase short standard code -- the spec id uppercased
+  (``NTIA``, ``FSCT3``, ``BSI``, ``G7AI``, ``MOF``).  It drives
+  ``ConformanceResult.regulation_id``.
 * ``CATEGORY`` is an uppercase short category code (``DF``, ``META``, ``COMP``,
   ...).  Not interpreted here, but preserved in the rule lookup table.
-* ``NN`` is a zero-padded sequence number.
+* ``NNN`` is a zero-padded (3-digit) sequence number.
+
+The legacy ``[SPEC]-[CATEGORY]-[NN]`` form (no ``SBOM-`` prefix) is still
+tolerated by :func:`_spec_of`.
 
 The producer is identified by ``run.tool.driver.name``;
 ``ntia-conformance-checker`` is recognised explicitly and anything else is
@@ -42,23 +47,30 @@ from .conformance import (
 )
 
 
-# Map uppercase spec prefix (first dash segment of a rule id) -> Lumina
-# regulation id.  Extend when new RegulationId literals are added.
+# Map uppercase spec code (the SPEC segment of a rule id, i.e. the spec id
+# uppercased) -> Lumina regulation id.  Extend when new RegulationId literals
+# or specs are added.
 _SPEC_TO_REGULATION: dict[str, RegulationId] = {
     "NTIA": "ntia",
-    "FSCT": "ntia",  # FSCT is a superset of NTIA; no separate UI yet.
-    "CISA": "ntia",  # CISA 2025 SBOM Minimum Elements -- placeholder.
+    "FSCT": "ntia",   # FSCT (CISA Framing...) is a superset of NTIA.
+    "FSCT3": "ntia",  # FSCT 3rd edition; superset of NTIA, no separate UI yet.
+    "CISA": "ntia",   # CISA 2025 SBOM Minimum Elements -- placeholder.
+    "BSI": "bsi",
     "G7AI": "g7ai",
-    "MOF": "g7ai",   # placeholder until MOF gets its own RegulationId.
+    "MOF": "mof",
 }
 
-# Map ntia-conformance-checker ``complianceStandard`` strings to RegulationId.
-# Preferred over rule-id inference because it survives heterogeneous rule sets.
+# Map ntia-conformance-checker ``complianceStandard`` (the spec id) to a
+# RegulationId.  Preferred over rule-id inference because it survives
+# heterogeneous rule sets.
 _STANDARD_TO_REGULATION: dict[str, RegulationId] = {
     "ntia": "ntia",
-    "fsct3-min": "ntia",
+    "fsct3": "ntia",
+    "fsct3-min": "ntia",  # legacy spec id (pre-rename)
+    "bsi": "bsi",
     "g7-ai": "g7ai",
     "g7ai": "g7ai",
+    "mof": "mof",
 }
 
 # Map producer tool names to CheckerSource literals.
@@ -77,9 +89,18 @@ def _require(condition: bool, message: str) -> None:
 
 
 def _spec_of(rule_id: str) -> str:
-    """Return the SPEC segment of a ``[SPEC]-[CAT]-[NN]`` rule id, uppercased."""
-    parts = rule_id.split("-", 1)
-    return parts[0].upper() if parts and parts[0] else ""
+    """Return the SPEC segment of a rule id, uppercased.
+
+    Handles the current ``SBOM-[SPEC]-[CAT]-[NNN]`` scheme (SPEC is the
+    segment after the fixed ``SBOM`` namespace prefix) and tolerates the
+    legacy ``[SPEC]-[CAT]-[NN]`` form.
+    """
+    parts = [p for p in rule_id.split("-") if p]
+    if not parts:
+        return ""
+    if parts[0].upper() == "SBOM" and len(parts) > 1:
+        return parts[1].upper()
+    return parts[0].upper()
 
 
 def _logical_location(result: dict[str, Any]) -> tuple[str, str]:

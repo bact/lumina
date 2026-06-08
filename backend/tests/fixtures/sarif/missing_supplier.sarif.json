@@ -9,65 +9,93 @@
           "version": "5.0.2",
           "rules": [
             {
-              "id": "NTIA-DF-01",
+              "id": "SBOM-NTIA-DF-001",
               "name": "NtiaComponentSupplierMissing",
               "properties": {
+                "slug": "ntia-component-supplier-missing",
                 "elementId": "supplier",
-                "slug": "ntia-supplier-name",
+                "specCategory": "data-fields",
+                "maturityLevel": 0,
+                "maturity": "required",
+                "provision": "requirement",
                 "status": "active"
               }
             },
             {
-              "id": "NTIA-DF-02",
+              "id": "SBOM-NTIA-DF-002",
               "name": "NtiaComponentNameMissing",
               "properties": {
+                "slug": "ntia-component-name-missing",
                 "elementId": "name",
-                "slug": "ntia-component-name",
+                "specCategory": "data-fields",
+                "maturityLevel": 0,
+                "maturity": "required",
+                "provision": "requirement",
                 "status": "active"
               }
             },
             {
-              "id": "NTIA-DF-03",
+              "id": "SBOM-NTIA-DF-003",
               "name": "NtiaComponentVersionMissing",
               "properties": {
+                "slug": "ntia-component-version-missing",
                 "elementId": "version",
-                "slug": "ntia-component-version",
+                "specCategory": "data-fields",
+                "maturityLevel": 0,
+                "maturity": "required",
+                "provision": "requirement",
                 "status": "active"
               }
             },
             {
-              "id": "NTIA-DF-04",
+              "id": "SBOM-NTIA-DF-004",
               "name": "NtiaComponentIdentifierMissing",
               "properties": {
-                "elementId": "identifier",
-                "slug": "ntia-unique-identifier",
+                "slug": "ntia-component-identifier-missing",
+                "elementId": "unique_identifier",
+                "specCategory": "data-fields",
+                "maturityLevel": 0,
+                "maturity": "required",
+                "provision": "requirement",
                 "status": "active"
               }
             },
             {
-              "id": "NTIA-DF-05",
+              "id": "SBOM-NTIA-DF-005",
               "name": "NtiaDependencyRelationshipsMissing",
               "properties": {
+                "slug": "ntia-dependency-relationships-missing",
                 "elementId": "dependency_relationship",
-                "slug": "ntia-dependency-relationship",
+                "specCategory": "data-fields",
+                "maturityLevel": 0,
+                "maturity": "required",
+                "provision": "requirement",
                 "status": "active"
               }
             },
             {
-              "id": "NTIA-DF-06",
+              "id": "SBOM-NTIA-DF-006",
               "name": "NtiaSbomAuthorMissing",
               "properties": {
+                "slug": "ntia-sbom-author-missing",
                 "elementId": "author",
-                "slug": "ntia-sbom-author",
+                "specCategory": "data-fields",
+                "maturityLevel": 0,
+                "maturity": "required",
+                "provision": "requirement",
                 "status": "active"
               }
             },
             {
-              "id": "NTIA-DF-07",
+              "id": "SBOM-NTIA-DF-007",
               "name": "NtiaSbomTimestampMissing",
               "properties": {
+                "slug": "ntia-sbom-timestamp-missing",
                 "elementId": "timestamp",
-                "slug": "ntia-sbom-timestamp",
+                "specCategory": "data-fields",
+                "maturityLevel": 0,
+                "maturity": "required",
+                "provision": "requirement",
                 "status": "active"
               }
             }
@@ -76,7 +104,7 @@
       },
       "results": [
         {
-          "ruleId": "NTIA-DF-01",
+          "ruleId": "SBOM-NTIA-DF-001",
           "level": "error",
           "message": {
             "text": "Component 'foo' (SPDXRef-Package) is missing a component supplier."
@@ -94,7 +122,7 @@
           ]
         },
         {
-          "ruleId": "NTIA-DF-01",
+          "ruleId": "SBOM-NTIA-DF-001",
           "level": "error",
           "message": {
             "text": "Component 'saxon' (SPDXRef-Saxon) is missing a component supplier."
@@ -119,7 +147,10 @@
         }
       ],
       "properties": {
-        "complianceStandard": "ntia"
+        "complianceStandard": "ntia",
+        "sbomName": "example",
+        "sbomSpec": "spdx2",
+        "maturityTarget": 0
       }
     }
   ]

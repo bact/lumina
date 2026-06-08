@@ -212,8 +212,9 @@ forks.
 
 The wire format between ntia-conformance-checker, Pitloom-mediated
 calls, third-party producers, and Lumina is **SARIF 2.1.0**.  Rule ids
-follow `[SPEC]-[CATEGORY]-[NN]` (see ntia-conformance-checker's
-`RULES.md`).  Identifiers are OSCAL-control-id-shaped so a future
+follow `SBOM-[SPEC]-[CATEGORY]-[NNN]` (see ntia-conformance-checker's
+`RULES.md`), where `SPEC` is the spec id uppercased (e.g. `NTIA`,
+`FSCT3`).  The lowercased rule id is OSCAL-control-id-shaped so a future
 OSCAL exporter on either side can reuse them as `control` / `group`
 ids without remapping.
 

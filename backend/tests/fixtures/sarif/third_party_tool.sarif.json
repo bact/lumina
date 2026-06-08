@@ -9,11 +9,15 @@
           "version": "1.0.0",
           "rules": [
             {
-              "id": "FSCT-COMP-01",
+              "id": "SBOM-FSCT3-COMP-001",
               "name": "CustomCheck",
               "properties": {
+                "slug": "fsct3-component-name-missing",
                 "elementId": "name",
-                "slug": "fsct-component-name",
+                "specCategory": "component-attributes",
+                "maturityLevel": 0,
+                "maturity": "minimum",
+                "provision": "requirement",
                 "status": "active"
               }
             }
@@ -28,7 +32,10 @@
         }
       ],
       "properties": {
-        "complianceStandard": "fsct3-min"
+        "complianceStandard": "fsct3",
+        "sbomName": "example",
+        "sbomSpec": "spdx2",
+        "maturityTarget": 0
       }
     }
   ]
