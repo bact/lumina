@@ -69,14 +69,45 @@ Using **Oracle Cloud Infrastructure (OCI) Always Free** (an Ampere ARM VM that
 never expires):
 
 1. Sign in to the OCI Console → **Menu → Compute → Instances → Create instance**.
-2. **Image and shape:**
-   - Image: **Canonical Ubuntu 24.04** (or 22.04).
-   - Shape: **Ampere (VM.Standard.A1.Flex)** — set **1–2 OCPU, 6–12 GB RAM**:
-     (all within the Always Free allowance). The `amd64` Always-Free micro shape
-     also works but is tighter on RAM.
-3. **SSH keys:** paste the contents of your public key (`~/.ssh/id_ed25519.pub`).
-4. Click **Create**. When it is running, note the **public IPv4 address**.
-5. SSH in (default user on Ubuntu images is `ubuntu`):
+2. **Name:** set the instance name to `lumina` (or any name you prefer).
+3. **Primary VNIC information** (scroll down to this section):
+   - **Hostname:** `lumina`
+   - **VCN / Subnet:** leave the pre-selected default (`Public Subnet-vcn-...`).
+     It has an internet gateway attached, which the instance needs to reach Docker
+     Hub and Cloudflare outbound. No inbound ports are opened by this choice —
+     the OCI security list still blocks them by default.
+   - **Public IPv4 address:** keep **Assign automatically** checked.
+     This is the IP you will SSH to. IPv6 is not needed — leave it unchecked.
+   - **Private DNS record:** select **Assign a private DNS record**.
+     This registers the hostname (`lumina`) in the VCN's internal DNS — useful
+     if you add more instances later. No external exposure.
+4. **Image and shape:**
+   - Image: **Canonical Ubuntu 24.04 Minimal aarch64**
+   - Shape: **Ampere (VM.Standard.A1.Flex)** — set **1–2 OCPU, 6–12 GB RAM**
+     (all within the Always Free allowance).
+5. **SSH keys:** under **Add SSH keys**, choose **Paste public key** and paste
+   the contents of `~/.ssh/id_ed25519.pub`.
+6. **Initialization script:** expand the **Advanced options → Management** section,
+   set **Initialization script** to **Paste cloud-init script**, and paste:
+
+   ```bash
+   #!/bin/bash
+   apt-get update
+   apt-get install -y curl git
+   curl -fsSL https://get.docker.com | sh
+   usermod -aG docker ubuntu
+   ```
+
+   This installs Docker automatically at first boot. The instance is ready
+   to use by the time you SSH in (~2–3 minutes after creation).
+
+7. **Boot volume:** expand **Advanced options → Boot volume**:
+   - **Size:** 60–80 GB (default 50 GB is fine too; up to 200 GB is free).
+   - **Performance:** leave at **Balanced (10 VPUs)** — included in Always Free.
+     Higher Performance (20 VPUs) and above cost extra.
+
+8. Click **Create**. When it is running, note the **public IPv4 address**.
+9. SSH in (default user on Ubuntu images is `ubuntu`):
 
    ```bash
    ssh ubuntu@<PUBLIC_IP>
@@ -89,21 +120,21 @@ never expires):
 
 ---
 
-## Part 2 — Install Docker on the server
+## Part 2 — Verify Docker on the server
 
-Run these on the VM:
+The initialization script from Part 1 already installed Docker and added `ubuntu`
+to the `docker` group. After SSH-ing in, activate the group membership and verify:
 
 ```bash
-# Docker Engine + Compose plugin (official convenience script)
-curl -fsSL https://get.docker.com | sudo sh
-
-# Run docker without sudo (log out/in afterwards, or run `newgrp docker`)
-sudo usermod -aG docker "$USER"
+# Activate docker group without logging out/in
 newgrp docker
 
 # Verify
 docker version && docker compose version
 ```
+
+If `docker: command not found`, the cloud-init script may still be running — wait
+a minute and retry. Check its log with `sudo cat /var/log/cloud-init-output.log`.
 
 ---
 
@@ -328,6 +359,7 @@ approach avoids that.
 
 | Symptom                                   | Fix |
 | :---------------------------------------- | :-- |
+| "Out of capacity for VM.Standard.A1.Flex" | A1 free slots are scarce. Try another availability domain (AD-2/AD-3) if your region has one. Otherwise retry every few minutes — capacity frees up unpredictably (off-peak hours help). Free tier locks you to your home region; OCI CLI lets you automate retries without timing out. |
 | `curl http://localhost/api/health` fails  | `docker compose ... logs api` — usually a Python/dep error or the api still starting. |
 | Tunnel up but 502 from the public URL     | Service mapping wrong: it must point to `nginx:80` (not `localhost`/`api`). |
 | `docker: permission denied`               | Re-run `newgrp docker` or log out/in after the `usermod -aG docker` step. |
