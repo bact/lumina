@@ -56,6 +56,7 @@ The result: a public HTTPS URL (e.g. `https://lumina.example.com` or a free
   (any provider's free VM works — see [other options](#other-free-options)).
 - A **Cloudflare** account (free): <https://dash.cloudflare.com/sign-up>
 - An SSH key pair on your laptop. Create one if needed:
+
   ```bash
   ssh-keygen -t ed25519 -C "lumina-deploy"
   ```
@@ -76,6 +77,7 @@ never expires):
 3. **SSH keys:** paste the contents of your public key (`~/.ssh/id_ed25519.pub`).
 4. Click **Create**. When it is running, note the **public IPv4 address**.
 5. SSH in (default user on Ubuntu images is `ubuntu`):
+
    ```bash
    ssh ubuntu@<PUBLIC_IP>
    ```
@@ -189,10 +191,12 @@ Needs a domain added to your free Cloudflare account (any registrar; ~$10/yr).
 2. Cloudflare shows an **install token**. Copy the token value (the long string
    after `--token`).
 3. On the VM, save it and start the connector:
+
    ```bash
    echo "TUNNEL_TOKEN=<PASTE_TOKEN_HERE>" >> .env
    docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile tunnel up -d
    ```
+
 4. Back in the tunnel's **Public Hostnames** tab, click **Add a public hostname**:
    - **Subdomain:** `lumina` (or any) · **Domain:** your domain
    - **Service:** `HTTP` → `nginx:80`
@@ -272,24 +276,30 @@ These are recommended once it works:
 
 1. **Tighten CORS.** In prod the frontend is same-origin (served by nginx, calls
    `/api`), so the wildcard is unnecessary. In `backend/app/main.py`:
+
    ```python
    allow_origins=["https://lumina.yourdomain.com"],   # was ["*"]
    ```
+
    Rebuild the `api` service afterward.
 2. **Limit upload size.** Add to `proxy/prod.conf` inside `server { … }`:
+
    ```nginx
    client_max_body_size 25m;   # cap SBOM upload size
    ```
+
 3. **Keep ports off the public interface.** With the tunnel you don't need the
    host `80:80` publish — set nginx `ports` to `127.0.0.1:8080:80` in
    `docker-compose.prod.yml`, and keep the OCI security list closed.
 4. **Cap resources** so a large SBOM can't exhaust the VM. Per service in the
    prod override:
+
    ```yaml
    deploy:
      resources:
        limits: { cpus: "1.0", memory: 768m }
    ```
+
 5. **Updates.** Rebuild periodically (`git pull` + `up -d --build`) to pick up
    dependency and security fixes.
 
