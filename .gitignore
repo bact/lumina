@@ -74,6 +74,9 @@ web_modules/
 .env.*
 !.env.example
 
+# Local OCI launch config (account-specific OCIDs — never commit)
+scripts/oci-launch.env
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache

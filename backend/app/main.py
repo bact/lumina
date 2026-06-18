@@ -12,6 +12,7 @@ from typing import Annotated
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
 
 from .conformance import (
     CHECKER_MAP,
@@ -20,6 +21,8 @@ from .conformance import (
     RegulationId,
     SbomCheckResponse,
 )
+from .generate import generate_and_check
+from .jobs import InProcessJobQueue
 from .sarif_ingest import SarifIngestError, parse_sarif
 
 app = FastAPI(
@@ -36,6 +39,37 @@ app.add_middleware(
 )
 
 _engine = ConformanceEngine()
+
+# Stage 0-1 job backend: runs Mode-1 SBOM generation in-process (see jobs.py and
+# docs/design.md "Background job execution").  Swappable for an RQ/Taskiq backend
+# at Stage 2 without touching the endpoints below.
+_jobs = InProcessJobQueue()
+_jobs.register("generate_and_check", generate_and_check)
+
+
+class ArtifactCheckRequest(BaseModel):
+    """Body for ``POST /api/v1/artifact/check``."""
+
+    artifact_url: str
+    regulation_id: RegulationId = "ntia"
+
+
+class JobSubmission(BaseModel):
+    """Response acknowledging an enqueued job."""
+
+    job_id: str
+
+
+class JobStatusResponse(BaseModel):
+    """Current state of a background job.
+
+    ``result`` is set once ``status == "done"``; ``error`` once
+    ``status == "error"``.
+    """
+
+    status: str
+    result: SbomCheckResponse | None = None
+    error: str | None = None
 
 
 @app.get("/", include_in_schema=False)
@@ -112,6 +146,36 @@ async def import_sarif(sarif: dict) -> SbomCheckResponse:
         return parse_sarif(sarif)
     except SarifIngestError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post(
+    "/api/v1/artifact/check", response_model=JobSubmission, status_code=202
+)
+async def check_artifact(req: ArtifactCheckRequest) -> JobSubmission:
+    """
+    Generate an SBOM from an artefact URL (a Git repository or a Hugging Face
+    Hub URL) and check it against the requested regulation.
+
+    Generation can take minutes, so this returns a ``job_id`` immediately;
+    poll ``GET /api/v1/jobs/{job_id}`` for the result.
+    """
+    job_id = _jobs.enqueue(
+        "generate_and_check",
+        artifact_url=req.artifact_url,
+        regulation_id=req.regulation_id,
+    )
+    return JobSubmission(job_id=job_id)
+
+
+@app.get("/api/v1/jobs/{job_id}", response_model=JobStatusResponse)
+async def get_job(job_id: str) -> JobStatusResponse:
+    """Return the current status (and, when finished, result) of a job."""
+    record = _jobs.get(job_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"Unknown job id: {job_id}")
+    return JobStatusResponse(
+        status=record.status, result=record.result, error=record.error
+    )
 
 
 def _suffix(filename: str | None) -> str:

@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
 // and per-field cards listing which components are missing the field, plus
 // "Where to look" guidance pulled from data.findHints.
 
-const { useState: _useSC } = React;
+const { useState: _useSC, useRef: _useRef, useEffect: _useEffect } = React;
 
 function ConformanceScreen({ data, onOpenComponent }) {
   const activeRegInit = data.regulations.find(r => r.active)?.id || data.regulations[0].id;
@@ -403,79 +403,193 @@ function WhereToLook({ hint }) {
 // itself -- for that, run Pitloom locally and bring the result back here.
 // (Large model files like GGUF would be infeasible to drop into a browser
 // tab anyway; metadata extraction belongs on the user's machine.)
+// ImportScreen -- Mode 1 (artefact URL). Paste a Git repository or Hugging Face
+// Hub URL; the backend generates an SBOM (Pitloom, server-side) and checks it
+// against a regulation. This talks to the real API:
+//   POST /api/v1/artifact/check  -> { job_id }
+//   GET  /api/v1/jobs/{job_id}   -> { status, result?, error? }
+//
+// TODO (not done yet): this is the ONLY screen wired to real backend results.
+// It is deliberately self-contained -- it renders its own compact result panel
+// from SbomCheckResponse and does NOT feed the data.js-driven viewer screens
+// (Overview, Inventory, Graph, Conformance), which still show static prototype
+// data. Mapping SbomCheckResponse + the generated SBOM into those screens'
+// data model is the remaining integration work. See docs/design.md
+// "Implementation status (Stage 0)".
 function ImportScreen({ onComplete }) {
-  const [stage, setStage] = _useSC("idle"); // idle | dragging | parsing | done
+  const [url, setUrl] = _useSC("");
+  const [phase, setPhase] = _useSC("idle"); // idle | running | done | error
+  const [result, setResult] = _useSC(null); // SbomCheckResponse
+  const [errorMsg, setErrorMsg] = _useSC("");
+  const aliveRef = _useRef(true);
+  _useEffect(() => () => { aliveRef.current = false; }, []);
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  async function run() {
+    const artifactUrl = url.trim();
+    if (!artifactUrl) return;
+    setPhase("running"); setResult(null); setErrorMsg("");
+    try {
+      const submit = await fetch("/api/v1/artifact/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ artifact_url: artifactUrl, regulation_id: "ntia" }),
+      });
+      if (!submit.ok) throw new Error(`Submit failed (HTTP ${submit.status})`);
+      const { job_id } = await submit.json();
+
+      // Poll until the job finishes. Jobs are minutes-long at most; a ~2.5s
+      // interval keeps the UI responsive without hammering the API.
+      while (aliveRef.current) {
+        await sleep(2500);
+        const poll = await fetch(`/api/v1/jobs/${job_id}`);
+        if (!poll.ok) throw new Error(`Status check failed (HTTP ${poll.status})`);
+        const rec = await poll.json();
+        if (rec.status === "done") {
+          if (!aliveRef.current) return;
+          setResult(rec.result); setPhase("done"); return;
+        }
+        if (rec.status === "error") {
+          throw new Error(rec.error || "Generation job failed");
+        }
+      }
+    } catch (err) {
+      if (!aliveRef.current) return;
+      setErrorMsg(String(err.message || err)); setPhase("error");
+    }
+  }
+
   return (
     <div style={{ padding: "32px 48px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 880, margin: "0 auto" }}>
       <div>
-        <Eyebrow>Import</Eyebrow>
-        <h1 style={{ margin: "6px 0 4px", fontSize: 32, fontWeight: 500, letterSpacing: "-0.018em" }}>Bring in an SBOM</h1>
+        <Eyebrow>Generate &amp; check</Eyebrow>
+        <h1 style={{ margin: "6px 0 4px", fontSize: 32, fontWeight: 500, letterSpacing: "-0.018em" }}>Check a repository or model</h1>
         <p style={{ margin: 0, fontSize: 14.5, color: "var(--ink-3)" }}>
-          Drop an SBOM file, or paste a link to an SBOM file or a Hugging Face Hub model page. Lumina reads SBOMs &mdash; it doesn&rsquo;t generate them.
+          Paste a Git repository URL or a Hugging Face Hub model URL. Lumina generates an SBOM for it (server-side, via Pitloom) and checks it against NTIA Minimum Elements.
         </p>
       </div>
 
-      <div
-        onDragOver={(e) => { e.preventDefault(); setStage("dragging"); }}
-        onDragLeave={() => setStage("idle")}
-        onDrop={(e) => { e.preventDefault(); setStage("parsing"); setTimeout(() => setStage("done"), 1400); }}
-        style={{
-          background: stage === "dragging" ? "var(--shu-soft)" : "var(--white)",
-          border: "1.5px dashed " + (stage === "dragging" ? "var(--shu)" : "var(--border-strong)"),
-          borderRadius: 4, padding: "44px 28px", textAlign: "center",
-          transition: "background var(--dur-base), border-color var(--dur-base)",
-        }}>
-        {stage === "parsing" ? (
-          <>
-            <Icon name="loader" size={28} style={{ color: "var(--ink-3)" }} />
-            <div style={{ fontSize: 16, color: "var(--ink-2)", marginTop: 12 }}>Reading the weave…</div>
-            <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 6 }}>14 components found · validating against SPDX 3.0</div>
-          </>
-        ) : stage === "done" ? (
-          <>
-            <Icon name="check" size={28} style={{ color: "var(--moss)" }} />
-            <div style={{ fontSize: 16, color: "var(--ink)", marginTop: 12 }}>Imported. 14 components, 4 manifests.</div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 16 }}>
-              <Button variant="ghost" onClick={() => setStage("idle")}>Import another</Button>
-              <Button variant="primary" iconAfter="arrow-right" onClick={onComplete}>Open inventory</Button>
-            </div>
-          </>
-        ) : (
-          <>
-            {/* Generic document icon -- reads as "a file you bring in"
-                without leaning on the up/down/in/out arrow debate at all. */}
-            <Icon name="file-text" size={28} style={{ color: "var(--ink-3)" }} />
-            <div style={{ fontSize: 16, color: "var(--ink-2)", marginTop: 12 }}>Drop an SBOM, or paste a link</div>
-            <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 6, lineHeight: 1.6 }}>
-              Files: <Mono>SPDX 2.2 / 2.3 / 3.0</Mono> &middot; JSON, XML, RDF, YAML, tag-value
-            </div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 18, flexWrap: "wrap" }}>
-              <Button variant="secondary" icon="folder" onClick={() => { setStage("parsing"); setTimeout(() => setStage("done"), 1400); }}>Choose file</Button>
-              {/* One unified URL action -- the chain icon (`link`) carries
-                  "this is a URL" without enumerating sources in the label. */}
-              <Button variant="ghost" icon="link">Paste URL</Button>
-            </div>
-            <div style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 18, lineHeight: 1.6, maxWidth: 560, margin: "18px auto 0" }}>
-              A URL can point to a hosted SBOM file, or to a model page on{" "}
-              <Mono>huggingface.co</Mono>.
-            </div>
-          </>
-        )}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <TextField
+          icon="link"
+          placeholder="https://github.com/owner/repo  ·  https://huggingface.co/org/model"
+          label="Artefact URL"
+          value={url}
+          onChange={setUrl}
+          onKeyDown={(e) => { if (e.key === "Enter" && phase !== "running") run(); }}
+          disabled={phase === "running"}
+          style={{ flex: 1, minWidth: 320 }}
+        />
+        <Button variant="primary" icon={phase === "running" ? "loader" : "play"}
+          onClick={run} disabled={phase === "running" || !url.trim()}>
+          {phase === "running" ? "Working…" : "Generate & check"}
+        </Button>
       </div>
 
-      {/* Pitloom margin note -- explains why Lumina is read-only and where
-         SBOM generation actually happens. Replaces the old "Connect a
-         repository" + "From CI" cards, which advertised a generator that
-         isn&rsquo;t built. */}
-      <MarginNote title="Need to generate an SBOM?">
-        Lumina doesn&rsquo;t produce SBOMs &mdash; it reads them. Install{" "}
+      {phase === "running" && (
+        <div style={{ fontSize: 12.5, color: "var(--ink-3)", display: "flex", alignItems: "center", gap: 8 }}>
+          <Icon name="loader" size={14} style={{ color: "var(--ink-3)" }} />
+          Cloning &amp; generating the SBOM, then checking conformance. A large repository can take a couple of minutes.
+        </div>
+      )}
+
+      {phase === "error" && (
+        <Card variant="default" padding={16} style={{ borderColor: "var(--shu)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--shu)", fontSize: 14, fontWeight: 500 }}>
+            <Icon name="alert-triangle" size={16} /> Could not complete
+          </div>
+          <div style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 8, lineHeight: 1.6 }}>{errorMsg}</div>
+        </Card>
+      )}
+
+      {phase === "done" && result && <ArtifactResult result={result} />}
+
+      <MarginNote title="What gets generated?">
+        Lumina generates the SBOM on the server with{" "}
         <a href="https://github.com/bact/pitloom" target="_blank" rel="noopener noreferrer" style={{ color: "var(--ink)", borderBottom: "1px solid var(--ink-4)", paddingBottom: 1, textDecoration: "none" }}>Pitloom</a>{" "}
-        locally &mdash; or run it as a step in your GitHub Actions workflow &mdash; then drop the resulting SBOM here.
-        Model files (GGUF, ONNX, Safetensors) are usually too large for browser upload; generate the SBOM on the
-        machine that has the model, then import just the SBOM.
+        (SPDX 3 JSON-LD). For a Git URL it shallow-clones the repository and reads its Python packaging metadata; for a Hugging Face URL it reads model metadata via the HF API &mdash; no model files are downloaded. Already have an SBOM? Use the SBOM upload / SARIF import endpoints instead.
       </MarginNote>
     </div>
   );
 }
 
-Object.assign(window, { ConformanceScreen, ImportScreen, WhereToLook });
+// ArtifactResult -- compact render of a SbomCheckResponse: conformance counts,
+// the gap list, and any run notifications. Self-contained on purpose.
+function ArtifactResult({ result }) {
+  const c = result.conformance || {};
+  const run = result.run || {};
+  const notes = run.notifications || [];
+  const gaps = c.gaps || [];
+  const ok = run.execution_successful !== false;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {!ok && (
+        <Card variant="default" padding={16} style={{ borderColor: "var(--shu)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--shu)", fontSize: 14, fontWeight: 500 }}>
+            <Icon name="alert-triangle" size={16} /> The run did not finish cleanly
+          </div>
+          <div style={{ fontSize: 12.5, color: "var(--ink-3)", marginTop: 6 }}>
+            Tool: <Mono>{run.tool_name || "?"}</Mono>{c.source ? <> · source <Mono>{c.source}</Mono></> : null}
+          </div>
+        </Card>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+        <SummaryTile label="Fields checked" value={c.total ?? 0} />
+        <SummaryTile label="Present" value={c.present ?? 0} accent="#5F7A4F" />
+        <SummaryTile label="Missing" value={c.missing ?? 0} accent={(c.missing ?? 0) > 0 ? "#B68333" : undefined} />
+        <SummaryTile label="Unverified" value={c.unverified ?? 0} accent={(c.unverified ?? 0) > 0 ? "#2F4A6B" : undefined} />
+      </div>
+
+      {gaps.length > 0 && (
+        <Card padding={0}>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 500 }}>
+            Gaps ({gaps.length})
+          </div>
+          <div>
+            {gaps.map((g, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 16px", borderBottom: i < gaps.length - 1 ? "1px solid var(--border)" : "none" }}>
+                <div style={{ flex: "0 0 auto", paddingTop: 1 }}><StatusChip status={g.level === "unverified" ? "unverified" : "missing"} /></div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, color: "var(--ink)" }}><Mono>{g.field_key}</Mono></div>
+                  <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 2, lineHeight: 1.5 }}>
+                    {g.component_id ? <>{g.component_id} &middot; </> : null}{g.note}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {gaps.length === 0 && ok && (
+        <Card padding={16}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--moss)", fontSize: 14, fontWeight: 500 }}>
+            <Icon name="check" size={16} /> No conformance gaps found
+          </div>
+        </Card>
+      )}
+
+      {notes.length > 0 && (
+        <Card padding={0}>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 500 }}>
+            Notifications ({notes.length})
+          </div>
+          <div>
+            {notes.map((n, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 16px", borderBottom: i < notes.length - 1 ? "1px solid var(--border)" : "none" }}>
+                <StatusChip status={n.level === "error" ? "invalid" : n.level === "warning" ? "missing" : "neutral"}>{n.level}</StatusChip>
+                <div style={{ minWidth: 0, fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
+                  {n.descriptor_id ? <Mono style={{ marginRight: 6 }}>{n.descriptor_id}</Mono> : null}{n.message}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+Object.assign(window, { ConformanceScreen, ImportScreen, ArtifactResult, WhereToLook });

@@ -5,91 +5,113 @@ SPDX-FileType: DOCUMENTATION
 SPDX-License-Identifier: Apache-2.0
 ---
 
-# Deploying Lumina on the public internet (free tier)
+# Deploying Lumina
 
-This is a step-by-step guide to run Lumina on the public internet at **$0/month**,
-using an always-free virtual machine and a free Cloudflare Tunnel for HTTPS.
+Lumina runs as a Docker container (or two). Pick the option that fits your
+situation, then follow its section end-to-end.
 
-You can copy–paste every command. Total time: ~30–45 minutes.
+## Deployment options
 
-## What you are deploying
+| Option | Platform | Cost | Always-on | Config in |
+| :----- | :------- | :--- | :-------- | :-------- |
+| **A** | VM with Docker Compose — OCI Always Free + Cloudflare Tunnel | $0 | Yes | [`docker/compose/`](docker/compose/) |
+| **B** | Hugging Face Spaces | Free tier | Mostly* | [`docker/hfspaces/`](docker/hfspaces/) |
+| **C** | Google Cloud Run | Free tier | No (scale-to-zero) | [`docker/standalone/`](docker/standalone/) |
 
-Lumina is a small multi-container app (see `docker-compose.yml`):
+\* HF Spaces may sleep when inactive; the first request after a sleep takes
+30–60 s to wake.
 
-| Service    | Role                                                        | Needed for |
-| :--------- | :---------------------------------------------------------- | :--------- |
-| `nginx`    | Serves the static frontend and proxies `/api/` to the API   | always     |
-| `api`      | FastAPI conformance checker (`/api/v1/sbom/check`, ...)     | always     |
-| `worker`   | Celery worker for long-running **SBOM generation**          | optional   |
-| `redis`    | Broker/cache for the worker                                 | optional   |
-
-Two important facts that make this easy:
-
-- The **frontend needs no build step** — it is static HTML + in-browser Babel +
-  React from a CDN. nginx just serves the `frontend/` folder.
-- The **core conformance check is synchronous** and does **not** use Redis. The
-  `worker` + `redis` services are only for the SBOM-*generation* feature. You can
-  deploy without them (see [Lean deployment](#lean-deployment-nginx--api-only)).
-
-The result: a public HTTPS URL (e.g. `https://lumina.example.com` or a free
-`https://<random>.trycloudflare.com`) that anyone can use.
-
-## Cost summary
-
-| Item                          | Provider                 | Cost        |
-| :---------------------------- | :----------------------- | :---------- |
-| Always-on Linux VM            | Oracle Cloud Always Free | **$0**      |
-| Public HTTPS + tunnel         | Cloudflare Tunnel        | **$0**      |
-| Stable custom domain (option) | any registrar            | ~$10/year (optional — a free `trycloudflare.com` URL works without it) |
-
-> **Why a VM instead of a free PaaS?** Lumina's nginx proxies to the API by its
-> compose service name (`http://api:8000`). Keeping the whole `docker compose`
-> on one host preserves that wiring unchanged, and a single free VM runs all four
-> services comfortably. Free PaaS alternatives are listed at the
-> [end](#other-free-options).
+**Choosing:**
+- No infrastructure to manage, simplest setup → **Option B** (HF Spaces).
+- Always-on, full control, can survive a sleeping policy change → **Option A** (VM).
+- Low traffic, pay nothing when idle, Google Cloud ecosystem → **Option C** (Cloud Run).
 
 ---
 
-## Prerequisites
+## Before you deploy — test locally first
 
-- An **Oracle Cloud** account (free, no charge): <https://www.oracle.com/cloud/free/>
-  (any provider's free VM works — see [other options](#other-free-options)).
-- A **Cloudflare** account (free): <https://dash.cloudflare.com/sign-up>
-- An SSH key pair on your laptop. Create one if needed:
+Confirm the app builds and runs on your machine before provisioning anything.
+You only need **Docker**, **Docker Compose v2**, and **git**.
 
+```bash
+git clone https://github.com/bact/lumina.git
+cd lumina
+docker compose up --build
+```
+
+The first build is slow: it installs the conformance checker from a Git branch
+and Pitloom, and pulls base images. When it settles, open **<http://localhost>**.
+
+Smoke-test in another terminal:
+
+```bash
+curl -s http://localhost/api/health          # -> {"status":"ok"}
+curl -s http://localhost/api/v1/regulations  # lists regulations + readiness
+```
+
+Test the **generate-and-check** flow end-to-end (paste a small Git or HF repo
+URL in the Import screen, or use the API directly):
+
+```bash
+# Submit a job — returns {"job_id": "..."}
+curl -s -X POST http://localhost/api/v1/artifact/check \
+  -H 'Content-Type: application/json' \
+  -d '{"artifact_url":"https://github.com/bact/pitloom","regulation_id":"ntia"}'
+
+# Poll until status == "done" (substitute the job id)
+curl -s http://localhost/api/v1/jobs/<JOB_ID>
+```
+
+Stop when satisfied:
+
+```bash
+docker compose down
+```
+
+> Prefer to iterate without Docker? See
+> [README](README.md#run-the-api-outside-docker-faster-iteration) — SBOM
+> generation needs `git` on your PATH.
+
+---
+
+## Option A — VM with Docker Compose (OCI Always Free + Cloudflare Tunnel)
+
+**Best for:** always-on, full features, running the unmodified `docker compose`
+stack. Lumina's nginx and api services stay on the same host and communicate
+over the compose network — no cross-service URLs to re-wire.
+
+**What you need:**
+- An [Oracle Cloud](https://www.oracle.com/cloud/free/) account (free, no card
+  for Always Free resources). Any Linux VM with Docker works — OCI is used here
+  because it offers a genuinely free ARM instance that never expires.
+- A [Cloudflare](https://dash.cloudflare.com/sign-up) account (free) for HTTPS.
+- An SSH key pair. Create one if needed:
   ```bash
   ssh-keygen -t ed25519 -C "lumina-deploy"
   ```
 
----
+**Docker config:** [`docker/compose/`](docker/compose/)
 
-## Part 1 — Create a free always-on server
+### Step 1 — Create the VM
 
-Using **Oracle Cloud Infrastructure (OCI) Always Free** (an Ampere ARM VM that
-never expires):
+In the OCI Console → **Menu → Compute → Instances → Create instance**:
 
-1. Sign in to the OCI Console → **Menu → Compute → Instances → Create instance**.
-2. **Name:** set the instance name to `lumina` (or any name you prefer).
-3. **Primary VNIC information** (scroll down to this section):
-   - **Hostname:** `lumina`
-   - **VCN / Subnet:** leave the pre-selected default (`Public Subnet-vcn-...`).
-     It has an internet gateway attached, which the instance needs to reach Docker
-     Hub and Cloudflare outbound. No inbound ports are opened by this choice —
-     the OCI security list still blocks them by default.
-   - **Public IPv4 address:** keep **Assign automatically** checked.
-     This is the IP you will SSH to. IPv6 is not needed — leave it unchecked.
-   - **Private DNS record:** select **Assign a private DNS record**.
-     This registers the hostname (`lumina`) in the VCN's internal DNS — useful
-     if you add more instances later. No external exposure.
-4. **Image and shape:**
+1. **Name:** `lumina` (or any name you prefer).
+2. **Image and shape:**
    - Image: **Canonical Ubuntu 24.04 Minimal aarch64**
-   - Shape: **Ampere (VM.Standard.A1.Flex)** — set **1–2 OCPU, 6–12 GB RAM**
-     (all within the Always Free allowance).
-5. **SSH keys:** under **Add SSH keys**, choose **Paste public key** and paste
-   the contents of `~/.ssh/id_ed25519.pub`.
-6. **Initialization script:** expand the **Advanced options → Management** section,
-   set **Initialization script** to **Paste cloud-init script**, and paste:
-
+   - Shape: **VM.Standard.A1.Flex** — set **1 OCPU, 6 GB RAM**. The free
+     allowance is 4 OCPU / 24 GB total across all A1 instances; start small for
+     better capacity availability.
+3. **Primary VNIC** (scroll down):
+   - **Hostname:** `lumina`
+   - **VCN / Subnet:** leave the default (`Public Subnet-vcn-...`) — it has an
+     internet gateway for outbound traffic.
+   - **Public IPv4:** keep **Assign automatically**.
+   - **Private DNS record:** select **Assign a private DNS record**.
+4. **SSH keys:** choose **Paste public key** and paste `~/.ssh/id_ed25519.pub`.
+5. **Initialization script:** expand **Advanced options → Management → Paste
+   cloud-init script** and paste the contents of
+   [`scripts/cloud-init.sh`](scripts/cloud-init.sh):
    ```bash
    #!/bin/bash
    apt-get update
@@ -97,272 +119,426 @@ never expires):
    curl -fsSL https://get.docker.com | sh
    usermod -aG docker ubuntu
    ```
-
-   This installs Docker automatically at first boot. The instance is ready
-   to use by the time you SSH in (~2–3 minutes after creation).
-
-7. **Boot volume:** expand **Advanced options → Boot volume**:
-   - **Size:** 60–80 GB (default 50 GB is fine too; up to 200 GB is free).
-   - **Performance:** leave at **Balanced (10 VPUs)** — included in Always Free.
-     Higher Performance (20 VPUs) and above cost extra.
-
-8. Click **Create**. When it is running, note the **public IPv4 address**.
-9. SSH in (default user on Ubuntu images is `ubuntu`):
-
+6. **Boot volume:** expand **Advanced options → Boot volume**:
+   - **Size:** 60–80 GB (minimum 47 GB; the 200 GB Always Free allowance is
+     shared across all volumes).
+   - **Performance:** **Balanced (10 VPUs)** — included free.
+7. Click **Create**. Note the **public IPv4 address** when it reaches Running.
+8. SSH in:
    ```bash
    ssh ubuntu@<PUBLIC_IP>
    ```
 
-> **Firewall:** With Cloudflare Tunnel (Part 5) you do **not** need to open any
-> inbound ports — the tunnel makes only outbound connections. Leave the OCI
-> security list closed. (If you later want direct access, open TCP 80/443 in the
-> instance's subnet **Security List** and run `sudo ufw allow 80,443/tcp`.)
+> **Firewall:** Cloudflare Tunnel only makes outbound connections — no inbound
+> ports need to be opened. Leave the OCI security list closed.
 
----
+#### Out of capacity? Automate retries with the OCI CLI
 
-## Part 2 — Verify Docker on the server
+The A1 free shape is often oversubscribed. The Console times out retries; the
+CLI does not. [`scripts/oci-launch.sh`](scripts/oci-launch.sh) retries until a
+slot opens.
 
-The initialization script from Part 1 already installed Docker and added `ubuntu`
-to the `docker` group. After SSH-ing in, activate the group membership and verify:
+1. Install and configure the CLI:
+   ```bash
+   brew install oci-cli
+   oci setup config   # prompts for User/Tenancy OCID, region, generates an API key
+   ```
+   Upload the generated key: Console → **My profile → API keys → Add API key**
+   → paste `~/.oci/oci_api_key_public.pem`. Verify with `oci iam region list`.
+
+2. Collect the OCIDs (`COMP` = your tenancy or compartment OCID):
+   ```bash
+   export COMP=<tenancy-or-compartment-OCID>
+
+   # Availability domain name(s)
+   oci iam availability-domain list --compartment-id "$COMP" \
+       --query 'data[].name' --raw-output
+
+   # Default public subnet
+   oci network subnet list --compartment-id "$COMP" --all --output json \
+     | python3 -c "import sys,json; [print(s['display-name'], s['id']) \
+         for s in json.load(sys.stdin)['data']]"
+
+   # Ubuntu 24.04 aarch64 image OCID
+   oci compute image list --compartment-id "$COMP" \
+       --operating-system "Canonical Ubuntu" \
+       --operating-system-version "24.04" \
+       --shape VM.Standard.A1.Flex \
+       --query 'data[0].id' --raw-output
+   ```
+
+3. Create the gitignored config and run the script:
+   ```bash
+   cp scripts/oci-launch.env.example scripts/oci-launch.env
+   # edit scripts/oci-launch.env — fill in COMP, SUBNET, IMAGE, ADS
+   ./scripts/oci-launch.sh
+   ```
+   The script sweeps every availability domain and retries until capacity opens.
+   On success it prints the AD and instance OCID. Get the public IP:
+   ```bash
+   oci compute instance list-vnics --instance-id <INSTANCE_OCID> \
+     --query 'data[0]."public-ip"' --raw-output
+   ```
+
+### Step 2 — Verify Docker on the server
+
+The cloud-init script installs Docker at first boot. After SSH-ing in:
 
 ```bash
-# Activate docker group without logging out/in
-newgrp docker
-
-# Verify
-docker version && docker compose version
+newgrp docker                              # activate group without logout/login
+docker version && docker compose version   # both should print version info
 ```
 
-If `docker: command not found`, the cloud-init script may still be running — wait
-a minute and retry. Check its log with `sudo cat /var/log/cloud-init-output.log`.
+If `docker: command not found`, cloud-init may still be running. Check with:
+```bash
+sudo cat /var/log/cloud-init-output.log
+```
 
----
-
-## Part 3 — Get Lumina and add a production config
+### Step 3 — Clone Lumina
 
 ```bash
-# Clone the repo (use your fork's URL if you have one)
 git clone https://github.com/bact/lumina.git
 cd lumina
 ```
 
-The repo's `docker-compose.yml` is dev-oriented (live-reload, source mounts,
-exposed debug ports). Create a **production override** that hardens it — baked
-image, no `--reload`, no source mounts, no exposed DB/API ports:
+### Step 4 — Start Lumina
+
+The base `docker-compose.yml` is dev-oriented. Apply the production override
+from [`docker/compose/docker-compose.prod.yml`](docker/compose/docker-compose.prod.yml):
 
 ```bash
-cat > docker-compose.prod.yml <<'YAML'
-# Production overrides. Run with:
-#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
-services:
-  nginx:
-    restart: always
-    # Reachable on the host for local checks / quick tunnel. Cloudflare Tunnel
-    # (Part 5) reaches it over the compose network as http://nginx:80, so you may
-    # set this to "127.0.0.1:8080:80" to keep it off the public interface.
-    ports:
-      - "80:80"
-
-  api:
-    restart: always
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000   # no --reload
-    volumes: []        # use the baked image, not a host mount
-    ports: []          # do not expose the API directly
-
-  worker:
-    restart: always
-    volumes: []
-
-  redis:
-    restart: always
-    ports: []          # do not expose Redis
-
-  # Cloudflare Tunnel connector (named tunnel). Enabled only with --profile tunnel.
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    profiles: ["tunnel"]
-    restart: always
-    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
-    depends_on:
-      - nginx
-YAML
+docker compose \
+  -f docker-compose.yml \
+  -f docker/compose/docker-compose.prod.yml \
+  up -d --build
 ```
 
----
-
-## Part 4 — Build and start Lumina
+Verify on the VM:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.yml -f docker/compose/docker-compose.prod.yml ps
+curl -s http://localhost/api/health   # -> {"status":"ok"}
+curl -sI http://localhost/            # -> 200 OK
 ```
 
-Wait for the build (first time pulls base images and installs Python deps), then
-check it is healthy **on the VM**:
+### Step 5 — Expose via Cloudflare Tunnel
 
-```bash
-docker compose ps
-curl -s http://localhost/api/health        # -> {"status":"ok"} (or similar)
-curl -sI http://localhost/                  # -> 200, serves index.html
-```
+Pick one sub-option.
 
-If both respond, Lumina is running locally on the VM. Now make it public.
+**Option A1 — Stable URL on your own domain** (recommended; needs a domain in
+your Cloudflare account, ~$10/yr from any registrar):
 
----
-
-## Part 5 — Put it on the public internet (Cloudflare Tunnel)
-
-Pick **one** option.
-
-### Option A — Stable URL on your own domain (recommended)
-
-Needs a domain added to your free Cloudflare account (any registrar; ~$10/yr).
-
-1. In the Cloudflare dashboard go to **Zero Trust → Networks → Tunnels →
-   Create a tunnel → Cloudflared**. Name it `lumina`.
-2. Cloudflare shows an **install token**. Copy the token value (the long string
-   after `--token`).
-3. On the VM, save it and start the connector:
-
+1. Cloudflare dashboard → **Zero Trust → Networks → Tunnels → Create a tunnel
+   → Cloudflared**. Name it `lumina`.
+2. Copy the install token (the long string after `--token`).
+3. On the VM, save the token and start the tunnel connector:
    ```bash
-   echo "TUNNEL_TOKEN=<PASTE_TOKEN_HERE>" >> .env
-   docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile tunnel up -d
+   echo "TUNNEL_TOKEN=<PASTE_TOKEN>" >> .env
+   docker compose \
+     -f docker-compose.yml \
+     -f docker/compose/docker-compose.prod.yml \
+     --profile tunnel up -d
    ```
+4. In the tunnel's **Public Hostnames** tab → **Add a public hostname**:
+   - Subdomain: `lumina` (or any) · Domain: your domain
+   - Service: `HTTP` → `nginx:80`
+5. Visit `https://lumina.yourdomain.com` — TLS is free via Cloudflare.
 
-4. Back in the tunnel's **Public Hostnames** tab, click **Add a public hostname**:
-   - **Subdomain:** `lumina` (or any) · **Domain:** your domain
-   - **Service:** `HTTP` → `nginx:80`
-   - Save.
-5. Visit **`https://lumina.yourdomain.com`** — Cloudflare terminates TLS for free.
-
-### Option B — Instant URL, no domain, $0 (ephemeral)
-
-Great for a quick demo. The URL is random and changes if the tunnel restarts.
+**Option A2 — Instant ephemeral URL, no domain** (good for a quick demo; URL
+changes if the tunnel restarts):
 
 ```bash
 docker run --rm --network lumina_default \
   cloudflare/cloudflared:latest tunnel --no-autoupdate --url http://nginx:80
 ```
 
-It prints a line like `https://<random-words>.trycloudflare.com` — share that.
+It prints `https://<random-words>.trycloudflare.com`. The network name is
+`<folder>_default`; verify with `docker network ls`.
 
-> The `--network lumina_default` name is `<project>_default`; the project name is
-> the folder (`lumina`). Confirm with `docker network ls`. Keep this command
-> running (use `tmux`/`screen`, or turn it into a service like the
-> `cloudflared` block above but with `--url http://nginx:80` instead of a token).
-
----
-
-## Part 6 — Verify the public site
-
-Open the public URL in a browser. You should see the Lumina UI. Test the API
-through the public hostname:
+### Step 6 — Verify the public site
 
 ```bash
 curl -s https://lumina.yourdomain.com/api/health
 curl -s https://lumina.yourdomain.com/api/v1/regulations
 ```
 
-Upload an SBOM in the UI (or via the API) to confirm conformance checking works
-end-to-end.
+Open the URL in a browser and upload an SBOM to confirm end-to-end.
 
----
-
-## Operating it
+### Operating
 
 ```bash
-# Logs (all services, or one)
-docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f
-docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f api
+# Logs (all services, or just one)
+docker compose -f docker-compose.yml -f docker/compose/docker-compose.prod.yml logs -f
+docker compose -f docker-compose.yml -f docker/compose/docker-compose.prod.yml logs -f api
 
-# Update to the latest code
+# Update to latest code
 git pull
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.yml -f docker/compose/docker-compose.prod.yml up -d --build
 
 # Restart / stop
-docker compose -f docker-compose.yml -f docker-compose.prod.yml restart
-docker compose -f docker-compose.yml -f docker-compose.prod.yml down
+docker compose -f docker-compose.yml -f docker/compose/docker-compose.prod.yml restart
+docker compose -f docker-compose.yml -f docker/compose/docker-compose.prod.yml down
 ```
 
-`restart: always` plus Docker's default start-on-boot means Lumina comes back up
-after a VM reboot.
+`restart: always` in the prod override means services come back after a VM reboot.
 
 ---
 
-## Lean deployment (nginx + api only)
+## Option B — Hugging Face Spaces
 
-The core conformance checker does not need the worker or Redis. To run only the
-two required services (lighter, fewer moving parts), start just those:
+**Best for:** simplest setup, no infrastructure to manage, free `*.hf.space`
+HTTPS URL.
+
+**What you need:** a [Hugging Face](https://huggingface.co/join) account (free).
+No card required.
+
+**Caveats:**
+- Spaces may sleep when inactive; the first request after sleep takes 30–60 s.
+- In-memory job state (Mode-1 generation via `POST /api/v1/artifact/check`) is
+  lost if the Space sleeps between submission and completion. For reliable
+  generation, keep traffic flowing or use the synchronous SBOM upload path
+  (`POST /api/v1/sbom/check`, completes in seconds).
+- Private Spaces require a paid HF plan.
+
+**Docker config:** [`docker/hfspaces/`](docker/hfspaces/) — a single
+self-contained Dockerfile that clones Lumina from GitHub during the build.
+The Space repo needs only this one file.
+
+**Hardware:** CPU Basic (free) — 2 vCPU, 16 GB RAM. Plenty for SBOM generation.
+
+### Steps
+
+1. **Create a Space** at <https://huggingface.co/new-space>:
+   - **Space SDK:** Docker
+   - **Hardware:** CPU Basic (free)
+   - **Visibility:** Public (free)
+
+2. **Clone your new Space repo:**
+   ```bash
+   git clone https://huggingface.co/spaces/YOUR_USERNAME/YOUR_SPACE_NAME lumina-space
+   cd lumina-space
+   ```
+
+3. **Add the Dockerfile:**
+   ```bash
+   cp /path/to/lumina/docker/hfspaces/Dockerfile Dockerfile
+   ```
+   If you are deploying your own fork, open the file and set `LUMINA_REPO` to
+   your fork's URL.
+
+4. **Push:**
+   ```bash
+   git add Dockerfile
+   git commit -m "Deploy Lumina"
+   git push
+   ```
+   HF Spaces detects the push, builds the image (a few minutes the first time),
+   and starts the container. Watch progress in the Space's **Logs** tab.
+
+5. **Verify** — the app URL is shown at the top of the Space page:
+   ```bash
+   curl -s https://YOUR_USERNAME-YOUR_SPACE_NAME.hf.space/api/health
+   curl -s https://YOUR_USERNAME-YOUR_SPACE_NAME.hf.space/api/v1/regulations
+   ```
+
+### Updating
+
+Push a new commit to the Space repo to trigger a rebuild:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build nginx api
+# In lumina-space/
+git commit --allow-empty -m "Rebuild"
+git push
 ```
 
-Add `worker` and `redis` later only if you enable SBOM-generation features.
+To pin a specific Lumina version, set `LUMINA_REF` in the Dockerfile:
+
+```dockerfile
+ARG LUMINA_REF=v0.2.0   # tag or commit SHA
+```
+
+---
+
+## Option C — Google Cloud Run
+
+**Best for:** scale-to-zero (no charges when idle), low-traffic deployments,
+Google Cloud ecosystem.
+
+**What you need:**
+- A [Google Cloud](https://console.cloud.google.com/) project with billing
+  enabled (required even for the free tier).
+- `gcloud` CLI installed:
+  ```bash
+  brew install google-cloud-sdk
+  gcloud init && gcloud auth login
+  ```
+
+**Caveats:**
+- Scale-to-zero means in-memory job state (Mode-1 generation) can be lost if
+  the instance shuts down between polling calls. With `--min-instances=1` the
+  instance stays warm but consumes the free vCPU-second allowance (~4 days of
+  always-on per month before small charges apply). For reliable generation jobs,
+  either set `--min-instances=1` or use the synchronous SBOM upload path.
+- Billing must be enabled even to use the free tier; set a budget alert.
+
+**Docker config:** [`docker/standalone/`](docker/standalone/) — nginx + uvicorn
+in one container via supervisord. Cloud Run injects `PORT=8080`; the container
+reads it at start.
+
+**Free tier:** 2 M requests/month · 360 K vCPU-seconds · 180 K GB-seconds.
+
+### Steps
+
+1. **Enable APIs** (one-time):
+   ```bash
+   gcloud services enable run.googleapis.com cloudbuild.googleapis.com \
+       artifactregistry.googleapis.com
+   ```
+
+2. **Set project and region:**
+   ```bash
+   export PROJECT=$(gcloud config get-value project)
+   export REGION=us-central1   # largest free tier, cheapest egress
+   ```
+
+3. **Create an Artifact Registry repository** (one-time):
+   ```bash
+   gcloud artifacts repositories create lumina \
+       --repository-format=docker \
+       --location=${REGION}
+   ```
+
+4. **Build and push** (uses Cloud Build; free 120 build-minutes/day):
+   ```bash
+   # Run from the Lumina repo root
+   gcloud builds submit . \
+       --dockerfile docker/standalone/Dockerfile \
+       --tag ${REGION}-docker.pkg.dev/${PROJECT}/lumina/app:latest
+   ```
+
+5. **Deploy:**
+   ```bash
+   gcloud run deploy lumina \
+       --image  ${REGION}-docker.pkg.dev/${PROJECT}/lumina/app:latest \
+       --region ${REGION} \
+       --memory 2Gi \
+       --cpu    1 \
+       --min-instances 0 \
+       --max-instances 1 \
+       --timeout 600 \
+       --allow-unauthenticated
+   ```
+   Cloud Run prints the service URL (`https://lumina-xxxx-uc.a.run.app`).
+
+6. **Verify:**
+   ```bash
+   curl -s https://lumina-xxxx-uc.a.run.app/api/health
+   curl -s https://lumina-xxxx-uc.a.run.app/api/v1/regulations
+   ```
+
+7. **Optional — custom domain:** Cloud Run console → service → **Manage custom
+   domains**. TLS certificate is provisioned automatically.
+
+### Updating
+
+```bash
+gcloud builds submit . \
+    --dockerfile docker/standalone/Dockerfile \
+    --tag ${REGION}-docker.pkg.dev/${PROJECT}/lumina/app:latest
+
+gcloud run deploy lumina \
+    --image ${REGION}-docker.pkg.dev/${PROJECT}/lumina/app:latest \
+    --region ${REGION}
+```
+
+### Free tier settings
+
+| Flag | Value | Reason |
+| :--- | :---- | :----- |
+| `--min-instances` | `0` | Scale-to-zero; no idle charges |
+| `--max-instances` | `1` | One in-process job at a time (matches `Semaphore(1)`) |
+| `--memory` | `2Gi` | Peak during git clone + Pitloom scan |
+| `--cpu` | `1` | Checkout and conformance check are not CPU-bound |
+
+---
+
+## Next steps — scaling up
+
+The current deployment runs SBOM generation in-process (no Redis, no worker).
+This is intentional: the `JobQueue` abstraction in `backend/app/jobs.py` lets
+the backend swap from `InProcessJobQueue` to an RQ or Taskiq worker without
+changing the API, the frontend, or the job functions.
+
+When load grows and the in-process queue is no longer enough, the upgrade path is:
+
+1. Add a `worker` service and a local `redis:alpine` container (or Upstash
+   serverless Redis) to the compose stack.
+2. Swap `InProcessJobQueue` for an `RQJobQueue` or `TaskiqJobQueue` by
+   changing a single env var (`JOB_BACKEND`).
+3. Nothing else changes — the HTTP contract, the frontend polling loop, the
+   generators, and the conformance pipeline are all untouched.
+
+See [`docs/design.md` — Background job execution](docs/design.md#background-job-execution)
+for the full staged-backends design, the RQ vs Taskiq comparison, and
+guidance on when to pick each.
 
 ---
 
 ## Hardening for public use
 
-These are recommended once it works:
+These apply to all options once the deployment is working.
 
-1. **Tighten CORS.** In prod the frontend is same-origin (served by nginx, calls
-   `/api`), so the wildcard is unnecessary. In `backend/app/main.py`:
-
+1. **Tighten CORS.** The frontend is same-origin (served by the same host),
+   so the wildcard is unnecessary. In `backend/app/main.py`:
    ```python
    allow_origins=["https://lumina.yourdomain.com"],   # was ["*"]
    ```
+   Rebuild the image/container afterward.
 
-   Rebuild the `api` service afterward.
-2. **Limit upload size.** Add to `proxy/prod.conf` inside `server { … }`:
-
+2. **Limit upload size.** Large SBOMs can exhaust memory. For Option A, add
+   to `proxy/prod.conf` inside `server { … }`:
    ```nginx
-   client_max_body_size 25m;   # cap SBOM upload size
+   client_max_body_size 25m;
    ```
+   For Options B and C, add the same line to the nginx config template in
+   `docker/hfspaces/Dockerfile` or `docker/standalone/nginx.conf.template`.
 
-3. **Keep ports off the public interface.** With the tunnel you don't need the
-   host `80:80` publish — set nginx `ports` to `127.0.0.1:8080:80` in
-   `docker-compose.prod.yml`, and keep the OCI security list closed.
-4. **Cap resources** so a large SBOM can't exhaust the VM. Per service in the
-   prod override:
-
+3. **Cap resources** (Option A). Per service in the prod compose override:
    ```yaml
    deploy:
      resources:
        limits: { cpus: "1.0", memory: 768m }
    ```
 
-5. **Updates.** Rebuild periodically (`git pull` + `up -d --build`) to pick up
-   dependency and security fixes.
+4. **Keep the port off the public interface** (Option A). With Cloudflare
+   Tunnel you don't need `80:80` on the host — set nginx `ports` to
+   `127.0.0.1:8080:80` in `docker/compose/docker-compose.prod.yml`, and keep
+   the OCI security list closed.
 
----
+5. **Set a budget alert** (Option C). Cloud Run billing must be enabled even for
+   free-tier use; a $1 alert catches accidental always-on configuration.
 
-## Other free options
-
-The VM path above is the most faithful (runs the repo's compose unchanged) and
-always-on. Alternatives, with trade-offs:
-
-| Platform                     | Fits Lumina?                                                                 | Notes |
-| :--------------------------- | :-------------------------------------------------------------------------- | :---- |
-| **Oracle Cloud Always Free** | ✅ full stack via `docker compose`                                          | Recommended. Genuinely always-free ARM VM. |
-| **Fly.io**                   | ⚠️ api + redis + worker as separate apps                                    | Small free allowance; needs a card; nginx upstream must be re-pointed. |
-| **Render**                   | ⚠️ Static Site (frontend) + Web Service (api) free; Redis free 25 MB         | Background **worker is paid**; free web services **sleep** after 15 min idle; cross-service URLs need CORS + nginx upstream changes. |
-| **Koyeb**                    | ⚠️ one free web service                                                      | Enough for a combined nginx+api image; not the 4-service compose. |
-| **Hugging Face Spaces**      | ⚠️ single Docker container, free, `*.hf.space` HTTPS                         | Requires repackaging nginx+api into one image (e.g. supervisord); sleeps when idle. |
-
-For any of these you would split or repackage the services and re-point nginx's
-`/api/` upstream from `http://api:8000` to the API's actual URL. The single-VM
-approach avoids that.
+6. **Keep dependencies updated.** Rebuild periodically to pick up security
+   fixes:
+   - Option A: `git pull` + `up -d --build`
+   - Option B: push a rebuild commit to the Space repo
+   - Option C: re-run `gcloud builds submit` + `gcloud run deploy`
 
 ---
 
 ## Troubleshooting
 
-| Symptom                                   | Fix |
-| :---------------------------------------- | :-- |
-| "Out of capacity for VM.Standard.A1.Flex" | A1 free slots are scarce. Try another availability domain (AD-2/AD-3) if your region has one. Otherwise retry every few minutes — capacity frees up unpredictably (off-peak hours help). Free tier locks you to your home region; OCI CLI lets you automate retries without timing out. |
-| `curl http://localhost/api/health` fails  | `docker compose ... logs api` — usually a Python/dep error or the api still starting. |
-| Tunnel up but 502 from the public URL     | Service mapping wrong: it must point to `nginx:80` (not `localhost`/`api`). |
-| `docker: permission denied`               | Re-run `newgrp docker` or log out/in after the `usermod -aG docker` step. |
-| Build fails on ARM                        | All base images (`python:3.14-slim`, `nginx:1.27-alpine`, `redis:7-alpine`) are multi-arch; ensure you didn't pin an `amd64`-only image. |
-| Quick tunnel can't reach nginx            | Use the correct compose network name (`docker network ls`) in `--network`. |
-| Site loads but API calls fail in browser  | Check the browser console: if cross-origin, you're not going through nginx — use the tunnel hostname, not the API host directly. |
+| Symptom | Fix |
+| :------ | :-- |
+| **OCI** "Out of capacity for VM.Standard.A1.Flex" | A1 slots are scarce. Try another AD. Otherwise use `scripts/oci-launch.sh` to retry automatically — see Option A, Step 1. |
+| **OCI** `docker: command not found` after SSH | cloud-init still running. Wait 1–2 min; check `sudo cat /var/log/cloud-init-output.log`. |
+| **OCI** `docker: permission denied` | Run `newgrp docker` or log out/in after the `usermod -aG docker` step. |
+| **OCI** Tunnel up but 502 from the public URL | Tunnel service mapping must point to `nginx:80`, not `localhost` or `api`. |
+| **OCI** Quick tunnel can't reach nginx | Compose network name is `<folder>_default`. Confirm with `docker network ls` and pass `--network` accordingly. |
+| **All** `curl /api/health` fails | Check container logs: `docker compose logs api` (Option A) or the platform's log viewer (B/C). Usually a Python dep error or the API still starting. |
+| **All** Build fails — dep install error | The `ntia-conformance-checker` is installed from the `sarif-output` Git branch. If GitHub is unreachable during build, retry. |
+| **All** Site loads but API calls fail in browser | The browser is hitting the API host directly, bypassing nginx. Use the public hostname (tunnel URL / HF Space URL / Cloud Run URL), not the raw IP or API port. |
+| **HF Spaces** Space stuck in "Building" | Check the **Logs** tab in the Space page. Common cause: pip install timeout on a slow dep — retry the build by pushing an empty commit. |
+| **HF Spaces** 503 on first request | Space is waking from sleep. Wait 30–60 s and retry. |
+| **Cloud Run** Generation job lost between submission and poll | Instance scaled to zero. Set `--min-instances=1` or use the synchronous upload path (`POST /api/v1/sbom/check`). |
+| **Cloud Run** `gcloud builds submit` fails | Check Cloud Build quota (`cloudbuild.googleapis.com` must be enabled) and that billing is active. |

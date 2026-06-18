@@ -8,8 +8,11 @@ fastapi==0.136.3
 uvicorn[standard]==0.48.0
 python-multipart>=0.0.9  # required by FastAPI for Form / File uploads
 
-# Task queue
-celery[redis]==5.6.3
+# SBOM generation (Mode 1: artefact-URL input)
+# Generates SPDX 3 JSON-LD from a Git checkout or a Hugging Face Hub model.
+# (Stage 0-1 runs generation in-process; no task-queue broker is needed yet --
+# see docs/design.md "Background job execution".)
+pitloom==0.8.0
 
 # SBOM parsing
 spdx-tools==0.8.5
@@ -18,7 +21,11 @@ spdx-tools==0.8.5
 # ntia-conformance-checker currently covers NTIA Minimum Elements only.
 # BSI TR-03183, G7 AI SBOM, and MOF are handled by LuminaInternalChecker
 # (see app/conformance.py) until the checker adds support for them.
-ntia-conformance-checker==5.0.2
+#
+# TEMPORARY: Lumina's adapter uses output_sarif() and SPDX 3 parsing, which are
+# not in the released 5.0.2 -- they live on the unreleased `sarif-output` branch.
+# Track that branch until it lands in a release, then pin the released version.
+ntia-conformance-checker @ git+https://github.com/bact/ntia-conformance-checker.git@sarif-output
 
 # Data validation
 pydantic==2.13.4

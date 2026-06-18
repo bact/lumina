@@ -36,7 +36,6 @@ Then open **<http://localhost>** in your browser.
 | UI kit | <http://localhost/ui-kits/lumina-app/> | Design source of truth (dev only) |
 | API | <http://localhost/api/> | Proxied by nginx |
 | API (direct) | <http://localhost:8000> | For development / curl |
-| Redis | localhost:6379 | Broker + Celery result backend |
 
 **Production mode** (UI kit excluded from image):
 
@@ -50,7 +49,7 @@ Stop everything:
 docker compose down
 ```
 
-Stop and remove volumes (wipes Redis state):
+Stop and remove volumes:
 
 ```shell
 docker compose down -v
@@ -78,7 +77,7 @@ docker compose up
 
 ```shell
 docker compose logs -f api
-docker compose logs -f worker
+docker compose logs -f nginx
 ```
 
 ### Serve the frontend locally (no Docker)
@@ -102,13 +101,14 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Requires Python 3.14 and a local Redis instance (or `docker compose up redis`).
+Requires Python 3.14. SBOM generation also needs `git` on PATH (for cloning
+repository URLs); Pitloom is installed via `requirements.txt`.
 
 ### Open a shell in a running container
 
 ```shell
 docker compose exec api bash
-docker compose exec worker bash
+docker compose exec nginx sh
 ```
 
 ---
@@ -122,18 +122,14 @@ nginx   → http://localhost:80
           Built from proxy/Dockerfile.
 
 api     → http://localhost:8000
-          FastAPI -- SBOM upload, conformance checking.
-          See backend/app/main.py and backend/app/conformance.py.
-
-worker  → (no HTTP port)
-          Celery worker for long-running SBOM generation tasks
-          (Git repos, Hugging Face models).
-          See backend/app/worker.py.
-
-redis   → localhost:6379
-          Celery broker and result backend.
-          Valkey is a drop-in replacement if preferred.
+          FastAPI -- SBOM upload + conformance checking, plus Mode-1 SBOM
+          generation (Git repo / Hugging Face URL) run as an in-process
+          background job. See backend/app/main.py, conformance.py, generate.py.
 ```
+
+SBOM generation needs no separate worker or Redis at this stage; a worker +
+Redis are introduced only if load grows. See
+[docs/design.md](docs/design.md#background-job-execution) for the staged plan.
 
 ---
 
@@ -169,14 +165,19 @@ lumina/
 │   ├── colors-and-type.css     Design tokens (canonical copy)
 │   ├── assets/                 Logo SVGs
 │   └── *.jsx / *.js            Screens and components
-├── backend/                    Python API + task worker
+├── backend/                    Python API
 │   ├── Dockerfile
 │   ├── requirements.txt        Pinned deps for Docker / pip install -r
 │   └── app/
 │       ├── main.py             FastAPI app + endpoints
 │       ├── conformance.py      ConformanceEngine, CHECKER_MAP, schemas
 │       ├── sarif_ingest.py     SARIF 2.1.0 → SbomCheckResponse
-│       └── worker.py           Celery tasks (SBOM generation)
+│       ├── jobs.py             JobQueue interface + in-process backend
+│       ├── generate.py         Mode-1 job: artefact URL → SBOM → check
+│       └── generators/         Pitloom-backed SBOM generators (git, hf)
+├── scripts/
+│   ├── oci-launch.sh           Retry-launch an Oracle Cloud A1 free VM (capacity loop)
+│   └── cloud-init.sh           First-boot script: installs Docker on the VM
 ├── docs/
 │   └── design.md               Architecture and design decisions
 └── INSTALL.md                  Free public-deployment guide

@@ -17,6 +17,10 @@ services:
     restart: unless-stopped
 
   # ── API: FastAPI conformance-checking backend ────────────────────────────
+  # Mode-1 SBOM generation runs in-process as a background job (see
+  # docs/design.md "Background job execution"), so there is no separate worker
+  # or Redis at this stage. A worker + Redis are added only at Stage 2, when
+  # load justifies them.
   api:
     build: ./backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -24,34 +28,4 @@ services:
       - "8000:8000"       # exposed for direct API testing
     volumes:
       - ./backend/app:/app/app  # live-reload in dev
-    environment:
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-
-  # ── Worker: Celery handles long-running SBOM-generation tasks ───────────
-  worker:
-    build: ./backend
-    command: celery -A app.worker worker --loglevel=info --concurrency=2
-    volumes:
-      - ./backend/app:/app/app
-    environment:
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-
-  # ── Broker / cache: Redis (Valkey is a drop-in replacement) ─────────────
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"       # exposed for inspection during dev
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
     restart: unless-stopped
