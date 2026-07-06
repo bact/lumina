@@ -1,0 +1,10 @@
+# SPDX-FileContributor: Arthit Suriyawongkul
+# SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
+# SPDX-FileType: SOURCE
+# SPDX-License-Identifier: Apache-2.0
+
+# Development / CI tooling -- not needed at runtime, so kept out of
+# requirements.txt (and out of the production Docker image).
+pytest==9.1.1
+pylint==4.0.6
+mypy==2.1.0

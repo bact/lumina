@@ -52,9 +52,9 @@ from .conformance import (
 # or specs are added.
 _SPEC_TO_REGULATION: dict[str, RegulationId] = {
     "NTIA": "ntia",
-    "FSCT": "ntia",   # FSCT (CISA Framing...) is a superset of NTIA.
+    "FSCT": "ntia",  # FSCT (CISA Framing...) is a superset of NTIA.
     "FSCT3": "ntia",  # FSCT 3rd edition; superset of NTIA, no separate UI yet.
-    "CISA": "ntia",   # CISA 2025 SBOM Minimum Elements -- placeholder.
+    "CISA": "ntia",  # CISA 2025 SBOM Minimum Elements -- placeholder.
     "BSI": "bsi",
     "G7AI": "g7ai",
     "MOF": "mof",
@@ -240,6 +240,89 @@ def _infer_regulation_id(
     return "ntia" if "ntia" in valid_regs else valid_regs[0]
 
 
+def _build_gaps(
+    results: list[dict[str, Any]], rule_index: dict[str, dict[str, Any]]
+) -> list[FieldGap]:
+    """Convert SARIF ``run.results`` entries into Lumina field gaps."""
+    gaps: list[FieldGap] = []
+    for result in results:
+        rule_id = str(result.get("ruleId") or "")
+        if not rule_id:
+            continue
+        rule_descriptor = rule_index.get(rule_id)
+        component_id, _kind = _logical_location(result)
+        message = (result.get("message") or {}).get("text") or rule_id
+        gaps.append(
+            FieldGap(
+                component_id=component_id,
+                field_key=_field_key_from_rule(rule_descriptor, rule_id),
+                level="missing",
+                note=str(message),
+            )
+        )
+    return gaps
+
+
+def _count_totals(
+    results: list[dict[str, Any]], rule_index: dict[str, dict[str, Any]]
+) -> tuple[int, int, int]:
+    """Return ``(total, present, missing)`` counts for a SARIF run.
+
+    ``total`` = number of *active* rules in the driver catalogue; ``missing``
+    = number of unique rule ids that appeared in results; ``present`` =
+    ``total - missing``.  Catalogue-only rules (rules whose
+    ``properties.status != "active"``) are excluded so the counts reflect
+    what the checker actually verified.
+    """
+    active_rules = [
+        rid
+        for rid, rule in rule_index.items()
+        if str(((rule.get("properties") or {}).get("status")) or "active") == "active"
+    ]
+    total = len(active_rules) or len(rule_index)
+    missing_rule_ids = {str(r.get("ruleId")) for r in results if r.get("ruleId")}
+    missing = len(missing_rule_ids)
+    present = max(total - missing, 0)
+    return total, present, missing
+
+
+def _build_conformance_result(
+    run: dict[str, Any],
+    driver: dict[str, Any],
+    rule_index: dict[str, dict[str, Any]],
+) -> ConformanceResult:
+    """Build the ``ConformanceResult`` portion of a parsed SARIF run."""
+    producer_name = str(driver.get("name") or "")
+    source: CheckerSource = _KNOWN_PRODUCERS.get(producer_name, "external-sarif")
+
+    properties = run.get("properties") or {}
+    standard_hint = str(properties.get("complianceStandard") or "")
+    regulation_id = _infer_regulation_id(standard_hint, rule_index)
+
+    results = run.get("results") or []
+    total, present, missing = _count_totals(results, rule_index)
+    return ConformanceResult(
+        regulation_id=regulation_id,
+        source=source,
+        total=total,
+        present=present,
+        missing=missing,
+        unverified=0,
+        gaps=_build_gaps(results, rule_index),
+    )
+
+
+def _build_check_run(run: dict[str, Any], driver: dict[str, Any]) -> CheckRun:
+    """Build the ``CheckRun`` portion of a parsed SARIF run."""
+    notifications, execution_successful = _notifications_from_invocations(run)
+    return CheckRun(
+        tool_name=str(driver.get("name") or ""),
+        tool_version=str(driver.get("version") or ""),
+        execution_successful=execution_successful,
+        notifications=notifications,
+    )
+
+
 def parse_sarif(sarif: dict[str, Any]) -> SbomCheckResponse:
     """Parse a SARIF 2.1.0 log dict into a Lumina :class:`SbomCheckResponse`."""
     _require(isinstance(sarif, dict), "SARIF log must be a JSON object")
@@ -253,70 +336,10 @@ def parse_sarif(sarif: dict[str, Any]) -> SbomCheckResponse:
     run = runs[0]
 
     driver = (run.get("tool") or {}).get("driver") or {}
-    producer_name = str(driver.get("name") or "")
-    producer_version = str(driver.get("version") or "")
-    source: CheckerSource = _KNOWN_PRODUCERS.get(producer_name, "external-sarif")
-
     rule_index = _build_rule_index(driver)
 
-    properties = run.get("properties") or {}
-    standard_hint = str(properties.get("complianceStandard") or "")
-    regulation_id = _infer_regulation_id(standard_hint, rule_index)
-
-    # Walk results -> gaps.
-    results = run.get("results") or []
-    gaps: list[FieldGap] = []
-    for r in results:
-        rule_id = str(r.get("ruleId") or "")
-        if not rule_id:
-            continue
-        rule_descriptor = rule_index.get(rule_id)
-        component_id, _kind = _logical_location(r)
-        message = (r.get("message") or {}).get("text") or rule_id
-        gaps.append(
-            FieldGap(
-                component_id=component_id,
-                field_key=_field_key_from_rule(rule_descriptor, rule_id),
-                level="missing",
-                note=str(message),
-            )
-        )
-
-    # Totals: total = number of *active* rules in the driver catalogue;
-    # missing = number of unique rule ids that appeared in results;
-    # present = total - missing.  Catalogue-only rules (rules whose
-    # properties.status != "active") are excluded so the counts reflect
-    # what the checker actually verified.
-    active_rules = [
-        rid
-        for rid, rule in rule_index.items()
-        if str(((rule.get("properties") or {}).get("status")) or "active") == "active"
-    ]
-    total = len(active_rules) or len(rule_index)
-    missing_rule_ids = {str(r.get("ruleId")) for r in results if r.get("ruleId")}
-    missing = len(missing_rule_ids)
-    present = max(total - missing, 0)
-
-    conformance = ConformanceResult(
-        regulation_id=regulation_id,
-        source=source,
-        total=total,
-        present=present,
-        missing=missing,
-        unverified=0,
-        gaps=gaps,
-    )
-
-    notifications, execution_successful = _notifications_from_invocations(run)
-    check_run = CheckRun(
-        tool_name=producer_name,
-        tool_version=producer_version,
-        execution_successful=execution_successful,
-        notifications=notifications,
-    )
-
-    embedded = _embedded_sbom(run)
-
     return SbomCheckResponse(
-        conformance=conformance, run=check_run, embedded_sbom=embedded
+        conformance=_build_conformance_result(run, driver, rule_index),
+        run=_build_check_run(run, driver),
+        embedded_sbom=_embedded_sbom(run),
     )
