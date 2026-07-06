@@ -4,15 +4,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Web framework
-fastapi==0.136.3
-uvicorn[standard]==0.48.0
+fastapi==0.139.0
+uvicorn[standard]==0.50.2
 python-multipart>=0.0.9  # required by FastAPI for Form / File uploads
 
 # SBOM generation (Mode 1: artefact-URL input)
 # Generates SPDX 3 JSON-LD from a Git checkout or a Hugging Face Hub model.
 # (Stage 0-1 runs generation in-process; no task-queue broker is needed yet --
 # see docs/design.md "Background job execution".)
-pitloom==0.8.0
+pitloom>=0.9.0
 
 # SBOM parsing
 spdx-tools==0.8.5
@@ -23,9 +23,10 @@ spdx-tools==0.8.5
 # (see app/conformance.py) until the checker adds support for them.
 #
 # TEMPORARY: Lumina's adapter uses output_sarif() and SPDX 3 parsing, which are
-# not in the released 5.0.2 -- they live on the unreleased `sarif-output` branch.
+# not in the released 5.0.3 -- they live on the unreleased `sarif-output-cli`
+# branch (the split PR1-4 stack that supersedes the old `sarif-output` branch).
 # Track that branch until it lands in a release, then pin the released version.
-ntia-conformance-checker @ git+https://github.com/bact/ntia-conformance-checker.git@sarif-output
+ntia-conformance-checker @ git+https://github.com/bact/ntia-conformance-checker.git@sarif-output-cli
 
 # Data validation
 pydantic==2.13.4
