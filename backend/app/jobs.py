@@ -122,7 +122,10 @@ class InProcessJobQueue(JobQueue):
         return self._jobs.get(job_id)
 
     async def _run(
-        self, job_id: str, job_name: str, kwargs: dict[str, Any]
+        self,
+        job_id: str,
+        job_name: str,
+        kwargs: dict[str, Any],
     ) -> None:
         fn = self.registry[job_name]
         async with self._semaphore:
@@ -133,7 +136,9 @@ class InProcessJobQueue(JobQueue):
                 # run it off the event loop.
                 record.result = await asyncio.to_thread(fn, **kwargs)
                 record.status = "done"
-            except Exception as exc:  # noqa: BLE001 - surfaced to the caller
+            except Exception as exc:  # noqa: BLE001, pylint: disable=broad-exception-caught
+                # Job runner boundary: any failure must be captured and
+                # reported via JobRecord.error, so we deliberately catch all.
                 logger.exception("Job %s (%s) failed", job_id, job_name)
                 record.error = str(exc)
                 record.status = "error"

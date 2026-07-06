@@ -7,7 +7,7 @@
 
 import os
 import tempfile
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -79,12 +79,13 @@ def root() -> RedirectResponse:
 
 
 @app.get("/api/health")
-def health() -> dict:
+def health() -> dict[str, str]:
+    """Liveness probe used by orchestration and uptime checks."""
     return {"status": "ok"}
 
 
 @app.get("/api/v1/regulations")
-def list_regulations() -> dict:
+def list_regulations() -> dict[str, Any]:
     """Return the regulations Lumina can check against."""
     return {
         "regulations": [
@@ -133,7 +134,7 @@ async def check_sbom(
 
 
 @app.post("/api/v1/sarif/import", response_model=SbomCheckResponse)
-async def import_sarif(sarif: dict) -> SbomCheckResponse:
+async def import_sarif(sarif: dict[str, Any]) -> SbomCheckResponse:
     """
     Accept a SARIF 2.1.0 log produced by any conformance/static-analysis
     tool that follows the exchange-format spec and return a ConformanceResult.
@@ -149,7 +150,9 @@ async def import_sarif(sarif: dict) -> SbomCheckResponse:
 
 
 @app.post(
-    "/api/v1/artifact/check", response_model=JobSubmission, status_code=202
+    "/api/v1/artifact/check",
+    response_model=JobSubmission,
+    status_code=202,
 )
 async def check_artifact(req: ArtifactCheckRequest) -> JobSubmission:
     """

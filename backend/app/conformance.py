@@ -40,6 +40,8 @@ NotificationLevel = Literal["error", "warning", "note"]
 
 
 class FieldGap(BaseModel):
+    """A single field-level conformance gap found on one component."""
+
     component_id: str
     field_key: str
     level: FieldLevel
@@ -124,8 +126,14 @@ class SbomCheckResponse(BaseModel):
 
 # ── Checker protocol ──────────────────────────────────────────────────────
 
+# Every checker below is a Strategy with a single `check()` method by design
+# (see CHECKER_MAP); splitting them up would not add clarity.
+# pylint: disable=too-few-public-methods
+
 
 class ConformanceChecker(abc.ABC):
+    """Protocol for a single-regulation conformance checker."""
+
     @abc.abstractmethod
     def check(self, sbom_path: str) -> SbomCheckResponse:
         """Parse *sbom_path* and return a SbomCheckResponse envelope."""
@@ -159,8 +167,9 @@ class NtiaCheckerAdapter(ConformanceChecker):
         SARIF-import endpoint is the only place where embedded content is
         actually consumed (when the producer chose to embed).
         """
-        # Import lazily so app start-up doesn't pay for the SPDX deps.
-        # pylint: disable=import-outside-toplevel
+        # Import lazily so app start-up doesn't pay for the SPDX deps, and to
+        # break the sarif_ingest <-> conformance module cycle at runtime.
+        # pylint: disable=import-outside-toplevel,cyclic-import
         from ntia_conformance_checker.main import SbomChecker  # type: ignore
 
         from .sarif_ingest import parse_sarif
@@ -211,8 +220,13 @@ CHECKER_MAP: dict[RegulationId, ConformanceChecker] = {
 
 
 class ConformanceEngine:
+    """Routes a regulation id to its checker via :data:`CHECKER_MAP`."""
+
     def check(
-        self, sbom_path: str, regulation_id: RegulationId
+        self,
+        sbom_path: str,
+        regulation_id: RegulationId,
     ) -> SbomCheckResponse:
+        """Run the checker registered for *regulation_id* against *sbom_path*."""
         checker = CHECKER_MAP[regulation_id]
         return checker.check(sbom_path)

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+from typing import Any
 
 import pytest
 
@@ -17,12 +18,14 @@ from app.sarif_ingest import SarifIngestError, parse_sarif
 _FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures", "sarif")
 
 
-def _load(name: str) -> dict:
+def _load(name: str) -> dict[str, Any]:
     with open(os.path.join(_FIXTURES, name), encoding="utf-8") as f:
-        return json.load(f)
+        result: dict[str, Any] = json.load(f)
+        return result
 
 
 def test_conformant_log_no_gaps() -> None:
+    """A clean SARIF log yields zero gaps and full present/total counts."""
     response = parse_sarif(_load("conformant.sarif.json"))
     conf = response.conformance
     assert conf.regulation_id == "ntia"
@@ -39,6 +42,7 @@ def test_conformant_log_no_gaps() -> None:
 
 
 def test_component_level_missing_supplier() -> None:
+    """A component-level missing-supplier finding maps to two field gaps."""
     response = parse_sarif(_load("missing_supplier.sarif.json"))
     conf = response.conformance
     assert conf.missing == 1
@@ -50,6 +54,7 @@ def test_component_level_missing_supplier() -> None:
 
 
 def test_document_level_missing_author() -> None:
+    """A document-level finding is attributed to the "document" component id."""
     response = parse_sarif(_load("missing_document_author.sarif.json"))
     gaps = response.conformance.gaps
     assert len(gaps) == 1
@@ -58,6 +63,7 @@ def test_document_level_missing_author() -> None:
 
 
 def test_third_party_tool_tagged_external_sarif() -> None:
+    """A non-ntia-conformance-checker producer is tagged as external-sarif."""
     response = parse_sarif(_load("third_party_tool.sarif.json"))
     assert response.conformance.source == "external-sarif"
     assert response.run.tool_name == "some-other-checker"
@@ -65,6 +71,7 @@ def test_third_party_tool_tagged_external_sarif() -> None:
 
 
 def test_parse_warnings_surface_as_notifications() -> None:
+    """SPDX parser warnings pass through as CheckRun notifications, not gaps."""
     response = parse_sarif(_load("with_parse_warning.sarif.json"))
     # Conformance side: clean (no results in fixture).
     assert response.conformance.gaps == []
@@ -78,6 +85,7 @@ def test_parse_warnings_surface_as_notifications() -> None:
 
 
 def test_rejects_wrong_version() -> None:
+    """Any SARIF version other than 2.1.0 is rejected."""
     bad = _load("conformant.sarif.json")
     bad["version"] = "1.0"
     with pytest.raises(SarifIngestError, match="Unsupported SARIF version"):
@@ -85,11 +93,13 @@ def test_rejects_wrong_version() -> None:
 
 
 def test_rejects_no_runs() -> None:
+    """A SARIF log with an empty ``runs`` array is rejected."""
     with pytest.raises(SarifIngestError, match="no runs"):
         parse_sarif({"version": "2.1.0", "runs": []})
 
 
 def test_rejects_non_dict() -> None:
+    """A non-dict SARIF payload is rejected."""
     with pytest.raises(SarifIngestError):
         parse_sarif("not a sarif log")  # type: ignore[arg-type]
 
