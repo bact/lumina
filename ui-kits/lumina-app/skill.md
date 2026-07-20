@@ -6,23 +6,21 @@ user-invocable: true
 
 # Lumina Design Skill
 
-Lumina is a Software Bill of Materials (SBOM) conformance tool. It validates SBOMs against the SPDX format spec and against regulatory minimum-element requirements (NTIA, EU CRA, EO 14028, FDA PMP, ISO/IEC 5230). The name is about **illumination** — making a dense, machine-formatted document legible. Lumina is the sibling of **[Pitloom](https://github.com/bact/pitloom)**, an SBOM generator. The metaphor: Pitloom weaves the threads of metadata into fabric; Lumina reads that fabric and shows you the regulatory pattern in it.
+Lumina is a Software Bill of Materials (SBOM) conformance tool. It validates SBOMs against the SPDX format spec and against regulatory minimum-element requirements. Currently supported: NTIA Minimum Elements, BSI TR-03183, G7 AI SBOM, MOF. On the roadmap (reserved in `plannedRegulations` in `data.js`, not yet shown in the UI): EU CRA, EO 14028, FDA PMP, ISO/IEC 5230. The UI is data-driven — it renders only regulations that are actually supported. The name is about **illumination** — making a dense, machine-formatted document legible. Lumina is the sibling of **[Pitloom](https://github.com/bact/pitloom)**, an SBOM generator. The metaphor: Pitloom weaves the threads of metadata into fabric; Lumina reads that fabric and shows you the regulatory pattern in it.
 
 ## How to use this skill
 
-1. Read **`readme.md`** in the project root first. It contains:
-   - Product context
-   - Content fundamentals (voice, casing, status language, examples)
-   - Visual foundations (color, type, spacing, motion, the signature margin-note pattern)
-   - Iconography rules
-2. Read **`colors-and-type.css`** to absorb tokens. Use the CSS variables — do not hard-code hex values.
-3. Browse **`preview/`** for small specimens of every primitive (type / colors / spacing / components / brand).
-4. Read **`ui-kits/lumina-app/`** for component implementations and 5 example screens.
+1. Read **`ui-kits/lumina-app/readme.md`** first. It contains product context
+   and how the kit's design-token paths are served in dev Docker.
+2. Read **`frontend/colors-and-type.css`** (the canonical copy) to absorb
+   tokens. Use the CSS variables — do not hard-code hex values.
+3. Read **`ui-kits/lumina-app/`** for component implementations and the
+   example screens.
 
 ## When making visual artifacts (slides, mocks, throwaway prototypes)
 
-- Copy `colors-and-type.css` into your artifact directory and `@import` it.
-- Copy any logo SVGs you need from `assets/` (don't link to them across folders).
+- Copy `frontend/colors-and-type.css` into your artifact directory and `@import` it.
+- Copy any logo SVGs you need from `frontend/assets/` (don't link to them across folders).
 - Use Lucide via CDN for icons (1.5px stroke). Never invent emoji or hand-roll icon SVGs.
 - Reach for the components in `ui-kits/lumina-app/components.jsx` when relevant — copy the JSX rather than importing across the file tree.
 

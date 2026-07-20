@@ -14,6 +14,7 @@ bounded by a timeout.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import tempfile
@@ -24,6 +25,11 @@ from .base import GenerationError, creation_info
 # A shallow clone is bounded, but a large repo over a slow link can still take a
 # while.  Cap it so a single job cannot hang the worker indefinitely.
 CLONE_TIMEOUT_SECONDS = 600
+
+# Skip blobs above this size during clone.  Pitloom reads packaging metadata
+# (small text files), so large binaries are never needed.  Servers that do not
+# support partial clone ignore the filter with a warning -- never a failure.
+CLONE_BLOB_LIMIT = "10m"
 
 
 def generate_from_git(repo_url: str, output_path: str) -> None:
@@ -43,11 +49,23 @@ def generate_from_git(repo_url: str, output_path: str) -> None:
 def _shallow_clone(repo_url: str, work_dir: str) -> None:
     try:
         subprocess.run(
-            ["git", "clone", "--depth", "1", "--", repo_url, work_dir],
+            [
+                "git",
+                "clone",
+                "--depth",
+                "1",
+                f"--filter=blob:limit={CLONE_BLOB_LIMIT}",
+                "--",
+                repo_url,
+                work_dir,
+            ],
             check=True,
             capture_output=True,
             text=True,
             timeout=CLONE_TIMEOUT_SECONDS,
+            # A private/nonexistent repo must fail fast, not sit at a
+            # credential prompt until the timeout.
+            env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
         )
     except subprocess.TimeoutExpired as exc:
         raise GenerationError(

@@ -28,8 +28,10 @@ propagate and the queue marks the job ``error``.
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import os
+import socket
 import tempfile
 from urllib.parse import urlparse
 
@@ -53,6 +55,54 @@ logger = logging.getLogger(__name__)
 _engine = ConformanceEngine()
 
 _HF_HOSTS = {"huggingface.co", "www.huggingface.co"}
+
+_ALLOWED_SCHEMES = {"http", "https"}
+
+
+def _ensure_public_http_url(artifact_url: str) -> None:
+    """Reject URLs that could reach internal services (SSRF guard).
+
+    Only ``http``/``https`` URLs whose host resolves exclusively to public
+    (global) addresses are accepted.  This blocks loopback, RFC 1918 ranges,
+    link-local (including cloud metadata endpoints), and other reserved
+    space.  Set ``LUMINA_ALLOW_PRIVATE_URLS=1`` to disable the address check
+    in development (e.g. cloning from a Git server on the LAN).
+
+    Note: this is a resolve-time check; it does not defend against DNS
+    rebinding between validation and clone.  Acceptable at this stage --
+    network-level egress policy is the real control for a hardened deploy.
+    """
+    parsed = urlparse(artifact_url)
+    if parsed.scheme.lower() not in _ALLOWED_SCHEMES:
+        raise GenerationError(
+            "lumina.url-scheme-blocked",
+            f"URL scheme {parsed.scheme!r} is not allowed; "
+            f"use http or https: {artifact_url!r}",
+        )
+    host = parsed.hostname
+    if not host:
+        raise GenerationError(
+            "pitloom.url-unsupported",
+            f"Unsupported artefact URL (expected a Git or Hugging Face Hub "
+            f"URL): {artifact_url!r}",
+        )
+    if os.environ.get("LUMINA_ALLOW_PRIVATE_URLS") == "1":
+        return
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except socket.gaierror as exc:
+        raise GenerationError(
+            "lumina.url-unresolvable",
+            f"Could not resolve host {host!r}: {exc}",
+        ) from exc
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0])
+        if not ip.is_global:
+            raise GenerationError(
+                "lumina.url-private-address",
+                f"Host {host!r} resolves to a non-public address ({ip}); "
+                "refusing to fetch it.",
+            )
 
 
 def generate_and_check(
@@ -80,19 +130,14 @@ def generate_and_check(
 
 def _generate(artifact_url: str, sbom_path: str) -> None:
     """Route *artifact_url* to the right generator, writing to *sbom_path*."""
+    _ensure_public_http_url(artifact_url)
     host = (urlparse(artifact_url).hostname or "").lower()
     if host in _HF_HOSTS:
         generate_from_huggingface(artifact_url, sbom_path)
-    elif host:
+    else:
         # Any other URL with a host is treated as a Git repository
         # (GitHub, GitLab, Bitbucket, self-hosted, ...).
         generate_from_git(artifact_url, sbom_path)
-    else:
-        raise GenerationError(
-            "pitloom.url-unsupported",
-            f"Unsupported artefact URL (expected a Git or Hugging Face Hub "
-            f"URL): {artifact_url!r}",
-        )
 
 
 def _failure_response(
@@ -102,7 +147,9 @@ def _failure_response(
     return SbomCheckResponse(
         conformance=ConformanceResult(
             regulation_id=regulation_id,
-            source="ntia-conformance-checker",
+            # Lumina itself produced this (empty) result -- the external
+            # checker never ran, so don't claim it as the source.
+            source="lumina-internal",
             total=0,
             present=0,
             missing=0,

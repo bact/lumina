@@ -31,9 +31,18 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# Comma-separated allowed origins.  Default "*" is fine behind the nginx
+# same-origin proxy; set e.g. LUMINA_CORS_ORIGINS=https://lumina.example.org
+# for any public deployment (see INSTALL.md "Hardening for public use").
+_cors_origins = [
+    origin.strip()
+    for origin in os.environ.get("LUMINA_CORS_ORIGINS", "*").split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten for production
+    allow_origins=_cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

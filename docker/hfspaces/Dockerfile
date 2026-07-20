@@ -11,6 +11,10 @@
 ##
 ## To use your own fork, change LUMINA_REPO to your fork URL, or edit the
 ## git clone line below.
+##
+## NOTE: the supervisord/nginx/start.sh config below is inlined (heredocs) so
+## this file works alone in a Space repo. The canonical copies live in
+## docker/standalone/ -- keep them in sync when changing either.
 
 FROM python:3.14-slim
 
@@ -60,7 +64,7 @@ server {
     index index.html;
 
     location / {
-        try_files $uri $uri/ /index.html;
+        try_files $uri $uri/ =404;
     }
 
     location /api/ {

@@ -142,6 +142,11 @@ Redis are introduced only if load grows. See
 | G7 AI SBOM | Lumina internal (stub) | update `CHECKER_MAP` in `conformance.py` |
 | MOF | Lumina internal (stub) | update `CHECKER_MAP` in `conformance.py` |
 
+**Roadmap:** EU CRA, EO 14028, FDA PMP, and ISO/IEC 5230 are planned. Their
+ids are reserved in `plannedRegulations` (`frontend/data.js`); the UI shows
+only regulations that are actually supported. See
+[AGENTS.md](AGENTS.md) "Adding a regulation" for the promotion steps.
+
 See [docs/design.md](docs/design.md) for the full architecture.
 
 ---
@@ -157,7 +162,7 @@ lumina/
 │   ├── prod.conf               Prod: root /app, frontend only
 │   └── dev.conf                Dev: root /workspace/frontend, aliases for ui-kit paths
 ├── ui-kits/lumina-app/         Design source of truth — dev Docker only, not in prod image
-│   ├── index.html              Entry point; design-token paths routed by nginx.dev.conf
+│   ├── index.html              Entry point; design-token paths routed by proxy/dev.conf
 │   ├── data.js                 Authoritative field list for all regulations
 │   └── *.jsx / *.js            Screens and components
 ├── frontend/                   Frontend source — always in the Docker image
@@ -167,7 +172,7 @@ lumina/
 │   └── *.jsx / *.js            Screens and components
 ├── backend/                    Python API
 │   ├── Dockerfile
-│   ├── requirements.txt        Pinned deps for Docker / pip install -r
+│   ├── requirements.txt        Deps pinned by version (or commit SHA) for reproducible builds
 │   └── app/
 │       ├── main.py             FastAPI app + endpoints
 │       ├── conformance.py      ConformanceEngine, CHECKER_MAP, schemas

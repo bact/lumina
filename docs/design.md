@@ -122,6 +122,11 @@ When `ntia-conformance-checker` adds support for one of those regulations, point
 its key at `NtiaCheckerAdapter` in `CHECKER_MAP` — the API response shape, the
 UI, and all downstream code stay unchanged.
 
+Beyond the four current regulations, EU CRA, EO 14028, FDA PMP, and
+ISO/IEC 5230 are on the roadmap. Their ids are reserved in
+`plannedRegulations` in `data.js`; the UI renders only supported regulations,
+and promotion follows the steps in `AGENTS.md` ("Adding a regulation").
+
 ## Input modes
 
 Lumina accepts three input modes.  All three converge on the **same**

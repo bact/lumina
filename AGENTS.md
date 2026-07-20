@@ -18,8 +18,8 @@ Production frontend: `frontend/` (canonical design tokens + assets live here).
 | - | - |
 | Frontend | Static HTML/CSS/JS (React 18 + Babel in-browser, no build step) |
 | API | FastAPI (Python 3.14) |
-| Task queue | Celery + Redis (long-running SBOM generation) |
-| Broker/cache | Redis or Valkey (drop-in replacement) |
+| Background jobs | In-process `asyncio` queue (`backend/app/jobs.py`); no broker. RQ/Taskiq swap planned at Stage 2 — see `docs/design.md` |
+| SBOM generation | Pitloom (Git checkout or Hugging Face Hub URL) |
 | Dev environment | Docker Compose (`docker compose up` — auto-loads override.yml) |
 
 Python minimum: **3.14**. Use `python3.14` when running outside Docker.
@@ -39,7 +39,7 @@ lumina/
 │   ├── prod.conf               Prod: root /app, frontend only
 │   └── dev.conf                Dev: root /workspace/frontend, aliases for ui-kit paths
 ├── ui-kits/lumina-app/         Design source of truth — dev Docker only, not in prod image
-│   ├── index.html              Entry point; ../../ paths routed by nginx.dev.conf → frontend/
+│   ├── index.html              Entry point; ../../ paths routed by proxy/dev.conf → frontend/
 │   ├── data.js                 Authoritative field list for all four regulations
 │   └── *.jsx / *.js            Screens and components
 ├── frontend/                   Frontend source — always in the Docker image
@@ -49,13 +49,23 @@ lumina/
 │   └── *.jsx / *.js            Screens and components
 ├── backend/
 │   ├── Dockerfile
-│   ├── requirements.txt
-│   └── app/
-│       ├── main.py             FastAPI endpoints
-│       ├── conformance.py      ConformanceEngine, CHECKER_MAP, schemas
-│       └── worker.py           Celery tasks (SBOM generation)
-└── docs/
-    └── design.md               Architecture and design decisions
+│   ├── requirements.txt        Pinned deps (one temporary git+SHA pin — see file)
+│   ├── app/
+│   │   ├── main.py             FastAPI endpoints
+│   │   ├── conformance.py      ConformanceEngine, CHECKER_MAP, schemas
+│   │   ├── sarif_ingest.py     SARIF 2.1.0 → SbomCheckResponse
+│   │   ├── jobs.py             JobQueue interface + in-process backend
+│   │   ├── generate.py         Mode-1 job: artefact URL → SBOM → check (SSRF guard)
+│   │   └── generators/         Pitloom-backed SBOM generators (git, hf)
+│   └── tests/                  pytest suite + SARIF fixtures
+├── docker/                     Alternative deployment images (see INSTALL.md)
+│   ├── compose/                Production compose override (VM deploy)
+│   ├── hfspaces/               Hugging Face Spaces single-file Dockerfile
+│   └── standalone/             Single-container image (Cloud Run)
+├── scripts/                    OCI VM launch + cloud-init helpers
+├── docs/
+│   └── design.md               Architecture and design decisions
+└── INSTALL.md                  Free public-deployment guide (3 options)
 ```
 
 ---
@@ -77,6 +87,22 @@ the Pydantic models in `conformance.py` and the fixture schemas in
 When implementing `LuminaInternalChecker` for BSI / G7 AI / MOF, port the
 field definitions and `regSummary()` logic from `ui-kits/lumina-app/data.js`.
 That file is the authoritative field list for all four regulations.
+
+### Adding a regulation
+
+The long-term goal is to cover EU CRA, EO 14028, FDA PMP, ISO/IEC 5230, and
+more. Their ids are reserved in `plannedRegulations` in `data.js` (both
+copies). The UI must only ever show regulations that are actually supported —
+never render a planned entry. To promote one:
+
+1. Move its entry from `plannedRegulations` into `regulations` in
+   `ui-kits/lumina-app/data.js` and give it a `fields` list (screens are
+   data-driven and pick it up automatically); mirror to `frontend/data.js`.
+2. Extend the `RegulationId` Literal and `CHECKER_MAP` in
+   `backend/app/conformance.py` (external checker adapter or
+   `LuminaInternalChecker`).
+3. `GET /api/v1/regulations` then reports it with the correct `ready` flag —
+   no other backend change needed.
 
 ---
 
@@ -147,5 +173,10 @@ WCAG 2.2 AA. Specifically:
 - Uploaded SBOM files: write to `tempfile.NamedTemporaryFile`, delete in
   `finally` after processing. Never persist user uploads to disk long-term
   without explicit storage design.
-- CORS: tighten `allow_origins` from `"*"` before any public deployment.
+- CORS: default is `"*"` (fine behind the same-origin nginx proxy). For public
+  deployments set `LUMINA_CORS_ORIGINS` (comma-separated origins) on the api
+  service.
+- Artefact-URL fetching (`POST /api/v1/artifact/check`) has an SSRF guard in
+  `backend/app/generate.py`: http/https only, public addresses only. Set
+  `LUMINA_ALLOW_PRIVATE_URLS=1` only in development.
 - Validate SBOM files through `spdx-tools` before passing to any checker.

@@ -14,9 +14,10 @@ server {
     root /app/frontend;
     index index.html;
 
-    # Static frontend
+    # Static frontend. The router is state-based (no deep-link URLs), so an
+    # unknown path is a real 404 — same behaviour as proxy/prod.conf.
     location / {
-        try_files $uri $uri/ /index.html;
+        try_files $uri $uri/ =404;
     }
 
     # API proxy — long timeout for SBOM generation jobs (up to ~3 min clone)

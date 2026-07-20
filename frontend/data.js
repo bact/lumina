@@ -256,6 +256,19 @@ window.LUMINA_DATA = (() => {
     },
   ];
 
+  // ── Planned regulations (roadmap) ─────────────────────────────────────
+  // Reserved ids for regulations Lumina intends to cover but does not yet
+  // support: no field definitions, no checker, and no screen renders them.
+  // Promotion is mechanical: move an entry into `regulations` above with a
+  // `fields` list (screens are data-driven and pick it up automatically),
+  // then extend RegulationId and CHECKER_MAP in backend/app/conformance.py.
+  const plannedRegulations = [
+    { id: "eucra",   tag: "EU CRA",       name: "EU Cyber Resilience Act (SBOM requirements)",       scope: "software" },
+    { id: "eo14028", tag: "EO 14028",     name: "US Executive Order 14028 (software supply chain)",  scope: "software" },
+    { id: "fdapmp",  tag: "FDA PMP",      name: "FDA Premarket Cybersecurity (medical device SBOM)", scope: "software" },
+    { id: "iso5230", tag: "ISO/IEC 5230", name: "ISO/IEC 5230 (OpenChain license compliance)",       scope: "software" },
+  ];
+
   // ── "Where to look" guidance ──────────────────────────────────────────
   const findHints = {
     supplier: { title: "Where to find a supplier name", sources: [
@@ -563,7 +576,7 @@ window.LUMINA_DATA = (() => {
   })();
 
   return {
-    projects, components, edges, regulations, findHints, docFields, rawDoc, LICENSES, findings,
+    projects, components, edges, regulations, plannedRegulations, findHints, docFields, rawDoc, LICENSES, findings,
     componentField, componentFieldForReg, regSummary, fieldAppliesTo, componentsForReg,
     mofTier,
     allVulns, vulnsForComponent, licenseInfo,

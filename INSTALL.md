@@ -22,6 +22,7 @@ situation, then follow its section end-to-end.
 30–60 s to wake.
 
 **Choosing:**
+
 - No infrastructure to manage, simplest setup → **Option B** (HF Spaces).
 - Always-on, full control, can survive a sleeping policy change → **Option A** (VM).
 - Low traffic, pay nothing when idle, Google Cloud ecosystem → **Option C** (Cloud Run).
@@ -81,11 +82,13 @@ stack. Lumina's nginx and api services stay on the same host and communicate
 over the compose network — no cross-service URLs to re-wire.
 
 **What you need:**
+
 - An [Oracle Cloud](https://www.oracle.com/cloud/free/) account (free, no card
   for Always Free resources). Any Linux VM with Docker works — OCI is used here
   because it offers a genuinely free ARM instance that never expires.
 - A [Cloudflare](https://dash.cloudflare.com/sign-up) account (free) for HTTPS.
 - An SSH key pair. Create one if needed:
+
   ```bash
   ssh-keygen -t ed25519 -C "lumina-deploy"
   ```
@@ -112,6 +115,7 @@ In the OCI Console → **Menu → Compute → Instances → Create instance**:
 5. **Initialization script:** expand **Advanced options → Management → Paste
    cloud-init script** and paste the contents of
    [`scripts/cloud-init.sh`](scripts/cloud-init.sh):
+
    ```bash
    #!/bin/bash
    apt-get update
@@ -119,12 +123,14 @@ In the OCI Console → **Menu → Compute → Instances → Create instance**:
    curl -fsSL https://get.docker.com | sh
    usermod -aG docker ubuntu
    ```
+
 6. **Boot volume:** expand **Advanced options → Boot volume**:
    - **Size:** 60–80 GB (minimum 47 GB; the 200 GB Always Free allowance is
      shared across all volumes).
    - **Performance:** **Balanced (10 VPUs)** — included free.
 7. Click **Create**. Note the **public IPv4 address** when it reaches Running.
 8. SSH in:
+
    ```bash
    ssh ubuntu@<PUBLIC_IP>
    ```
@@ -139,14 +145,17 @@ CLI does not. [`scripts/oci-launch.sh`](scripts/oci-launch.sh) retries until a
 slot opens.
 
 1. Install and configure the CLI:
+
    ```bash
    brew install oci-cli
    oci setup config   # prompts for User/Tenancy OCID, region, generates an API key
    ```
+
    Upload the generated key: Console → **My profile → API keys → Add API key**
    → paste `~/.oci/oci_api_key_public.pem`. Verify with `oci iam region list`.
 
 2. Collect the OCIDs (`COMP` = your tenancy or compartment OCID):
+
    ```bash
    export COMP=<tenancy-or-compartment-OCID>
 
@@ -168,13 +177,16 @@ slot opens.
    ```
 
 3. Create the gitignored config and run the script:
+
    ```bash
    cp scripts/oci-launch.env.example scripts/oci-launch.env
    # edit scripts/oci-launch.env — fill in COMP, SUBNET, IMAGE, ADS
    ./scripts/oci-launch.sh
    ```
+
    The script sweeps every availability domain and retries until capacity opens.
    On success it prints the AD and instance OCID. Get the public IP:
+
    ```bash
    oci compute instance list-vnics --instance-id <INSTANCE_OCID> \
      --query 'data[0]."public-ip"' --raw-output
@@ -190,6 +202,7 @@ docker version && docker compose version   # both should print version info
 ```
 
 If `docker: command not found`, cloud-init may still be running. Check with:
+
 ```bash
 sudo cat /var/log/cloud-init-output.log
 ```
@@ -232,6 +245,7 @@ your Cloudflare account, ~$10/yr from any registrar):
    → Cloudflared**. Name it `lumina`.
 2. Copy the install token (the long string after `--token`).
 3. On the VM, save the token and start the tunnel connector:
+
    ```bash
    echo "TUNNEL_TOKEN=<PASTE_TOKEN>" >> .env
    docker compose \
@@ -239,6 +253,7 @@ your Cloudflare account, ~$10/yr from any registrar):
      -f docker/compose/docker-compose.prod.yml \
      --profile tunnel up -d
    ```
+
 4. In the tunnel's **Public Hostnames** tab → **Add a public hostname**:
    - Subdomain: `lumina` (or any) · Domain: your domain
    - Service: `HTTP` → `nginx:80`
@@ -293,6 +308,7 @@ HTTPS URL.
 No card required.
 
 **Caveats:**
+
 - Spaces may sleep when inactive; the first request after sleep takes 30–60 s.
 - In-memory job state (Mode-1 generation via `POST /api/v1/artifact/check`) is
   lost if the Space sleeps between submission and completion. For reliable
@@ -314,28 +330,34 @@ The Space repo needs only this one file.
    - **Visibility:** Public (free)
 
 2. **Clone your new Space repo:**
+
    ```bash
    git clone https://huggingface.co/spaces/YOUR_USERNAME/YOUR_SPACE_NAME lumina-space
    cd lumina-space
    ```
 
 3. **Add the Dockerfile:**
+
    ```bash
    cp /path/to/lumina/docker/hfspaces/Dockerfile Dockerfile
    ```
+
    If you are deploying your own fork, open the file and set `LUMINA_REPO` to
    your fork's URL.
 
 4. **Push:**
+
    ```bash
    git add Dockerfile
    git commit -m "Deploy Lumina"
    git push
    ```
+
    HF Spaces detects the push, builds the image (a few minutes the first time),
    and starts the container. Watch progress in the Space's **Logs** tab.
 
 5. **Verify** — the app URL is shown at the top of the Space page:
+
    ```bash
    curl -s https://YOUR_USERNAME-YOUR_SPACE_NAME.hf.space/api/health
    curl -s https://YOUR_USERNAME-YOUR_SPACE_NAME.hf.space/api/v1/regulations
@@ -365,15 +387,18 @@ ARG LUMINA_REF=v0.2.0   # tag or commit SHA
 Google Cloud ecosystem.
 
 **What you need:**
+
 - A [Google Cloud](https://console.cloud.google.com/) project with billing
   enabled (required even for the free tier).
 - `gcloud` CLI installed:
+
   ```bash
   brew install google-cloud-sdk
   gcloud init && gcloud auth login
   ```
 
 **Caveats:**
+
 - Scale-to-zero means in-memory job state (Mode-1 generation) can be lost if
   the instance shuts down between polling calls. With `--min-instances=1` the
   instance stays warm but consumes the free vCPU-second allowance (~4 days of
@@ -390,18 +415,21 @@ reads it at start.
 ### Steps
 
 1. **Enable APIs** (one-time):
+
    ```bash
    gcloud services enable run.googleapis.com cloudbuild.googleapis.com \
        artifactregistry.googleapis.com
    ```
 
 2. **Set project and region:**
+
    ```bash
    export PROJECT=$(gcloud config get-value project)
    export REGION=us-central1   # largest free tier, cheapest egress
    ```
 
 3. **Create an Artifact Registry repository** (one-time):
+
    ```bash
    gcloud artifacts repositories create lumina \
        --repository-format=docker \
@@ -409,6 +437,7 @@ reads it at start.
    ```
 
 4. **Build and push** (uses Cloud Build; free 120 build-minutes/day):
+
    ```bash
    # Run from the Lumina repo root
    gcloud builds submit . \
@@ -417,6 +446,7 @@ reads it at start.
    ```
 
 5. **Deploy:**
+
    ```bash
    gcloud run deploy lumina \
        --image  ${REGION}-docker.pkg.dev/${PROJECT}/lumina/app:latest \
@@ -428,9 +458,11 @@ reads it at start.
        --timeout 600 \
        --allow-unauthenticated
    ```
+
    Cloud Run prints the service URL (`https://lumina-xxxx-uc.a.run.app`).
 
 6. **Verify:**
+
    ```bash
    curl -s https://lumina-xxxx-uc.a.run.app/api/health
    curl -s https://lumina-xxxx-uc.a.run.app/api/v1/regulations
@@ -489,21 +521,29 @@ guidance on when to pick each.
 These apply to all options once the deployment is working.
 
 1. **Tighten CORS.** The frontend is same-origin (served by the same host),
-   so the wildcard is unnecessary. In `backend/app/main.py`:
-   ```python
-   allow_origins=["https://lumina.yourdomain.com"],   # was ["*"]
+   so the wildcard is unnecessary. Set the environment variable on the api
+   service (comma-separated for multiple origins):
+
+   ```yaml
+   environment:
+     LUMINA_CORS_ORIGINS: https://lumina.yourdomain.com
    ```
-   Rebuild the image/container afterward.
+
+   No rebuild needed — restart the container. (Default without the variable
+   is `*`.)
 
 2. **Limit upload size.** Large SBOMs can exhaust memory. For Option A, add
    to `proxy/prod.conf` inside `server { … }`:
+
    ```nginx
    client_max_body_size 25m;
    ```
+
    For Options B and C, add the same line to the nginx config template in
    `docker/hfspaces/Dockerfile` or `docker/standalone/nginx.conf.template`.
 
 3. **Cap resources** (Option A). Per service in the prod compose override:
+
    ```yaml
    deploy:
      resources:
@@ -523,6 +563,14 @@ These apply to all options once the deployment is working.
    - Option A: `git pull` + `up -d --build`
    - Option B: push a rebuild commit to the Space repo
    - Option C: re-run `gcloud builds submit` + `gcloud run deploy`
+
+7. **Artefact-URL fetching (SSRF).** `POST /api/v1/artifact/check` fetches a
+   user-supplied URL server-side. The built-in guard
+   (`backend/app/generate.py`) allows only http/https URLs resolving to
+   public addresses, and clones skip blobs over 10 MB. Leave
+   `LUMINA_ALLOW_PRIVATE_URLS` unset in production — it is a dev-only escape
+   hatch. For defence in depth, add network-level egress rules so the
+   containers cannot reach internal ranges or cloud metadata endpoints.
 
 ---
 

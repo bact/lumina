@@ -101,16 +101,21 @@ class InProcessJobQueue(JobQueue):
         self,
         registry: dict[str, JobFn] | None = None,
         concurrency: int = 1,
+        max_finished_jobs: int = 1000,
     ) -> None:
         super().__init__(registry=registry or {})
         self._jobs: dict[str, JobRecord] = {}
         self._semaphore = asyncio.Semaphore(concurrency)
+        # Keep at most this many finished records; oldest are evicted first so
+        # the dict cannot grow without bound on a long-running instance.
+        self._max_finished_jobs = max_finished_jobs
         # Hold a reference to each task so it is not garbage-collected mid-run.
         self._tasks: set[asyncio.Task[None]] = set()
 
     def enqueue(self, job_name: str, **kwargs: Any) -> str:
         if job_name not in self.registry:
             raise KeyError(f"No job registered under {job_name!r}")
+        self._evict_finished()
         job_id = uuid.uuid4().hex
         self._jobs[job_id] = JobRecord(id=job_id, status="queued")
         task = asyncio.create_task(self._run(job_id, job_name, kwargs))
@@ -120,6 +125,20 @@ class InProcessJobQueue(JobQueue):
 
     def get(self, job_id: str) -> JobRecord | None:
         return self._jobs.get(job_id)
+
+    def _evict_finished(self) -> None:
+        """Drop the oldest finished records beyond ``max_finished_jobs``.
+
+        Dict insertion order gives oldest-first; queued/running jobs are
+        never evicted.
+        """
+        finished = [
+            job_id
+            for job_id, record in self._jobs.items()
+            if record.status in ("done", "error")
+        ]
+        for job_id in finished[: len(finished) - self._max_finished_jobs]:
+            del self._jobs[job_id]
 
     async def _run(
         self,
