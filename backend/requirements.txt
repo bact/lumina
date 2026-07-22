@@ -5,7 +5,7 @@
 
 # Web framework
 fastapi==0.139.0
-uvicorn[standard]==0.50.2
+uvicorn[standard]==0.51.0
 python-multipart>=0.0.9  # required by FastAPI for Form / File uploads
 
 # SBOM generation (Mode 1: artefact-URL input)
