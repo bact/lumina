@@ -7,4 +7,4 @@
 # requirements.txt (and out of the production Docker image).
 pytest==9.1.1
 pylint==4.0.6
-mypy==2.1.0
+mypy==2.4.0
