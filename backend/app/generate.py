@@ -17,7 +17,7 @@ Flow:
 1. Dispatch the URL by kind: a Hugging Face Hub host goes to Pitloom's HF path;
    any other URL host is treated as a Git repo (shallow clone, then Pitloom).
 2. Pitloom writes an SPDX 3 JSON-LD file.
-3. The file is fed through the same :class:`ConformanceEngine` as an uploaded
+3. The file is checked by the same :func:`run_checker` as an uploaded
    SBOM (the checker detects the SPDX version itself).
 
 A generation failure is returned as a *degraded* response (zeroed conformance,
@@ -37,11 +37,11 @@ from urllib.parse import urlparse
 
 from .conformance import (
     CheckRun,
-    ConformanceEngine,
     ConformanceResult,
     Notification,
     RegulationId,
     SbomCheckResponse,
+    run_checker,
 )
 from .generators import (
     GenerationError,
@@ -50,9 +50,6 @@ from .generators import (
 )
 
 logger = logging.getLogger(__name__)
-
-# Stateless; safe to reuse across jobs.
-_engine = ConformanceEngine()
 
 _HF_HOSTS = {"huggingface.co", "www.huggingface.co"}
 
@@ -122,7 +119,7 @@ def generate_and_check(
                 exc.message,
             )
             return _failure_response(regulation_id, exc.descriptor_id, exc.message)
-        return _engine.check(sbom_path, regulation_id)
+        return run_checker(sbom_path, regulation_id)
     finally:
         if os.path.exists(sbom_path):
             os.unlink(sbom_path)

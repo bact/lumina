@@ -49,20 +49,16 @@ The fixture data ships field-level definitions for four regulations / standards:
 | Regulation | Fields | Scope | Backend checker (now) |
 |---|---|---|---|
 | **NTIA Minimum Elements** (2021-07) | 7 | Software | `ntia-conformance-checker` |
-| **BSI TR-03183** Part 2 v2.1.0 | 11 | Software | Lumina internal (fallback) |
-| **G7 AI SBOM** Minimum Elements (2026-05) | 11 | AI (models + datasets) | Lumina internal (fallback) |
-| **MOF** (Model Openness Framework) v1.0 | 11 | AI models | Lumina internal (fallback) |
+| **BSI TR-03183** Part 2 v2.1.0 | 11 | Software | `ntia-conformance-checker` (verdict only) |
+| **G7 AI SBOM** Minimum Elements (2026-05) | 11 | AI (models + datasets) | `ntia-conformance-checker` (partial) |
+| **MOF** (Model Openness Framework) v1.0 | 11 | AI models | not supported |
 
-`ntia-conformance-checker` currently implements **NTIA only**. BSI,
-G7 AI SBOM, and MOF results are computed by Lumina's own field-level
-logic until the checker adds support for them. The backend
-`ConformanceEngine` uses `CHECKER_MAP` so that upgrading to the
-external checker for any regulation is a one-line change -- the
-`ConformanceResult` schema the API returns, and the UI that consumes
-it, stay identical. See `docs/design.md` for the full architecture.
+`ntia-conformance-checker` runs every check; the backend `run_checker`
+parses its SARIF into the `ConformanceResult` schema the API returns and the UI
+consumes. See `docs/design.md` for the full architecture.
 
-Client-side conformance (fixture data in `data.js`) uses the same field-level
-logic the internal checker will implement in Python.
+Client-side conformance (fixture data in `data.js`) is demo data; the backend
+result comes from `ntia-conformance-checker`.
 
 Switching the active regulation re-runs every view's annotations against that
 regulation's field list. The G7 AI scope automatically narrows the in-scope

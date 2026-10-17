@@ -4,28 +4,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-Lumina conformance checking engine.
+Conformance result schema and the checker entry point.
 
-ConformanceEngine routes each regulation to the right checker and
-normalises the result into a single ConformanceResult schema.  The
-API and UI consume only this schema, so upgrading to a new external
-checker is a one-line change in CHECKER_MAP -- nothing else needs
-touching.
-
-Current routing (see docs/design.md for rationale):
-    ntia  → NtiaCheckerAdapter   (wraps ntia-conformance-checker)
-    bsi   → LuminaInternalChecker (fallback until checker adds BSI support)
-    g7ai  → LuminaInternalChecker (fallback until checker adds G7 AI support)
-    mof   → LuminaInternalChecker (fallback until checker adds MOF support)
+Every check is run by ntia-conformance-checker. :func:`run_checker` runs it and
+returns its SARIF log as the schema below; the API and UI consume only this schema.
 """
 
 from __future__ import annotations
 
-import abc
 from typing import Literal
 
 from pydantic import BaseModel, Field
-
 
 # ── Output schema ─────────────────────────────────────────────────────────
 
@@ -124,109 +113,42 @@ class SbomCheckResponse(BaseModel):
     (the default of every SARIF producer including this one)."""
 
 
-# ── Checker protocol ──────────────────────────────────────────────────────
+# ── Checker ───────────────────────────────────────────────────────────────
 
-# Every checker below is a Strategy with a single `check()` method by design
-# (see CHECKER_MAP); splitting them up would not add clarity.
-# pylint: disable=too-few-public-methods
-
-
-class ConformanceChecker(abc.ABC):
-    """Protocol for a single-regulation conformance checker."""
-
-    @abc.abstractmethod
-    def check(self, sbom_path: str) -> SbomCheckResponse:
-        """Parse *sbom_path* and return a SbomCheckResponse envelope."""
-
-
-# ── NtiaCheckerAdapter ────────────────────────────────────────────────────
-
-
-class NtiaCheckerAdapter(ConformanceChecker):
-    """
-    Wraps ntia-conformance-checker and normalises its output into a
-    SbomCheckResponse (ConformanceResult + CheckRun).
-
-    ntia-conformance-checker docs:
-      https://github.com/spdx/ntia-conformance-checker
-    """
-
-    def check(self, sbom_path: str) -> SbomCheckResponse:
-        """Run ntia-conformance-checker and normalise its SARIF output.
-
-        Implementation note: we deliberately route the in-process path
-        through SARIF (without embedding) instead of poking at checker
-        attributes directly.  This keeps the in-process path and the
-        ``POST /api/v1/sarif/import`` path on the *same* parser
-        (:func:`sarif_ingest.parse_sarif`), so behaviour cannot drift
-        between them.
-
-        ``embed_sbom`` is **off**: Lumina already holds the SBOM (the user
-        just uploaded it on this endpoint) so round-tripping it through the
-        SARIF log would double the in-memory size for no benefit.  The
-        SARIF-import endpoint is the only place where embedded content is
-        actually consumed (when the producer chose to embed).
-        """
-        # Import lazily so app start-up doesn't pay for the SPDX deps, and to
-        # break the sarif_ingest <-> conformance module cycle at runtime.
-        # pylint: disable=import-outside-toplevel,cyclic-import
-        from ntia_conformance_checker.main import SbomChecker  # type: ignore
-
-        from .sarif_ingest import parse_sarif
-
-        # SbomChecker is a factory; passing compliance="ntia" returns NTIAChecker.
-        # All checks run during __init__ -- no separate run_all_checks() call needed.
-        checker = SbomChecker(sbom_path, compliance="ntia")
-        sarif = checker.output_sarif(embed_sbom=False)
-        return parse_sarif(sarif)
-
-
-# ── LuminaInternalChecker ─────────────────────────────────────────────────
-
-
-class LuminaInternalChecker(ConformanceChecker):
-    """
-    Lumina's own field-level checker -- fallback for regulations that
-    ntia-conformance-checker does not yet support (BSI, G7 AI, MOF).
-
-    Mirrors the field-level logic in frontend/data.js.
-    When ntia-conformance-checker adds support for a regulation, update
-    CHECKER_MAP to point that key at NtiaCheckerAdapter and retire the
-    corresponding branch here.
-    """
-
-    def __init__(self, regulation_id: RegulationId) -> None:
-        self._regulation_id = regulation_id
-
-    def check(self, sbom_path: str) -> SbomCheckResponse:
-        raise NotImplementedError(
-            f"LuminaInternalChecker for '{self._regulation_id}' is not yet implemented. "
-            "Port field definitions and regSummary() logic from frontend/data.js."
-        )
-
-
-# ── Engine ────────────────────────────────────────────────────────────────
-
-# Update this map when ntia-conformance-checker adds support for a regulation.
-# NtiaCheckerAdapter is stateless, so a single instance is safe to reuse.
-_ntia_adapter = NtiaCheckerAdapter()
-
-CHECKER_MAP: dict[RegulationId, ConformanceChecker] = {
-    "ntia": _ntia_adapter,
-    "bsi": LuminaInternalChecker("bsi"),
-    "g7ai": LuminaInternalChecker("g7ai"),
-    "mof": LuminaInternalChecker("mof"),
+# Lumina regulation id -> ntia-conformance-checker standard id.
+# A regulation missing here is not supported by the checker.
+CHECKER_STANDARDS: dict[RegulationId, str] = {
+    "ntia": "ntia",
+    "bsi": "bsi",
+    "g7ai": "g7ai",
 }
 
 
-class ConformanceEngine:
-    """Routes a regulation id to its checker via :data:`CHECKER_MAP`."""
+def run_checker(sbom_path: str, regulation_id: RegulationId) -> SbomCheckResponse:
+    """Check *sbom_path* against *regulation_id* with ntia-conformance-checker.
 
-    def check(
-        self,
-        sbom_path: str,
-        regulation_id: RegulationId,
-    ) -> SbomCheckResponse:
-        """Run the checker registered for *regulation_id* against *sbom_path*."""
-        checker = CHECKER_MAP[regulation_id]
-        return checker.check(sbom_path)
+    The checker's SARIF log (without the embedded SBOM) is parsed by
+    :func:`sarif_ingest.parse_sarif`, the same parser as ``POST /api/v1/sarif/import``.
+
+    Raises:
+        NotImplementedError: the checker does not support *regulation_id*.
+        ValueError: the SBOM format cannot be determined or is not supported.
+    """
+    standard = CHECKER_STANDARDS.get(regulation_id)
+    if standard is None:
+        raise NotImplementedError(
+            f"Regulation '{regulation_id}' is not supported by ntia-conformance-checker."
+        )
+    # Imported here to keep app start-up light and to avoid a cycle with sarif_ingest.
+    # pylint: disable=import-outside-toplevel,cyclic-import
+    from ntia_conformance_checker.cli_utils import get_sbom_spec
+    from ntia_conformance_checker.constants import DEFAULT_SBOM_SPEC
+    from ntia_conformance_checker.sbom_checker import SbomChecker
+
+    from .sarif_ingest import parse_sarif
+
+    sbom_spec = get_sbom_spec(sbom_path, DEFAULT_SBOM_SPEC)
+    if not sbom_spec:
+        raise ValueError("Could not determine the SBOM format, or it is unsupported.")
+    checker = SbomChecker(sbom_path, compliance=standard, sbom_spec=sbom_spec)
+    return parse_sarif(checker.output_sarif(embed_sbom=False))

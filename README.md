@@ -135,12 +135,14 @@ Redis are introduced only if load grows. See
 
 ## Conformance checking
 
-| Regulation | Checker (now) | When external support lands |
-| - | -| - |
-| NTIA Minimum Elements | `ntia-conformance-checker` | already active |
-| BSI TR-03183 | Lumina internal (stub) | update `CHECKER_MAP` in `conformance.py` |
-| G7 AI SBOM | Lumina internal (stub) | update `CHECKER_MAP` in `conformance.py` |
-| MOF | Lumina internal (stub) | update `CHECKER_MAP` in `conformance.py` |
+Every check is run by `ntia-conformance-checker`; Lumina parses its SARIF.
+
+| Regulation | Checker support |
+| - | - |
+| NTIA Minimum Elements | yes |
+| G7 AI SBOM | yes (partial) |
+| BSI TR-03183 | verdict only, no per-rule gaps |
+| MOF | not supported (HTTP 501) |
 
 **Roadmap:** EU CRA, EO 14028, FDA PMP, and ISO/IEC 5230 are planned. Their
 ids are reserved in `plannedRegulations` (`frontend/data.js`); the UI shows
@@ -175,7 +177,7 @@ lumina/
 │   ├── requirements.txt        Deps pinned by version (or commit SHA) for reproducible builds
 │   └── app/
 │       ├── main.py             FastAPI app + endpoints
-│       ├── conformance.py      ConformanceEngine, CHECKER_MAP, schemas
+│       ├── conformance.py      run_checker, CHECKER_STANDARDS, schemas
 │       ├── sarif_ingest.py     SARIF 2.1.0 → SbomCheckResponse
 │       ├── jobs.py             JobQueue interface + in-process backend
 │       ├── generate.py         Mode-1 job: artefact URL → SBOM → check

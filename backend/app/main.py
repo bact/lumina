@@ -7,7 +7,7 @@
 
 import os
 import tempfile
-from typing import Annotated, Any
+from typing import Annotated, Any, get_args
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,11 +15,10 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 from .conformance import (
-    CHECKER_MAP,
-    ConformanceEngine,
-    LuminaInternalChecker,
+    CHECKER_STANDARDS,
     RegulationId,
     SbomCheckResponse,
+    run_checker,
 )
 from .generate import generate_and_check
 from .jobs import InProcessJobQueue
@@ -46,8 +45,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-_engine = ConformanceEngine()
 
 # Stage 0-1 job backend: runs Mode-1 SBOM generation in-process (see jobs.py and
 # docs/design.md "Background job execution").  Swappable for an RQ/Taskiq backend
@@ -95,15 +92,11 @@ def health() -> dict[str, str]:
 
 @app.get("/api/v1/regulations")
 def list_regulations() -> dict[str, Any]:
-    """Return the regulations Lumina can check against."""
+    """Return the regulations Lumina knows, and whether the checker supports each."""
     return {
         "regulations": [
-            {
-                "id": reg_id,
-                "checker": type(checker).__name__,
-                "ready": not isinstance(checker, LuminaInternalChecker),
-            }
-            for reg_id, checker in CHECKER_MAP.items()
+            {"id": reg_id, "ready": reg_id in CHECKER_STANDARDS}
+            for reg_id in get_args(RegulationId)
         ]
     }
 
@@ -119,8 +112,7 @@ async def check_sbom(
     """
     Upload an SBOM file and check it against the requested regulation.
 
-    Only 'ntia' is fully implemented today.  Other regulations raise
-    501 until LuminaInternalChecker is ported from frontend/data.js.
+    A regulation that ntia-conformance-checker does not support returns 501.
     """
     content = await file.read()
 
@@ -131,7 +123,7 @@ async def check_sbom(
         tmp_path = tmp.name
 
     try:
-        return _engine.check(tmp_path, regulation)
+        return run_checker(tmp_path, regulation)
     except NotImplementedError as exc:
         raise HTTPException(status_code=501, detail=str(exc)) from exc
     except Exception as exc:

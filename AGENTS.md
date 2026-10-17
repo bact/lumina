@@ -52,7 +52,7 @@ lumina/
 │   ├── requirements.txt        Pinned deps (one temporary git+SHA pin — see file)
 │   ├── app/
 │   │   ├── main.py             FastAPI endpoints
-│   │   ├── conformance.py      ConformanceEngine, CHECKER_MAP, schemas
+│   │   ├── conformance.py      run_checker, CHECKER_STANDARDS, schemas
 │   │   ├── sarif_ingest.py     SARIF 2.1.0 → SbomCheckResponse
 │   │   ├── jobs.py             JobQueue interface + in-process backend
 │   │   ├── generate.py         Mode-1 job: artefact URL → SBOM → check (SSRF guard)
@@ -72,21 +72,18 @@ lumina/
 
 ## Conformance checking -- critical rules
 
-`ntia-conformance-checker` currently handles **NTIA Minimum Elements only**.
-BSI TR-03183, G7 AI SBOM, and MOF use `LuminaInternalChecker` as a fallback.
+Lumina does no conformance checking itself: `ntia-conformance-checker` runs
+every check and `run_checker` in `backend/app/conformance.py` parses its SARIF.
+Support for NTIA, G7 AI SBOM and BSI comes from the checker; BSI reports a
+verdict but no per-rule gaps. MOF is not supported (HTTP 501).
 
-**CHECKER_MAP** in `backend/app/conformance.py` is the single place to update
-when the external checker adds support for a new regulation. No other file
-needs changing -- the `ConformanceResult` schema the API returns is identical
-regardless of which checker produced it.
+**CHECKER_STANDARDS** in `backend/app/conformance.py` maps a Lumina regulation
+id to the checker's standard id; add a regulation there once the checker
+supports it.
 
 Do not change `ConformanceResult` or `FieldGap` fields without updating both
 the Pydantic models in `conformance.py` and the fixture schemas in
 `ui-kits/lumina-app/data.js` and `frontend/data.js` (both consume the same shape).
-
-When implementing `LuminaInternalChecker` for BSI / G7 AI / MOF, port the
-field definitions and `regSummary()` logic from `ui-kits/lumina-app/data.js`.
-That file is the authoritative field list for all four regulations.
 
 ### Adding a regulation
 
@@ -98,9 +95,8 @@ never render a planned entry. To promote one:
 1. Move its entry from `plannedRegulations` into `regulations` in
    `ui-kits/lumina-app/data.js` and give it a `fields` list (screens are
    data-driven and pick it up automatically); mirror to `frontend/data.js`.
-2. Extend the `RegulationId` Literal and `CHECKER_MAP` in
-   `backend/app/conformance.py` (external checker adapter or
-   `LuminaInternalChecker`).
+2. Extend the `RegulationId` Literal and `CHECKER_STANDARDS` in
+   `backend/app/conformance.py`.
 3. `GET /api/v1/regulations` then reports it with the correct `ready` flag —
    no other backend change needed.
 

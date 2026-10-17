@@ -108,19 +108,17 @@ be slotted in without changing the response shape.
 
 ### Checker routing
 
-A `ConformanceEngine` routes each regulation to a checker via `CHECKER_MAP`
-in [`backend/app/conformance.py`](../backend/app/conformance.py) (the source of
-truth):
+Lumina does no conformance checking itself. `run_checker` in
+[`backend/app/conformance.py`](../backend/app/conformance.py) (the source of
+truth) runs `ntia-conformance-checker` for a regulation, using the standard id
+in `CHECKER_STANDARDS`, and parses its SARIF into `ConformanceResult` with
+`parse_sarif`. The SPDX version (2 or 3) is detected from the file.
 
-- `NtiaCheckerAdapter` wraps the `ntia-conformance-checker` library and
-  normalises its SARIF output into `ConformanceResult`. Bound to `ntia`.
-- `LuminaInternalChecker` is the fallback for regulations the external checker
-  does not yet cover (`bsi`, `g7ai`, `mof`); it raises *not yet implemented*
-  until that logic (or external support) lands.
+- `ntia`, `g7ai` (partial) and `bsi` (verdict only) are supported.
+- `mof` is not supported by the checker; the API returns 501 for it.
 
-When `ntia-conformance-checker` adds support for one of those regulations, point
-its key at `NtiaCheckerAdapter` in `CHECKER_MAP` — the API response shape, the
-UI, and all downstream code stay unchanged.
+When the checker adds a regulation, add it to `CHECKER_STANDARDS` — the API
+response shape, the UI, and all downstream code stay unchanged.
 
 Beyond the four current regulations, EU CRA, EO 14028, FDA PMP, and
 ISO/IEC 5230 are on the roadmap. Their ids are reserved in
