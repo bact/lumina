@@ -4,9 +4,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Web framework
-fastapi==0.139.0
-uvicorn[standard]==0.50.2
-python-multipart>=0.0.9  # required by FastAPI for Form / File uploads
+fastapi==0.143.3
+uvicorn[standard]==0.54.0
+python-multipart==0.0.32  # required by FastAPI for Form / File uploads
 
 # SBOM generation (Mode 1: artefact-URL input)
 # Generates SPDX 3 JSON-LD from a Git checkout or a Hugging Face Hub model.
@@ -30,4 +30,4 @@ spdx-tools==0.8.5
 ntia-conformance-checker @ git+https://github.com/bact/ntia-conformance-checker.git@b2bec1831456eb6a55c7497eba31a876dc079d95
 
 # Data validation
-pydantic==2.13.4
+pydantic==2.14.1
