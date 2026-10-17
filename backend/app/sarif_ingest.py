@@ -5,21 +5,23 @@
 
 """SARIF 2.1.0 ingestion -> :class:`SbomCheckResponse`.
 
-Accepts a SARIF log dict produced by any tool that follows the rule-id
-convention documented in ``ntia-conformance-checker``'s ``RULES.md``:
+Accepts a SARIF log dict from any tool whose rule ids follow the SBOM
+requirements ontology (``https://bact.github.io/bom/``):
 
-    SBOM-[SPEC]-[CATEGORY]-[NNN]
+    BOM-[SPEC][YEAR]-[CATEGORY]-[NNN][.M]
 
-* ``SBOM`` is a fixed namespace prefix shared by every rule id.
-* ``SPEC`` is an uppercase short standard code -- the spec id uppercased
-  (``NTIA``, ``FSCT3``, ``BSI``, ``G7AI``, ``MOF``).  It drives
-  ``ConformanceResult.regulation_id``.
-* ``CATEGORY`` is an uppercase short category code (``DF``, ``META``, ``COMP``,
-  ...).  Not interpreted here, but preserved in the rule lookup table.
-* ``NNN`` is a zero-padded (3-digit) sequence number.
+* ``SPEC`` + ``YEAR`` name the standard (``NTIA2021``, ``G7AI2026``); ``SPEC``
+  drives ``ConformanceResult.regulation_id`` when
+  ``run.properties.complianceStandard`` is absent.
+* ``CATEGORY`` is a short category code (``DF``, ``META``, ``COMP``, ...); it is
+  kept in the rule lookup table, not interpreted.
+* ``NNN`` is a 3-digit sequence number; ``.M`` marks a sub-element of rule ``NNN``.
 
-The legacy ``[SPEC]-[CATEGORY]-[NN]`` form (no ``SBOM-`` prefix) is still
-tolerated by :func:`_spec_of`.
+The ``SBOM-[SPEC]-[CATEGORY]-[NNN]`` and ``[SPEC]-[CATEGORY]-[NN]`` forms are
+also read (see :func:`_spec_of`).
+
+``run.properties.ruleOutcomes``, when present, sets the counts: decided
+(present or missing) top-level rules only.
 
 The producer is identified by ``run.tool.driver.name``;
 ``ntia-conformance-checker`` is recognised explicitly and anything else is
@@ -32,6 +34,7 @@ rule's ``properties.slug`` (spec prefix stripped) and finally to the rule id.
 
 from __future__ import annotations
 
+import re
 from typing import Any, get_args
 
 from .conformance import (
@@ -45,7 +48,6 @@ from .conformance import (
     RegulationId,
     SbomCheckResponse,
 )
-
 
 # Map uppercase spec code (the SPEC segment of a rule id, i.e. the spec id
 # uppercased) -> Lumina regulation id.  Extend when new RegulationId literals
@@ -91,13 +93,13 @@ def _require(condition: bool, message: str) -> None:
 def _spec_of(rule_id: str) -> str:
     """Return the SPEC segment of a rule id, uppercased.
 
-    Handles the current ``SBOM-[SPEC]-[CAT]-[NNN]`` scheme (SPEC is the
-    segment after the fixed ``SBOM`` namespace prefix) and tolerates the
-    legacy ``[SPEC]-[CAT]-[NN]`` form.
+    ``BOM-G7AI2026-MDL-001`` -> ``G7AI``; also ``SBOM-[SPEC]-...`` and ``[SPEC]-...``.
     """
     parts = [p for p in rule_id.split("-") if p]
     if not parts:
         return ""
+    if parts[0].upper() == "BOM" and len(parts) > 1:
+        return re.sub(r"\d{4}$", "", parts[1]).upper()
     if parts[0].upper() == "SBOM" and len(parts) > 1:
         return parts[1].upper()
     return parts[0].upper()
@@ -263,6 +265,21 @@ def _build_gaps(
     return gaps
 
 
+def _count_outcomes(outcomes: dict[str, Any]) -> tuple[int, int, int]:
+    """Return ``(total, present, missing)`` from ``run.properties.ruleOutcomes``.
+
+    Only decided (present or missing) top-level rules count; a sub-rule (dotted
+    id) is reported by its parent.
+    """
+    decided = [
+        outcome
+        for rule_id, outcome in outcomes.items()
+        if "." not in rule_id and outcome in ("present", "missing")
+    ]
+    missing = decided.count("missing")
+    return len(decided), len(decided) - missing, missing
+
+
 def _count_totals(
     results: list[dict[str, Any]], rule_index: dict[str, dict[str, Any]]
 ) -> tuple[int, int, int]:
@@ -300,7 +317,12 @@ def _build_conformance_result(
     regulation_id = _infer_regulation_id(standard_hint, rule_index)
 
     results = run.get("results") or []
-    total, present, missing = _count_totals(results, rule_index)
+    outcomes = properties.get("ruleOutcomes")
+    total, present, missing = (
+        _count_outcomes(outcomes)
+        if isinstance(outcomes, dict)
+        else _count_totals(results, rule_index)
+    )
     return ConformanceResult(
         regulation_id=regulation_id,
         source=source,
