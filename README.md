@@ -11,7 +11,8 @@ A web-based Software Bill of Materials (SBOM) viewer and conformance checker.
 
 Lumina reads an SBOM and shows whether the fields a given regulation actually
 asks for are present -- so the answer to *"are we conformant?"* stops being a
-folder of PDFs.
+folder of PDFs. The checks themselves are run by
+[ntia-conformance-checker](https://github.com/spdx/ntia-conformance-checker).
 
 ---
 
@@ -135,19 +136,50 @@ Redis are introduced only if load grows. See
 
 ## Conformance checking
 
-| Regulation | Checker (now) | When external support lands |
-| - | -| - |
-| NTIA Minimum Elements | `ntia-conformance-checker` | already active |
-| BSI TR-03183 | Lumina internal (stub) | update `CHECKER_MAP` in `conformance.py` |
-| G7 AI SBOM | Lumina internal (stub) | update `CHECKER_MAP` in `conformance.py` |
-| MOF | Lumina internal (stub) | update `CHECKER_MAP` in `conformance.py` |
+Lumina does no checking itself. [ntia-conformance-checker][checker] runs every
+check, and Lumina turns its [SARIF][sarif] log into a field-level result: which
+requirements each component meets, and which it misses. The checker detects SPDX
+2 or 3 from the file.
+
+| Regulation | Checker standard | Result |
+| - | - | - |
+| NTIA Minimum Elements (2021) | `ntia` | per-requirement gaps |
+| G7 SBOM for AI Minimum Elements (2026) | `g7ai` | per-requirement gaps; partial coverage, SPDX 3 only |
+| BSI TR-03183-2 | `bsi` | verdict only, as a notification; no per-requirement gaps |
+| MOF | none | not supported; the API returns HTTP 501 |
+
+Requirement ids are the [SBOM requirements ontology][bom] ids, for example
+`BOM-NTIA2021-DF-001`.
+
+### API
+
+| Endpoint | Purpose |
+| - | - |
+| `GET /api/v1/regulations` | Regulations Lumina knows, with `ready` set when the checker supports them |
+| `POST /api/v1/sbom/check` | Upload an SBOM (SPDX 2.2, 2.3 or 3.0; JSON, XML, YAML, tag-value) and check it |
+| `POST /api/v1/artifact/check` | Generate an SBOM from a Git or Hugging Face URL, then check it (background job) |
+| `GET /api/v1/jobs/{job_id}` | Status and result of a background job |
+| `POST /api/v1/sarif/import` | Read a SARIF 2.1.0 log from any producer, without running a check |
+
+Every check returns one `SbomCheckResponse`: the conformance result (counts and
+gaps), the checker run (tool, version, notifications), and, when the log embeds
+it, the SBOM.
+
+### Adding a regulation
+
+Add it to `RegulationId` and `CHECKER_STANDARDS` in
+[`backend/app/conformance.py`](backend/app/conformance.py) once the checker
+supports it. See [AGENTS.md](AGENTS.md) for the UI steps.
 
 **Roadmap:** EU CRA, EO 14028, FDA PMP, and ISO/IEC 5230 are planned. Their
 ids are reserved in `plannedRegulations` (`frontend/data.js`); the UI shows
-only regulations that are actually supported. See
-[AGENTS.md](AGENTS.md) "Adding a regulation" for the promotion steps.
+only regulations that are actually supported.
 
 See [docs/design.md](docs/design.md) for the full architecture.
+
+[checker]: https://github.com/spdx/ntia-conformance-checker
+[sarif]: https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html
+[bom]: https://bact.github.io/bom/
 
 ---
 
@@ -163,7 +195,7 @@ lumina/
 │   └── dev.conf                Dev: root /workspace/frontend, aliases for ui-kit paths
 ├── ui-kits/lumina-app/         Design source of truth — dev Docker only, not in prod image
 │   ├── index.html              Entry point; design-token paths routed by proxy/dev.conf
-│   ├── data.js                 Authoritative field list for all regulations
+│   ├── data.js                 Demo SBOM and field definitions for the design
 │   └── *.jsx / *.js            Screens and components
 ├── frontend/                   Frontend source — always in the Docker image
 │   ├── index.html              Implementation entry + router
@@ -172,10 +204,10 @@ lumina/
 │   └── *.jsx / *.js            Screens and components
 ├── backend/                    Python API
 │   ├── Dockerfile
-│   ├── requirements.txt        Deps pinned by version (or commit SHA) for reproducible builds
+│   ├── requirements.txt        Deps pinned by version (the checker by commit SHA)
 │   └── app/
 │       ├── main.py             FastAPI app + endpoints
-│       ├── conformance.py      ConformanceEngine, CHECKER_MAP, schemas
+│       ├── conformance.py      run_checker, CHECKER_STANDARDS, schemas
 │       ├── sarif_ingest.py     SARIF 2.1.0 → SbomCheckResponse
 │       ├── jobs.py             JobQueue interface + in-process backend
 │       ├── generate.py         Mode-1 job: artefact URL → SBOM → check

@@ -337,6 +337,22 @@ def _build_conformance_result(
 def _build_check_run(run: dict[str, Any], driver: dict[str, Any]) -> CheckRun:
     """Build the ``CheckRun`` portion of a parsed SARIF run."""
     notifications, execution_successful = _notifications_from_invocations(run)
+    properties = run.get("properties") or {}
+    if properties.get("ruleResults") is False and "conformant" in properties:
+        # No per-rule results (e.g. BSI): the verdict is all the log says.
+        conformant = bool(properties["conformant"])
+        notifications.append(
+            Notification(
+                level="note" if conformant else "error",
+                message=(
+                    "The SBOM conforms to the standard."
+                    if conformant
+                    else "The SBOM does not conform to the standard. "
+                    "The checker gives no per-requirement detail."
+                ),
+                descriptor_id="sbom.verdict",
+            )
+        )
     return CheckRun(
         tool_name=str(driver.get("name") or ""),
         tool_version=str(driver.get("version") or ""),

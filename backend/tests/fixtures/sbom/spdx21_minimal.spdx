@@ -1,0 +1,19 @@
+SPDXVersion: SPDX-2.1
+DataLicense: CC0-1.0
+SPDXID: SPDXRef-DOCUMENT
+DocumentName: minimal-spdx-2.1
+DocumentNamespace: https://example.com/spdxdocs/minimal-spdx-2.1
+Creator: Organization: Example Org
+Created: 2026-01-01T00:00:00Z
+
+PackageName: example
+SPDXID: SPDXRef-Package
+PackageVersion: 1.0.0
+PackageSupplier: Organization: Example Org
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-Package

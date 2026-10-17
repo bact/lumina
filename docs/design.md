@@ -108,19 +108,17 @@ be slotted in without changing the response shape.
 
 ### Checker routing
 
-A `ConformanceEngine` routes each regulation to a checker via `CHECKER_MAP`
-in [`backend/app/conformance.py`](../backend/app/conformance.py) (the source of
-truth):
+Lumina does no conformance checking itself. `run_checker` in
+[`backend/app/conformance.py`](../backend/app/conformance.py) (the source of
+truth) runs `ntia-conformance-checker` for a regulation, using the standard id
+in `CHECKER_STANDARDS`, and parses its SARIF into `ConformanceResult` with
+`parse_sarif`. The SPDX version (2 or 3) is detected from the file.
 
-- `NtiaCheckerAdapter` wraps the `ntia-conformance-checker` library and
-  normalises its SARIF output into `ConformanceResult`. Bound to `ntia`.
-- `LuminaInternalChecker` is the fallback for regulations the external checker
-  does not yet cover (`bsi`, `g7ai`, `mof`); it raises *not yet implemented*
-  until that logic (or external support) lands.
+- `ntia`, `g7ai` (partial) and `bsi` (verdict only) are supported.
+- `mof` is not supported by the checker; the API returns 501 for it.
 
-When `ntia-conformance-checker` adds support for one of those regulations, point
-its key at `NtiaCheckerAdapter` in `CHECKER_MAP` — the API response shape, the
-UI, and all downstream code stay unchanged.
+When the checker adds a regulation, add it to `CHECKER_STANDARDS` — the API
+response shape, the UI, and all downstream code stay unchanged.
 
 Beyond the four current regulations, EU CRA, EO 14028, FDA PMP, and
 ISO/IEC 5230 are on the roadmap. Their ids are reserved in
@@ -183,8 +181,8 @@ forks.
 - **Body:** `{ "artifact_url": "...", "regulation_id": "ntia" }`
 - **Flow:** the URL is dispatched by kind to a Pitloom-backed generator, which
   writes an **SPDX 3 JSON-LD** file; Lumina then feeds that temp file through the
-  same `NtiaCheckerAdapter` as mode 2 (the checker auto-detects the SPDX version,
-  exactly as for an uploaded SBOM). Because generation can take minutes (large
+  same `run_checker` as mode 2 (which detects the SPDX version, exactly as for an
+  uploaded SBOM). Because generation can take minutes (large
   clones), it runs as a [background job](#background-job-execution): the endpoint
   returns a `job_id` immediately and the client polls `GET /api/v1/jobs/{job_id}`.
 - **`embedded_sbom`:** absent.  Lumina holds the SBOM Pitloom just produced; no
@@ -214,9 +212,9 @@ forks.
 - **Endpoint:** `POST /api/v1/sbom/check`
 - **Body:** multipart file *or* `{ "sbom_url": "..." }`
 - **Flow:** Lumina holds the SBOM (either the upload payload or a fetch
-  of the URL) and passes the temp-file path to `NtiaCheckerAdapter`,
-  which calls `output_sarif(embed_sbom=False)` and feeds the SARIF log
-  through `parse_sarif`.
+  of the URL) and passes the temp-file path to `run_checker`,
+  which runs the checker, calls `output_sarif(embed_sbom=False)` and feeds the
+  SARIF log through `parse_sarif`.
 - **`embedded_sbom`:** absent.  Lumina already has the SBOM the user
   just supplied; embedding would double in-memory size for no benefit.
 - **Sync model:** synchronous for now.  May move behind the same queue
