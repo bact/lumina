@@ -143,3 +143,35 @@ def test_embedded_sbom_binary_round_trip() -> None:
     assert response.embedded_sbom is not None
     assert response.embedded_sbom.binary_base64 == "aGVsbG8="
     assert response.embedded_sbom.text is None
+
+
+def test_ontology_rule_ids_identify_the_standard() -> None:
+    log = _load("ntia_ontology_ids.sarif.json")
+    del log["runs"][0]["properties"]["complianceStandard"]  # fall back to the id
+    conf = parse_sarif(log).conformance
+    assert conf.regulation_id == "ntia"
+    assert conf.source == "ntia-conformance-checker"
+    assert {g.field_key for g in conf.gaps} == {"supplier"}
+
+
+def test_counts_follow_rule_outcomes() -> None:
+    """Decided top-level rules only: sub-rules and not-applicable rules are out."""
+    conf = parse_sarif(_load("g7ai_missing_model_info.sarif.json")).conformance
+    assert conf.regulation_id == "g7ai"
+    assert (conf.total, conf.present, conf.missing) == (39, 36, 3)
+    assert {g.field_key for g in conf.gaps} == {
+        "model_hash_algorithm_missing",
+        "model_hash_value_missing",
+        "model_prop_missing",
+    }
+
+
+def test_nothing_applies_is_all_not_applicable() -> None:
+    log = _load("g7ai_missing_model_info.sarif.json")
+    run = log["runs"][0]
+    run["results"] = []
+    run["properties"]["ruleOutcomes"] = {
+        rule_id: "not-applicable" for rule_id in run["properties"]["ruleOutcomes"]
+    }
+    conf = parse_sarif(log).conformance
+    assert (conf.total, conf.present, conf.missing) == (0, 0, 0)
