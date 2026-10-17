@@ -10,6 +10,7 @@ import tempfile
 from typing import Annotated, Any, get_args
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
@@ -123,7 +124,7 @@ async def check_sbom(
         tmp_path = tmp.name
 
     try:
-        return run_checker(tmp_path, regulation)
+        return await run_in_threadpool(run_checker, tmp_path, regulation)
     except NotImplementedError as exc:
         raise HTTPException(status_code=501, detail=str(exc)) from exc
     except Exception as exc:

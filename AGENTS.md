@@ -75,7 +75,7 @@ lumina/
 Lumina does no conformance checking itself: `ntia-conformance-checker` runs
 every check and `run_checker` in `backend/app/conformance.py` parses its SARIF.
 Support for NTIA, G7 AI SBOM and BSI comes from the checker; BSI reports a
-verdict but no per-rule gaps. MOF is not supported (HTTP 501).
+verdict (a `sbom.verdict` notification) but no per-rule gaps. MOF is not supported (HTTP 501).
 
 **CHECKER_STANDARDS** in `backend/app/conformance.py` maps a Lumina regulation
 id to the checker's standard id; add a regulation there once the checker

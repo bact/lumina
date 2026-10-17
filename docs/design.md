@@ -181,8 +181,8 @@ forks.
 - **Body:** `{ "artifact_url": "...", "regulation_id": "ntia" }`
 - **Flow:** the URL is dispatched by kind to a Pitloom-backed generator, which
   writes an **SPDX 3 JSON-LD** file; Lumina then feeds that temp file through the
-  same `NtiaCheckerAdapter` as mode 2 (the checker auto-detects the SPDX version,
-  exactly as for an uploaded SBOM). Because generation can take minutes (large
+  same `run_checker` as mode 2 (which detects the SPDX version, exactly as for an
+  uploaded SBOM). Because generation can take minutes (large
   clones), it runs as a [background job](#background-job-execution): the endpoint
   returns a `job_id` immediately and the client polls `GET /api/v1/jobs/{job_id}`.
 - **`embedded_sbom`:** absent.  Lumina holds the SBOM Pitloom just produced; no
@@ -212,9 +212,9 @@ forks.
 - **Endpoint:** `POST /api/v1/sbom/check`
 - **Body:** multipart file *or* `{ "sbom_url": "..." }`
 - **Flow:** Lumina holds the SBOM (either the upload payload or a fetch
-  of the URL) and passes the temp-file path to `NtiaCheckerAdapter`,
-  which calls `output_sarif(embed_sbom=False)` and feeds the SARIF log
-  through `parse_sarif`.
+  of the URL) and passes the temp-file path to `run_checker`,
+  which runs the checker, calls `output_sarif(embed_sbom=False)` and feeds the
+  SARIF log through `parse_sarif`.
 - **`embedded_sbom`:** absent.  Lumina already has the SBOM the user
   just supplied; embedding would double in-memory size for no benefit.
 - **Sync model:** synchronous for now.  May move behind the same queue

@@ -12,11 +12,19 @@ from pathlib import Path
 
 import pytest
 
-from app.conformance import CHECKER_STANDARDS, run_checker
+from app.conformance import (
+    CHECKER_STANDARDS,
+    Notification,
+    SbomCheckResponse,
+    run_checker,
+)
 
 _SBOMS = os.path.join(os.path.dirname(__file__), "fixtures", "sbom")
 SPDX2 = os.path.join(_SBOMS, "spdx2_missing_supplier.spdx.json")
 SPDX3_G7 = os.path.join(_SBOMS, "spdx3_g7ai.json")
+SPDX21 = os.path.join(_SBOMS, "spdx21_minimal.spdx")
+BSI_OK = os.path.join(_SBOMS, "spdx3_bsi_compliant.json")
+BSI_MISSING_CREATOR = os.path.join(_SBOMS, "spdx3_bsi_missing_creator.json")
 
 
 def test_ntia_on_spdx2_reports_the_missing_supplier() -> None:
@@ -40,10 +48,24 @@ def test_g7ai_on_spdx2_has_nothing_to_check() -> None:
     assert "sbom.nothing-applies" in notes
 
 
-def test_bsi_gives_a_run_without_rule_results() -> None:
-    response = run_checker(SPDX3_G7, "bsi")
-    assert response.conformance.regulation_id == "bsi"
-    assert response.conformance.gaps == []
+def _verdict(response: SbomCheckResponse) -> Notification:
+    (note,) = [
+        n for n in response.run.notifications if n.descriptor_id == "sbom.verdict"
+    ]
+    return note
+
+
+def test_bsi_reports_its_verdict_as_a_notification() -> None:
+    # BSI has no per-requirement results; the verdict is all the log carries.
+    ok = run_checker(BSI_OK, "bsi")
+    bad = run_checker(BSI_MISSING_CREATOR, "bsi")
+    assert ok.conformance.gaps == bad.conformance.gaps == []
+    assert (_verdict(ok).level, _verdict(bad).level) == ("note", "error")
+
+
+def test_spdx21_is_still_checked() -> None:
+    conf = run_checker(SPDX21, "ntia").conformance
+    assert conf.total == 7
 
 
 def test_unsupported_regulation() -> None:
@@ -55,5 +77,5 @@ def test_unsupported_regulation() -> None:
 def test_unreadable_sbom(tmp_path: Path) -> None:
     path = tmp_path / "not-an-sbom.json"
     path.write_text("{}", encoding="utf-8")
-    with pytest.raises(ValueError, match="SBOM format"):
+    with pytest.raises(ValueError, match="SPDX version"):
         run_checker(str(path), "ntia")

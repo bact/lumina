@@ -132,7 +132,7 @@ def run_checker(sbom_path: str, regulation_id: RegulationId) -> SbomCheckRespons
 
     Raises:
         NotImplementedError: the checker does not support *regulation_id*.
-        ValueError: the SBOM format cannot be determined or is not supported.
+        ValueError: the SPDX version of the SBOM cannot be determined.
     """
     standard = CHECKER_STANDARDS.get(regulation_id)
     if standard is None:
@@ -141,14 +141,15 @@ def run_checker(sbom_path: str, regulation_id: RegulationId) -> SbomCheckRespons
         )
     # Imported here to keep app start-up light and to avoid a cycle with sarif_ingest.
     # pylint: disable=import-outside-toplevel,cyclic-import
-    from ntia_conformance_checker.cli_utils import get_sbom_spec
+    from ntia_conformance_checker.cli_utils import get_spdx_version
     from ntia_conformance_checker.constants import DEFAULT_SBOM_SPEC
     from ntia_conformance_checker.sbom_checker import SbomChecker
 
     from .sarif_ingest import parse_sarif
 
-    sbom_spec = get_sbom_spec(sbom_path, DEFAULT_SBOM_SPEC)
-    if not sbom_spec:
-        raise ValueError("Could not determine the SBOM format, or it is unsupported.")
+    version = get_spdx_version(sbom_path, DEFAULT_SBOM_SPEC)
+    if version is None:
+        raise ValueError("Could not determine the SPDX version of the SBOM.")
+    sbom_spec = "spdx3" if version[0] == 3 else "spdx2"
     checker = SbomChecker(sbom_path, compliance=standard, sbom_spec=sbom_spec)
     return parse_sarif(checker.output_sarif(embed_sbom=False))

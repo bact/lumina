@@ -261,7 +261,7 @@ window.LUMINA_DATA = (() => {
   // support: no field definitions, no checker, and no screen renders them.
   // Promotion is mechanical: move an entry into `regulations` above with a
   // `fields` list (screens are data-driven and pick it up automatically),
-  // then extend RegulationId and CHECKER_MAP in backend/app/conformance.py.
+  // then extend RegulationId and CHECKER_STANDARDS in backend/app/conformance.py.
   const plannedRegulations = [
     { id: "eucra",   tag: "EU CRA",       name: "EU Cyber Resilience Act (SBOM requirements)",       scope: "software" },
     { id: "eo14028", tag: "EO 14028",     name: "US Executive Order 14028 (software supply chain)",  scope: "software" },
