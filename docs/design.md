@@ -38,8 +38,10 @@ The UI supports four regulations: NTIA Minimum Elements, BSI TR-03183,
 G7 AI SBOM Minimum Elements, and MOF (Model Openness Framework).
 
 **Current checker support:**
-`ntia-conformance-checker` currently only covers **NTIA Minimum Elements**.
-BSI TR-03183, G7 AI SBOM, and MOF are not yet implemented in the checker.
+`ntia-conformance-checker` covers **NTIA Minimum Elements** and, partially,
+**G7 AI SBOM** (SPDX 3 only; rules the checker does not check are reported as
+out of scope). **BSI TR-03183** reports a verdict only. **MOF** is not
+implemented in the checker.
 
 **Design principle:** the backend must present a single, uniform
 `ConformanceResult` schema to the API regardless of which checker
