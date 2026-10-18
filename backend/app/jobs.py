@@ -151,6 +151,7 @@ class InProcessJobQueue(JobQueue):
                 # run it off the event loop.
                 record.result = await asyncio.to_thread(fn, **kwargs)
                 record.status = "done"
+            # pylint: disable-next=broad-exception-caught
             except Exception as exc:
                 # Job runner boundary: any failure must be captured and
                 # reported via JobRecord.error, so we deliberately catch all.
