@@ -28,4 +28,6 @@ services:
       - "8000:8000"       # exposed for direct API testing
     volumes:
       - ./backend/app:/app/app  # live-reload in dev
+    environment:
+      - HF_TOKEN          # passed through when set on the host (Hub rate limit)
     restart: unless-stopped

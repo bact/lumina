@@ -91,8 +91,9 @@ made from it for the G7 SBOM for AI standard.
    message.
 
 Before the demo, on the demo machine and network: run `licenseid update` once
-(the Docker images do it at build time), set `HF_TOKEN` for the `api` service
-(the Hub rate-limits anonymous requests), and run steps 4 to 7 once so that
+(the Docker images do it at build time), export `HF_TOKEN` in the shell that
+runs `docker compose up` (the Hub rate-limits anonymous requests; the
+compose file passes it to the `api` service), and run steps 4 to 7 once so that
 caches are warm and every URL is known to work. A Hugging Face or GitHub
 outage on the day cannot be worked around: fall back to steps 1 to 3 and 8,
 which need no internet.
