@@ -87,8 +87,9 @@ Built against WCAG 2.2 AA:
 
 ## Icons
 
-[Lucide](https://lucide.dev/) from the unpkg CDN at a 1.5px stroke. To use a
-different icon set, replace the Lucide `<script>` in `index.html` and update
+[Lucide](https://lucide.dev/) at a 1.5px stroke, vendored in `vendor/` with
+React and Babel (no CDN; the page works offline apart from web fonts). To use
+a different icon set, replace the Lucide `<script>` in `index.html` and update
 the `Icon` component in `components.jsx`.
 
 ## Smoke test

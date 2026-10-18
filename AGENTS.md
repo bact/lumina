@@ -146,7 +146,7 @@ regulation appears in the UI only once the backend knows it. To add one:
   component styles.
 - Washi paper palette: `--paper` (#F6F3EC) background, sumi-ink text, single
   shu-red accent (`--shu` #C8392A). No large coloured backgrounds.
-- Icon set: Lucide via CDN (1.5px stroke). Do not substitute other icon sets
+- Icon set: Lucide, vendored in `frontend/vendor/` (1.5px stroke). Do not substitute other icon sets
   without updating the `Icon` component in `components.jsx`.
 - Show only what the API returns. Labels, descriptions and links for
   regulation ids live in one table (`IMPORT_REGULATIONS`); never hard-code a
@@ -164,12 +164,12 @@ error, on an old sample-data string, when the regulation chips differ from the
 mocked `GET /api/v1/regulations`, when a refused request's `detail` is not
 shown, or when the per-rule BSI result lacks its DOC and COMP clusters and counts. It needs Node 18+ and
 a `node_modules` directory (outside the repository; never commit it) with
-`playwright-core`, `react@18.3.1`, `react-dom@18.3.1`,
-`@babel/standalone@7.29.0` and `lucide`, which also serve the page's CDN
-scripts offline:
+`playwright-core`. The page's scripts are vendored in `frontend/vendor/` (see
+its README), so the test uses no network and fails on a request to any other
+host except fonts:
 
 ```shell
-npm install --prefix /some/dir playwright-core react@18.3.1 react-dom@18.3.1 @babel/standalone@7.29.0 lucide
+npm install --prefix /some/dir playwright-core
 LUMINA_SMOKE_NODE_MODULES=/some/dir/node_modules \
 LUMINA_SMOKE_CHROMIUM=/path/to/chromium \
 node scripts/ui-smoke.mjs /tmp/lumina-shots

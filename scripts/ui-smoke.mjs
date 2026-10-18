@@ -13,9 +13,9 @@
 //   - a per-rule BSI result shows its DOC and COMP clusters with their counts.
 // It writes one screenshot per state to the output directory.
 //
-// Needs Node 18+ and, in one node_modules directory (not committed):
-//   playwright-core react@18.3.1 react-dom@18.3.1 @babel/standalone@7.29.0 lucide
-// The page's CDN scripts are served from there, so no network is used.
+// Needs Node 18+ and playwright-core in one node_modules directory (not
+// committed). The page's scripts are vendored in frontend/vendor/, so no
+// network is used; any request to another host (fonts excepted) is a failure.
 //
 // Usage:
 //   LUMINA_SMOKE_NODE_MODULES=/path/to/node_modules \
@@ -141,13 +141,6 @@ const server = http.createServer((req, res) => {
 await new Promise(r => server.once("listening", r));
 const base = `http://127.0.0.1:${server.address().port}/`;
 
-const CDN = {
-  "react.development.js": "react/umd/react.development.js",
-  "react-dom.development.js": "react-dom/umd/react-dom.development.js",
-  "babel.min.js": "@babel/standalone/babel.min.js",
-  "lucide.min.js": "lucide/dist/umd/lucide.min.js",
-};
-
 // ── Checks ───────────────────────────────────────────────────────────────
 const failures = [];
 const check = (ok, what) => { console.log(`${ok ? "ok  " : "FAIL"} ${what}`); if (!ok) failures.push(what); };
@@ -163,11 +156,11 @@ page.on("pageerror", e => errors.push(String(e)));
 // else on the console at error level is a failure.
 const DELIBERATE = /^Failed to load resource: the server responded with a status of (413|422|501) /;
 page.on("console", m => { if (m.type() === "error" && !DELIBERATE.test(m.text())) errors.push(m.text()); });
-await page.route(/^https:\/\/unpkg\.com\//, r => {
-  const local = CDN[path.basename(new URL(r.request().url()).pathname)];
-  return local ? r.fulfill({ path: path.join(nm, local), contentType: "text/javascript" }) : r.abort();
+await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, r => {
+  if (/fonts\.(googleapis|gstatic)\.com/.test(r.request().url())) return r.fulfill({ body: "", contentType: "text/css" });
+  errors.push(`external request: ${r.request().url()}`);
+  return r.abort();
 });
-await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.fulfill({ body: "", contentType: "text/css" }));
 await mockApi(page);
 
 // The page scrolls inside <main>; unclip it so a full-page shot shows everything.
