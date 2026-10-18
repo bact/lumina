@@ -13,12 +13,13 @@ from typing import Any
 
 import pytest
 
-from app.sarif_ingest import SarifIngestError, parse_sarif
+from app.sarif_ingest import SarifIngestError, _rule_title, parse_sarif
 
 _FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures", "sarif")
 
 
 def _load(name: str) -> dict[str, Any]:
+    """load."""
     with open(os.path.join(_FIXTURES, name), encoding="utf-8") as f:
         result: dict[str, Any] = json.load(f)
         return result
@@ -146,6 +147,7 @@ def test_embedded_sbom_binary_round_trip() -> None:
 
 
 def test_ontology_rule_ids_identify_the_standard() -> None:
+    """Ontology rule ids identify the standard."""
     log = _load("ntia_ontology_ids.sarif.json")
     del log["runs"][0]["properties"]["complianceStandard"]  # fall back to the id
     conf = parse_sarif(log).conformance
@@ -167,6 +169,7 @@ def test_counts_follow_rule_outcomes() -> None:
 
 
 def test_nothing_applies_is_all_not_applicable() -> None:
+    """Nothing applies is all not applicable."""
     log = _load("g7ai_missing_model_info.sarif.json")
     run = log["runs"][0]
     run["results"] = []
@@ -178,6 +181,7 @@ def test_nothing_applies_is_all_not_applicable() -> None:
 
 
 def _rule_log() -> dict[str, Any]:
+    """rule log."""
     log = _load("g7ai_missing_model_info.sarif.json")
     run = log["runs"][0]
     run["properties"]["systemJudgedByModel"] = "m"
@@ -185,6 +189,7 @@ def _rule_log() -> dict[str, Any]:
 
 
 def test_rule_results_carry_cluster_title_and_outcome() -> None:
+    """Rule results carry cluster title and outcome."""
     conf = parse_sarif(_rule_log()).conformance
     by_id = {r.rule_id: r for r in conf.rules}
     outcomes = _rule_log()["runs"][0]["properties"]["ruleOutcomes"]
@@ -193,7 +198,7 @@ def test_rule_results_carry_cluster_title_and_outcome() -> None:
         assert rule.outcome == outcomes[rule.rule_id]
         assert rule.cluster == rule.rule_id.split("-")[2]
     assert {r.outcome for r in conf.rules} >= {"present", "missing"}
-    assert all(r.title for r in conf.rules)
+    assert all(r.title and not r.title.endswith("missing.") for r in conf.rules)
 
 
 @pytest.mark.parametrize(
@@ -203,6 +208,7 @@ def test_rule_results_carry_cluster_title_and_outcome() -> None:
 def test_system_judged_by_model_only_when_a_name(
     value: object, expected: str | None
 ) -> None:
+    """System judged by model only when a name."""
     log = _rule_log()
     log["runs"][0]["properties"]["systemJudgedByModel"] = value
     assert parse_sarif(log).conformance.system_judged_by_model == expected
@@ -210,14 +216,43 @@ def test_system_judged_by_model_only_when_a_name(
 
 @pytest.mark.parametrize("outcomes", [None, "x", ["present"], {}])
 def test_no_usable_rule_outcomes_gives_no_rules(outcomes: object) -> None:
+    """No usable rule outcomes gives no rules."""
     log = _rule_log()
     log["runs"][0]["properties"]["ruleOutcomes"] = outcomes
     assert parse_sarif(log).conformance.rules == []
 
 
 def test_unknown_outcome_value_is_skipped_not_guessed() -> None:
+    """Unknown outcome value is skipped not guessed."""
     log = _rule_log()
     props = log["runs"][0]["properties"]["ruleOutcomes"]
     victim = next(iter(props))
     props[victim] = "maybe"
     assert victim not in {r.rule_id for r in parse_sarif(log).conformance.rules}
+
+
+@pytest.mark.parametrize(
+    ("rule", "title"),
+    [
+        (
+            {"properties": {"slug": "g7ai-sbom-data-format-version-missing"}},
+            "SBOM data format version",
+        ),
+        ({"properties": {"slug": "g7ai-model-name"}}, "Model name"),
+        ({"properties": {"slug": "g7ai-ai-model-url-missing"}}, "AI model URL"),
+        (
+            {
+                "properties": {"slug": "g7ai-missing"},
+                "shortDescription": {"text": "T."},
+            },
+            "T.",
+        ),
+        ({"shortDescription": {"text": "No slug."}}, "No slug."),
+        ({}, ""),
+    ],
+)
+def test_rule_title_names_the_element_not_the_failure(
+    rule: dict[str, Any], title: str
+) -> None:
+    """Rule title names the element not the failure."""
+    assert _rule_title(rule) == title

@@ -75,6 +75,17 @@ ConformanceResult                     # what was found
   missing       : int
   unverified    : int
   gaps          : list[FieldGap]
+  rules         : list[RuleResult]    # per-rule outcome, when the producer
+                                      # reports it (G7 AI, NTIA)
+  system_judged_by_model : str?       # model name standing in for the system
+
+RuleResult
+  rule_id       : str                 # "BOM-G7AI2026-MDL-006.1"
+  cluster       : str                 # rule-id segment: "MD" | "SLP" | "MDL" ...
+  title         : str                 # the element checked, from the rule slug
+  provision     : str                 # "requirement" | "recommendation"
+  outcome       : str                 # "present" | "missing"
+                                      # | "not-applicable" | "out-of-scope"
 
 FieldGap
   component_id  : str
@@ -117,6 +128,15 @@ in `CHECKER_STANDARDS`, and parses its SARIF into `ConformanceResult` with
 `parse_sarif`. The SPDX version (2 or 3) is detected from the file.
 
 - `ntia`, `g7ai` (partial) and `bsi` (verdict only) are supported.
+- G7 AI results carry every rule's outcome. `out-of-scope` rules are
+  catalogue-only (the checker cannot check them) and are shown as "not
+  checked", never as missing. When the SBOM has no AI system of its own, the
+  checker judges the system-level rules by its one AI model and the result
+  names it in `system_judged_by_model`.
+- The *Generate & check* screen lets the user pick NTIA or G7 AI and shows
+  G7 outcomes grouped by cluster. The static viewer screens (Overview,
+  Inventory, Conformance) still show prototype data; `frontend/data.js` keeps
+  its `g7ai` entry `active: false` until they are fed from results.
 - `mof` is not supported by the checker; the API returns 501 for it.
 
 When the checker adds a regulation, add it to `CHECKER_STANDARDS` — the API

@@ -416,8 +416,27 @@ function WhereToLook({ hint }) {
 // data. Mapping SbomCheckResponse + the generated SBOM into those screens'
 // data model is the remaining integration work. See docs/design.md
 // "Implementation status (Stage 0)".
+// Regulations the checker can report on a generated SBOM (see
+// CHECKER_STANDARDS in backend/app/conformance.py).
+const IMPORT_REGULATIONS = [
+  { id: "ntia", label: "NTIA Minimum Elements" },
+  { id: "g7ai", label: "G7 SBOM for AI" },
+];
+
+// G7 SBOM for AI rule clusters, in the order of the rule ids.
+const G7_CLUSTERS = [
+  { code: "MD",  name: "Metadata" },
+  { code: "SLP", name: "System-level properties" },
+  { code: "MDL", name: "Models" },
+  { code: "DP",  name: "Dataset properties" },
+  { code: "INF", name: "Infrastructure" },
+  { code: "SP",  name: "Security properties" },
+  { code: "KPI", name: "Key performance indicators" },
+];
+
 function ImportScreen({ onComplete }) {
   const [url, setUrl] = _useSC("");
+  const [regId, setRegId] = _useSC("ntia");
   const [phase, setPhase] = _useSC("idle"); // idle | running | done | error
   const [result, setResult] = _useSC(null); // SbomCheckResponse
   const [errorMsg, setErrorMsg] = _useSC("");
@@ -434,7 +453,7 @@ function ImportScreen({ onComplete }) {
       const submit = await fetch("/api/v1/artifact/check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ artifact_url: artifactUrl, regulation_id: "ntia" }),
+        body: JSON.stringify({ artifact_url: artifactUrl, regulation_id: regId }),
       });
       if (!submit.ok) throw new Error(`Submit failed (HTTP ${submit.status})`);
       const { job_id } = await submit.json();
@@ -466,8 +485,15 @@ function ImportScreen({ onComplete }) {
         <Eyebrow>Generate &amp; check</Eyebrow>
         <h1 style={{ margin: "6px 0 4px", fontSize: 32, fontWeight: 500, letterSpacing: "-0.018em" }}>Check a repository or model</h1>
         <p style={{ margin: 0, fontSize: 14.5, color: "var(--ink-3)" }}>
-          Paste a Git repository URL or a Hugging Face Hub model URL. Lumina generates an SBOM for it (server-side, via Pitloom) and checks it against NTIA Minimum Elements.
+          Paste a Git repository URL or a Hugging Face Hub model URL. Lumina generates an SBOM for it (server-side, via Pitloom) and checks it against the regulation you pick.
         </p>
+      </div>
+
+      <div role="radiogroup" aria-label="Regulation" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {IMPORT_REGULATIONS.map(r => (
+          <RegTag key={r.id} role="radio" ariaChecked={regId === r.id} active={regId === r.id}
+            onClick={phase === "running" ? undefined : () => { setRegId(r.id); setResult(null); setPhase("idle"); }}>{r.label}</RegTag>
+        ))}
       </div>
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -514,6 +540,55 @@ function ImportScreen({ onComplete }) {
   );
 }
 
+// RuleClusters -- per-rule outcomes grouped by cluster (rule-id segment).
+// "Not applicable" and "out of scope" rules are listed but never counted as
+// missing: out-of-scope rules are catalogue-only, the checker cannot check them.
+const RULE_CHIP = {
+  present: { status: "present" },
+  missing: { status: "missing" },
+  "not-applicable": { status: "neutral", label: "Not applicable" },
+  "out-of-scope": { status: "neutral", label: "Not checked" },
+};
+
+function RuleClusters({ rules, judgedByModel }) {
+  const clusters = G7_CLUSTERS.map(cl => ({ ...cl, rules: rules.filter(r => r.cluster === cl.code) }))
+    .filter(cl => cl.rules.length > 0);
+  const count = (list, outcome) => list.filter(r => r.outcome === outcome).length;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {judgedByModel && (
+        <MarginNote title="System judged by model">
+          This SBOM has no AI system of its own. The system-level rules were judged by the model <Mono>{judgedByModel}</Mono>.
+        </MarginNote>
+      )}
+      {clusters.map(cl => (
+        <Card key={cl.code} padding={0}>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 500, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <span>{cl.name}</span>
+            <span style={{ fontWeight: 400, color: "var(--ink-3)" }}>
+              {count(cl.rules, "present")} present · {count(cl.rules, "missing")} missing · {count(cl.rules, "out-of-scope")} not checked
+            </span>
+          </div>
+          {cl.rules.map((r, i) => {
+            const chip = RULE_CHIP[r.outcome];
+            return (
+              <div key={r.rule_id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "9px 16px", borderBottom: i < cl.rules.length - 1 ? "1px solid var(--border)" : "none" }}>
+                <div style={{ flex: "0 0 112px", paddingTop: 1 }}><StatusChip status={chip.status}>{chip.label}</StatusChip></div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, color: "var(--ink)" }}>{r.title}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 2 }}>
+                    <Mono>{r.rule_id.split("-").slice(2).join("-")}</Mono>{r.provision ? <> · {r.provision}</> : null}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 // ArtifactResult -- compact render of a SbomCheckResponse: conformance counts,
 // the gap list, and any run notifications. Self-contained on purpose.
 function ArtifactResult({ result }) {
@@ -521,6 +596,7 @@ function ArtifactResult({ result }) {
   const run = result.run || {};
   const notes = run.notifications || [];
   const gaps = c.gaps || [];
+  const rules = c.rules || [];
   const ok = run.execution_successful !== false;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -541,6 +617,8 @@ function ArtifactResult({ result }) {
         <SummaryTile label="Missing" value={c.missing ?? 0} accent={(c.missing ?? 0) > 0 ? "#B68333" : undefined} />
         <SummaryTile label="Unverified" value={c.unverified ?? 0} accent={(c.unverified ?? 0) > 0 ? "#2F4A6B" : undefined} />
       </div>
+
+      {rules.length > 0 && <RuleClusters rules={rules} judgedByModel={c.system_judged_by_model} />}
 
       {gaps.length > 0 && (
         <Card padding={0}>
@@ -592,4 +670,4 @@ function ArtifactResult({ result }) {
   );
 }
 
-Object.assign(window, { ConformanceScreen, ImportScreen, ArtifactResult, WhereToLook });
+Object.assign(window, { ConformanceScreen, ImportScreen, ArtifactResult, RuleClusters, WhereToLook });

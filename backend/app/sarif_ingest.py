@@ -317,6 +317,25 @@ def _cluster_of(rule_id: str) -> str:
     return parts[2].upper() if len(parts) > 3 else ""
 
 
+_ACRONYMS = {"sbom": "SBOM", "ai": "AI", "url": "URL", "id": "ID"}
+
+
+def _rule_title(rule: dict[str, Any]) -> str:
+    """Name the element a rule checks, not its failure message.
+
+    ``g7ai-sbom-data-format-version-missing`` -> ``SBOM data format version``.
+    A rule without a slug keeps its short description.
+    """
+    slug = str((rule.get("properties") or {}).get("slug") or "")
+    parts = slug.split("-")[1:]
+    if parts and parts[-1] == "missing":
+        parts = parts[:-1]
+    if parts:
+        text = " ".join(_ACRONYMS.get(part, part) for part in parts)
+        return text[0].upper() + text[1:]
+    return str((rule.get("shortDescription") or {}).get("text") or "")
+
+
 def _build_rule_results(
     outcomes: Any, rule_index: dict[str, dict[str, Any]]
 ) -> list[RuleResult]:
@@ -338,7 +357,7 @@ def _build_rule_results(
             RuleResult(
                 rule_id=rule_id,
                 cluster=_cluster_of(rule_id),
-                title=str((rule.get("shortDescription") or {}).get("text") or ""),
+                title=_rule_title(rule),
                 provision=str(props.get("provision") or ""),
                 outcome=outcome,
             )

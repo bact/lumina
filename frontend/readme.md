@@ -50,7 +50,7 @@ The fixture data ships field-level definitions for four regulations / standards:
 |---|---|---|---|
 | **NTIA Minimum Elements** (2021-07) | 7 | Software | `ntia-conformance-checker` |
 | **BSI TR-03183** Part 2 v2.1.0 | 11 | Software | `ntia-conformance-checker` (verdict only) |
-| **G7 AI SBOM** Minimum Elements (2026-05) | 11 | AI (models + datasets) | `ntia-conformance-checker` (partial) |
+| **G7 AI SBOM** Minimum Elements (2026-05) | 11 (prototype list; the live check reports the checker's 81 rules) | AI (models + datasets) | `ntia-conformance-checker` (partial) |
 | **MOF** (Model Openness Framework) v1.0 | 11 | AI models | not supported |
 
 `ntia-conformance-checker` runs every check; the backend `run_checker`
