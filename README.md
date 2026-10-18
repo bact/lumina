@@ -152,7 +152,7 @@ property exists, not that its value is right). The checker detects SPDX
 | G7 SBOM for AI Minimum Elements (2026) | `g7ai` | per-requirement gaps; partial coverage, SPDX 3 only |
 | CISA 2026 Minimum Elements | `cisa2026` | per-requirement gaps; partial coverage, SPDX 3 only |
 | FSCT 2024 (CISA Framing) | `fsct3` (API id `fsct2024`) | per-requirement gaps; partial coverage |
-| BSI TR-03183-2 | `bsi` | verdict only, as a notification; no per-requirement gaps |
+| BSI TR-03183-2 v2.1 | `bsi` | per-requirement gaps; partial coverage, SPDX 3 only |
 | MOF | none | not supported; the API returns HTTP 501 |
 
 Requirement ids are the [SBOM requirements ontology][bom] ids, for example

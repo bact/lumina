@@ -73,9 +73,8 @@ lumina/
 
 Lumina does no conformance checking itself: `ntia-conformance-checker` runs
 every check and `run_checker` in `backend/app/conformance.py` parses its SARIF.
-NTIA, G7 AI SBOM, CISA 2026, FSCT 2024 and BSI come from the checker; BSI
-reports a verdict (a `sbom.verdict` notification) but no per-rule results.
-MOF is not supported (HTTP 501).
+NTIA, G7 AI SBOM, CISA 2026, FSCT 2024 and BSI come from the checker, all
+with per-rule results. MOF is not supported (HTTP 501).
 
 **CHECKER_STANDARDS** in `backend/app/conformance.py` maps a Lumina regulation
 id to the checker's standard id; add a regulation there once the checker
@@ -163,7 +162,7 @@ regulation appears in the UI only once the backend knows it. To add one:
 every side-nav screen in headless Chromium and fails on a page or console
 error, on an old sample-data string, when the regulation chips differ from the
 mocked `GET /api/v1/regulations`, when a refused request's `detail` is not
-shown, or when the BSI verdict-only result shows counts. It needs Node 18+ and
+shown, or when the per-rule BSI result lacks its DOC and COMP clusters and counts. It needs Node 18+ and
 a `node_modules` directory (outside the repository; never commit it) with
 `playwright-core`, `react@18.3.1`, `react-dom@18.3.1`,
 `@babel/standalone@7.29.0` and `lucide`, which also serve the page's CDN

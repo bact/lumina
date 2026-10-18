@@ -49,8 +49,7 @@ one per input mode plus About:
 The regulation picker lists exactly what `GET /api/v1/regulations` returns; a
 regulation with `ready: false` is shown but cannot be picked. One result view
 renders every `SbomCheckResponse`; it shows no counts when the SBOM could not
-be checked, when no rule applies (`sbom.nothing-applies`) or when the result is
-a verdict only (`sbom.verdict`). A refused request shows the server's `detail`.
+be checked or when no rule applies (`sbom.nothing-applies`). A refused request shows the server's `detail`.
 
 ## Conformance checking architecture
 
@@ -63,9 +62,10 @@ supports all but MOF.
 
 **Current checker support:**
 `ntia-conformance-checker` covers **NTIA Minimum Elements** and, partially,
-**G7 AI SBOM** and **CISA 2026 Minimum Elements** (both SPDX 3 only; rules the
-checker does not check are reported as out of scope) and **FSCT 2024** (the
-checker's `fsct3`). **BSI TR-03183** reports a verdict only. **MOF** is not
+**G7 AI SBOM**, **CISA 2026 Minimum Elements** and **BSI TR-03183-2 v2.1** (all
+SPDX 3 only; rules the checker does not check, such as elements SPDX 3.0.1
+cannot show, are reported as out of scope) and **FSCT 2024** (the checker's
+`fsct3`). **MOF** is not
 implemented in the checker.
 
 **Design principle:** the backend must present a single, uniform
@@ -81,7 +81,7 @@ These are Pydantic models in
 truth); the annotated shape below is the wire contract.
 
 The API envelope is `SbomCheckResponse`. It bundles the conformance
-verdict, run-level metadata, and (optionally) the source SBOM carried
+result, run-level metadata, and (optionally) the source SBOM carried
 inside the SARIF log.
 
 ```text
@@ -102,8 +102,7 @@ ConformanceResult                     # what was found
   unverified    : int                 # always 0 today
   gaps          : list[FieldGap]
   rules         : list[RuleResult]    # per-rule outcome, when the SARIF log
-                                      # has ruleOutcomes (the checker's do,
-                                      # except BSI's)
+                                      # has ruleOutcomes (the checker's do)
   system_judged_by_model : str?       # model name standing in for the system
 
 RuleResult
@@ -161,7 +160,6 @@ and no gap is reported.
 | :- | :--- | :------ |
 | `spdx.parsing-error`, `spdx.validation-message`, `spdx.floating-component`, `spdx.unknown-pointer` | checker | The SBOM could not be read, failed validation, or has elements not connected to its root or pointers to missing elements |
 | `sbom.nothing-applies` | checker | No rule of the regulation applies to this SBOM |
-| `sbom.verdict` | Lumina, from the log's `conformant` property | Verdict-only result (BSI): `note` if it conforms, `error` if not |
 | `sarif.no-rule-outcomes` | Lumina | The log has no `ruleOutcomes`; only missing rules are counted |
 | `pitloom.log` | Lumina, Mode 1 | A WARNING-or-above record Pitloom logged while generating |
 | `pitloom.generation-failed`, `pitloom.url-unsupported` | Lumina, Mode 1 | Pitloom failed, or the URL has no host |
@@ -177,16 +175,15 @@ in `CHECKER_STANDARDS`, and parses its SARIF into `ConformanceResult` with
 `parse_sarif`. The SPDX version (2 or 3) is detected from the file.
 
 - `ntia`, `g7ai` (partial), `cisa2026` (partial), `fsct2024` (partial) and
-  `bsi` (verdict only) are supported.
+  `bsi` (partial) are supported.
 - Per-rule results carry every rule's outcome. `out-of-scope` rules are
   catalogue-only (the checker cannot check them) and are shown as "not
   checked", never as missing. When the SBOM's only root is one AI model, the G7 AI
   check judges the system-level rules by that model and the result names it in
   `system_judged_by_model`.
-- BSI gives no per-rule results: the log sets `ruleResults: false` and a
-  `conformant` verdict, which Lumina reports as an `sbom.verdict` notification
-  with all counts 0. Once the checker reports BSI per rule, the result renders
-  like any other.
+- BSI results are per rule, in clusters `DOC` (SBOM document) and `COMP`
+  (components). A rule's `provision` is `requirement` or `permission`
+  (optional); Lumina passes it through and counts only `missing` outcomes.
 - `mof` is not supported by the checker; the API returns 501 for it.
 
 When the checker adds a regulation, add it to `RegulationId` and
@@ -310,7 +307,7 @@ forks.
 - **Body:** SARIF 2.1.0 JSON body (a SARIF URL is not supported). A declared
   `Content-Length` above `LUMINA_MAX_SBOM_BYTES` is refused with 413.
 - **Flow:** SARIF goes straight into `parse_sarif`.  No checker call;
-  the SARIF log already contains the verdict. Only the first run is read.
+  the SARIF log already contains the outcomes. Only the first run is read.
 - **Refusals (422):** a body that is not a JSON object, a `version` other than
   `2.1.0`, no runs, a field of the wrong type, or a standard Lumina does not
   support. The standard comes from rule ids of the ontology form
