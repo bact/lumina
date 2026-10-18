@@ -49,7 +49,7 @@ curl -s http://localhost/api/v1/regulations  # ntia, bsi, g7ai, cisa2026, fsct20
 
 Stop with `Ctrl+C`, then `docker compose down`.
 
-## 3. A five-minute demo script
+## 3. A six-minute demo script
 
 The repository carries two small, real files in [`demo/`](demo/): an SBOM that
 Pitloom generated for a tiny Safetensors model, and the SARIF report the checker
@@ -68,15 +68,34 @@ made from it for the G7 SBOM for AI standard.
    of its rules were not checked.
 3. **Import SARIF.** Choose `demo/phi-tiny-random.g7ai.sarif.json`. This is what
    the checker writes; Lumina shows the same result without running a check.
-4. **Generate & check** (needs internet). Paste a public Git repository URL,
-   for example `https://github.com/bact/pitloom`, or a public Hugging Face model
-   URL such as `https://huggingface.co/<owner>/<model>`, pick a standard and
-   run. Lumina generates the SBOM with Pitloom, checks it, and shows the result
-   and any warnings Pitloom raised. A Git project takes tens of seconds; a
-   Hugging Face model reads metadata only and downloads no weights.
-5. **Errors are shown, not hidden.** Upload a text file, or one over 10 MiB
+4. **Generate & check, a model with a dataset** (needs internet). Paste
+   `https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad`,
+   pick *G7 SBOM for AI*. Lumina generates the SBOM with Pitloom from the Hub
+   metadata (no weights are downloaded) and checks it. Point out: the model's
+   Apache-2.0 licence, the dataset `squad` with its own licence (CC-BY-SA-4.0,
+   read from the dataset's card) and the `trainedOn` link between them.
+5. **A project that ships a fastText model.** Paste
+   `https://github.com/bact/sentimentdemo`, pick *G7 SBOM for AI*. Pitloom finds
+   the model file and hashes it (SHA-256 and SHA-512). Its name is just
+   "model": the file name is all the file states, and the SBOM says so.
+6. **A project that ships ONNX models.** Paste
+   `https://github.com/PyThaiNLP/pythainlp`, pick *G7 SBOM for AI*. Slowest
+   step (about 12 seconds). Three ONNX models carry a version and a parameter
+   count read from the files; five CRFsuite models carry less, because that
+   format states less. The SBOM records what each file states and nothing more.
+7. **A plain Python project.** Paste `https://github.com/pallets/flask`, pick
+   *NTIA*, then *BSI TR-03183-2*. BSI shows optional elements apart from
+   *Missing* ("Not provided"): lacking them is not a gap.
+8. **Errors are shown, not hidden.** Upload a text file, or one over 10 MiB
    (`head -c 11000000 /dev/zero > big.json`): the page shows the server's
    message.
+
+Before the demo, on the demo machine and network: run `licenseid update` once
+(the Docker images do it at build time), set `HF_TOKEN` for the `api` service
+(the Hub rate-limits anonymous requests), and run steps 4 to 7 once so that
+caches are warm and every URL is known to work. A Hugging Face or GitHub
+outage on the day cannot be worked around: fall back to steps 1 to 3 and 8,
+which need no internet.
 
 To make your own SBOMs for the demo, install Pitloom and the checker as the
 "G7 SBOM for AI" page of the Pitloom documentation shows, then:
