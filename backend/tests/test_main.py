@@ -85,3 +85,16 @@ def test_oversize_upload_is_413(
     at_cap = client.post("/api/v1/sbom/check", files={"file": ("x.json", b"x" * 10)})
     assert over.status_code == 413
     assert at_cap.status_code != 413
+
+
+def test_declared_oversize_body_is_refused_before_it_is_read(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A Content-Length far above the cap is refused from the header alone."""
+    monkeypatch.setattr(main, "MAX_SBOM_BYTES", 10)
+    response = client.post(
+        "/api/v1/sbom/check",
+        files={"file": ("x.json", b"x")},
+        headers={"content-length": str(10 + 64 * 1024 + 1)},
+    )
+    assert response.status_code == 413

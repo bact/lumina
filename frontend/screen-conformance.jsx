@@ -500,7 +500,7 @@ function ImportScreen({ onComplete }) {
       <div role="radiogroup" aria-label="Regulation" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {IMPORT_REGULATIONS.map(r => (
           <RegTag key={r.id} role="radio" ariaChecked={regId === r.id} active={regId === r.id}
-            onClick={phase === "running" ? undefined : () => { setRegId(r.id); setResult(null); setPhase("idle"); }}>{r.label}</RegTag>
+            onClick={() => { if (phase !== "running") { setRegId(r.id); setResult(null); setPhase("idle"); } }}>{r.label}</RegTag>
         ))}
       </div>
 
@@ -564,7 +564,7 @@ function RuleClusters({ regulationId, rules, judgedByModel }) {
   const count = (list, outcome) => list.filter(r => r.outcome === outcome).length;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {judgedByModel && (
+      {regulationId === "g7ai" && judgedByModel && (
         <MarginNote title="System judged by model">
           This SBOM has no AI system of its own. The system-level rules were judged by the model <Mono>{judgedByModel}</Mono>.
         </MarginNote>
@@ -574,7 +574,7 @@ function RuleClusters({ regulationId, rules, judgedByModel }) {
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 500, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <span>{cl.name}</span>
             <span style={{ fontWeight: 400, color: "var(--ink-3)" }}>
-              {count(cl.rules, "present")} present · {count(cl.rules, "missing")} missing · {count(cl.rules, "out-of-scope")} not checked
+              {count(cl.rules, "present")} present · {count(cl.rules, "missing")} missing · {count(cl.rules, "not-applicable")} not applicable · {count(cl.rules, "out-of-scope")} not checked
             </span>
           </div>
           {cl.rules.map((r, i) => {

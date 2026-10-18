@@ -9,7 +9,7 @@ import os
 import tempfile
 from typing import Annotated, Any, get_args
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -51,6 +51,8 @@ app.add_middleware(
 # docs/design.md "Background job execution").  Swappable for an RQ/Taskiq backend
 # at Stage 2 without touching the endpoints below.
 # Upload cap for POST /api/v1/sbom/check; the whole file is held in memory.
+# Multipart framing and the other form fields add to the request body.
+_FORM_OVERHEAD = 64 * 1024
 MAX_SBOM_BYTES = int(os.environ.get("LUMINA_MAX_SBOM_BYTES", 50 * 1024 * 1024))
 
 _jobs = InProcessJobQueue()
@@ -107,6 +109,7 @@ def list_regulations() -> dict[str, Any]:
 
 @app.post("/api/v1/sbom/check", response_model=SbomCheckResponse)
 async def check_sbom(
+    request: Request,
     file: Annotated[
         UploadFile,
         File(description="SBOM file (SPDX 2.x / 3.0, JSON/XML/YAML/tag-value)"),
@@ -118,6 +121,11 @@ async def check_sbom(
 
     A regulation that ntia-conformance-checker does not support returns 501.
     """
+    declared = request.headers.get("content-length", "")
+    if declared.isdigit() and int(declared) > MAX_SBOM_BYTES + _FORM_OVERHEAD:
+        raise HTTPException(
+            status_code=413, detail=f"SBOM is larger than {MAX_SBOM_BYTES} bytes."
+        )
     content = await file.read(MAX_SBOM_BYTES + 1)
     if len(content) > MAX_SBOM_BYTES:
         raise HTTPException(
