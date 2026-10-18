@@ -256,3 +256,18 @@ def test_rule_title_names_the_element_not_the_failure(
 ) -> None:
     """Rule title names the element not the failure."""
     assert _rule_title(rule) == title
+
+
+@pytest.mark.parametrize(
+    ("rule_id", "regulation"),
+    [("BOM-CISA2026-META-001", "cisa2026"), ("BOM-FSCT2024-COMP-001", "ntia")],
+)
+def test_cisa_2026_rules_are_not_read_as_ntia(rule_id: str, regulation: str) -> None:
+    """The CISA 2026 prefix gets its own regulation; the older FSCT stays NTIA."""
+    log = _rule_log()
+    run = log["runs"][0]
+    del run["properties"]["complianceStandard"]
+    run["tool"]["driver"]["rules"] = [{"id": rule_id}]
+    run["results"] = []
+    run["properties"]["ruleOutcomes"] = {rule_id: "present"}
+    assert parse_sarif(log).conformance.regulation_id == regulation

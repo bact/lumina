@@ -20,7 +20,7 @@ pitloom[huggingface_hub]>=0.20.2
 spdx-tools==0.8.5
 
 # Conformance checking
-ntia-conformance-checker @ git+https://github.com/bact/ntia-conformance-checker.git@b7785f48362b52a5c6b4e13dfade55ae4754e4d2
+ntia-conformance-checker @ git+https://github.com/bact/ntia-conformance-checker.git@bebf5f85376f85c3e23e4f04e2dabd86ebc63d9a
 
 # Data validation
 pydantic==2.14.1

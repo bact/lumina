@@ -26,12 +26,18 @@ def client_fixture() -> TestClient:
 
 
 def test_regulations_report_what_the_checker_supports(client: TestClient) -> None:
-    """ntia, bsi and g7ai are ready; mof is not."""
+    """ntia, bsi, g7ai and cisa2026 are ready; mof is not."""
     ready = {
         r["id"]: r["ready"]
         for r in client.get("/api/v1/regulations").json()["regulations"]
     }
-    assert ready == {"ntia": True, "bsi": True, "g7ai": True, "mof": False}
+    assert ready == {
+        "ntia": True,
+        "bsi": True,
+        "g7ai": True,
+        "cisa2026": True,
+        "mof": False,
+    }
 
 
 def test_g7_upload_returns_per_rule_outcomes(client: TestClient) -> None:

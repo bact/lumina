@@ -58,7 +58,7 @@ _SPEC_TO_REGULATION: dict[str, RegulationId] = {
     "NTIA": "ntia",
     "FSCT": "ntia",  # FSCT (CISA Framing...) is a superset of NTIA.
     "FSCT3": "ntia",  # FSCT 3rd edition; superset of NTIA, no separate UI yet.
-    "CISA": "ntia",  # CISA 2025 SBOM Minimum Elements -- placeholder.
+    "CISA": "cisa2026",  # BOM-CISA2026-...; the digits are stripped
     "BSI": "bsi",
     "G7AI": "g7ai",
     "MOF": "mof",
@@ -74,6 +74,7 @@ _STANDARD_TO_REGULATION: dict[str, RegulationId] = {
     "bsi": "bsi",
     "g7-ai": "g7ai",
     "g7ai": "g7ai",
+    "cisa2026": "cisa2026",
     "mof": "mof",
 }
 

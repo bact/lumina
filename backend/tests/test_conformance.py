@@ -99,3 +99,12 @@ def test_g7ai_reports_every_rule_with_catalogue_only_ones_out_of_scope() -> None
     assert conf.missing == sum(
         r.outcome == "missing" for r in conf.rules if "." not in r.rule_id
     )
+
+
+def test_cisa2026_reports_its_rules_in_three_clusters() -> None:
+    """CISA 2026 is a regulation of its own, not NTIA."""
+    conf = run_checker(SPDX3_G7, "cisa2026").conformance
+    assert conf.regulation_id == "cisa2026"
+    assert len(conf.rules) == 23
+    assert {r.cluster for r in conf.rules} == {"META", "COMP", "PP"}
+    assert {r.outcome for r in conf.rules if r.cluster == "PP"} == {"out-of-scope"}

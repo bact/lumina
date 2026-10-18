@@ -39,7 +39,7 @@ G7 AI SBOM Minimum Elements, and MOF (Model Openness Framework).
 
 **Current checker support:**
 `ntia-conformance-checker` covers **NTIA Minimum Elements** and, partially,
-**G7 AI SBOM** (SPDX 3 only; rules the checker does not check are reported as
+**G7 AI SBOM** and **CISA 2026 Minimum Elements** (both SPDX 3 only; rules the checker does not check are reported as
 out of scope). **BSI TR-03183** reports a verdict only. **MOF** is not
 implemented in the checker.
 
@@ -67,7 +67,8 @@ SbomCheckResponse
                                       # when the producer chose to embed
 
 ConformanceResult                     # what was found
-  regulation_id : str                 # "ntia" | "bsi" | "g7ai" | "mof"
+  regulation_id : str                 # "ntia" | "bsi" | "g7ai" | "cisa2026"
+                                      # | "mof"
   source        : str                 # "ntia-conformance-checker"
                                       # | "lumina-internal" | "external-sarif"
   total         : int
@@ -127,14 +128,15 @@ truth) runs `ntia-conformance-checker` for a regulation, using the standard id
 in `CHECKER_STANDARDS`, and parses its SARIF into `ConformanceResult` with
 `parse_sarif`. The SPDX version (2 or 3) is detected from the file.
 
-- `ntia`, `g7ai` (partial) and `bsi` (verdict only) are supported.
+- `ntia`, `g7ai` (partial), `cisa2026` (partial) and `bsi` (verdict only) are
+  supported.
 - G7 AI results carry every rule's outcome. `out-of-scope` rules are
   catalogue-only (the checker cannot check them) and are shown as "not
   checked", never as missing. When the SBOM has no AI system of its own, the
   checker judges the system-level rules by its one AI model and the result
   names it in `system_judged_by_model`.
-- The *Generate & check* screen lets the user pick NTIA or G7 AI and shows
-  G7 outcomes grouped by cluster. The static viewer screens (Overview,
+- The *Generate & check* screen lets the user pick NTIA, G7 AI or CISA 2026
+  and shows G7 and CISA outcomes grouped by cluster. The static viewer screens (Overview,
   Inventory, Conformance) still show prototype data; `frontend/data.js` keeps
   its `g7ai` entry `active: false` until they are fed from results.
 - `mof` is not supported by the checker; the API returns 501 for it.

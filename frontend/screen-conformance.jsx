@@ -421,18 +421,26 @@ function WhereToLook({ hint }) {
 const IMPORT_REGULATIONS = [
   { id: "ntia", label: "NTIA Minimum Elements" },
   { id: "g7ai", label: "G7 SBOM for AI" },
+  { id: "cisa2026", label: "CISA 2026 Minimum Elements" },
 ];
 
-// G7 SBOM for AI rule clusters, in the order of the rule ids.
-const G7_CLUSTERS = [
-  { code: "MD",  name: "Metadata" },
-  { code: "SLP", name: "System-level properties" },
-  { code: "MDL", name: "Models" },
-  { code: "DP",  name: "Dataset properties" },
-  { code: "INF", name: "Infrastructure" },
-  { code: "SP",  name: "Security properties" },
-  { code: "KPI", name: "Key performance indicators" },
-];
+// Rule clusters per regulation (the cluster segment of the rule id), in order.
+const RULE_CLUSTERS = {
+  g7ai: [
+    { code: "MD",  name: "Metadata" },
+    { code: "SLP", name: "System-level properties" },
+    { code: "MDL", name: "Models" },
+    { code: "DP",  name: "Dataset properties" },
+    { code: "INF", name: "Infrastructure" },
+    { code: "SP",  name: "Security properties" },
+    { code: "KPI", name: "Key performance indicators" },
+  ],
+  cisa2026: [
+    { code: "META", name: "SBOM metadata" },
+    { code: "COMP", name: "Component data" },
+    { code: "PP",   name: "Practices and processes" },
+  ],
+};
 
 function ImportScreen({ onComplete }) {
   const [url, setUrl] = _useSC("");
@@ -550,8 +558,8 @@ const RULE_CHIP = {
   "out-of-scope": { status: "neutral", label: "Not checked" },
 };
 
-function RuleClusters({ rules, judgedByModel }) {
-  const clusters = G7_CLUSTERS.map(cl => ({ ...cl, rules: rules.filter(r => r.cluster === cl.code) }))
+function RuleClusters({ regulationId, rules, judgedByModel }) {
+  const clusters = (RULE_CLUSTERS[regulationId] || []).map(cl => ({ ...cl, rules: rules.filter(r => r.cluster === cl.code) }))
     .filter(cl => cl.rules.length > 0);
   const count = (list, outcome) => list.filter(r => r.outcome === outcome).length;
   return (
@@ -618,7 +626,7 @@ function ArtifactResult({ result }) {
         <SummaryTile label="Unverified" value={c.unverified ?? 0} accent={(c.unverified ?? 0) > 0 ? "#2F4A6B" : undefined} />
       </div>
 
-      {rules.length > 0 && <RuleClusters rules={rules} judgedByModel={c.system_judged_by_model} />}
+      {rules.length > 0 && <RuleClusters regulationId={c.regulation_id} rules={rules} judgedByModel={c.system_judged_by_model} />}
 
       {gaps.length > 0 && (
         <Card padding={0}>
