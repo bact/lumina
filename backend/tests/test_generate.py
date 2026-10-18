@@ -8,10 +8,10 @@
 from __future__ import annotations
 
 import http.server
+import importlib.util
 import json
 import logging
 import shutil
-import importlib.util
 import threading
 from pathlib import Path
 
@@ -23,7 +23,6 @@ from app.generate import _ensure_public_http_url
 from app.generators import GenerationError, generate_from_huggingface
 from app.generators.base import creation_info
 from app.generators.git import _run_pitloom, _shallow_clone
-
 
 SPDX3_FIXTURE = Path(__file__).parent / "fixtures" / "sbom" / "spdx3_g7ai.json"
 
@@ -162,7 +161,7 @@ def test_clone_does_not_follow_a_redirect(tmp_path: Path) -> None:
     class Target(http.server.BaseHTTPRequestHandler):
         """A request handler."""
 
-        def do_GET(self) -> None:  # noqa: N802  # pylint: disable=invalid-name
+        def do_GET(self) -> None:  # pylint: disable=invalid-name
             """Answer a GET request."""
             hits.append(self.path)
             self.send_response(404)
@@ -176,7 +175,7 @@ def test_clone_does_not_follow_a_redirect(tmp_path: Path) -> None:
     class Redirect(http.server.BaseHTTPRequestHandler):
         """A request handler."""
 
-        def do_GET(self) -> None:  # noqa: N802  # pylint: disable=invalid-name
+        def do_GET(self) -> None:  # pylint: disable=invalid-name
             """Answer a GET request."""
             self.send_response(302)
             self.send_header("Location", f"http://127.0.0.1:{target.server_port}/x")

@@ -73,7 +73,7 @@ class ConformanceResult(BaseModel):
     @classmethod
     def nothing_checked(
         cls, regulation_id: RegulationId, source: CheckerSource
-    ) -> "ConformanceResult":
+    ) -> ConformanceResult:
         """A result with no counts and no findings: nothing was checked."""
         return cls(
             regulation_id=regulation_id,

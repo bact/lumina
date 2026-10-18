@@ -33,5 +33,5 @@ def generate_from_huggingface(model_source: str, output_path: str) -> None:
             output_path=Path(output_path),
             creation_metadata=creation_info(),
         )
-    except Exception as exc:  # noqa: BLE001 - normalised to GenerationError
+    except Exception as exc:
         raise GenerationError("pitloom.generation-failed", str(exc)) from exc

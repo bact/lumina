@@ -35,8 +35,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +151,7 @@ class InProcessJobQueue(JobQueue):
                 # run it off the event loop.
                 record.result = await asyncio.to_thread(fn, **kwargs)
                 record.status = "done"
-            except Exception as exc:  # noqa: BLE001, pylint: disable=broad-exception-caught
+            except Exception as exc:
                 # Job runner boundary: any failure must be captured and
                 # reported via JobRecord.error, so we deliberately catch all.
                 logger.exception("Job %s (%s) failed", job_id, job_name)

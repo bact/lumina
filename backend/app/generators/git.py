@@ -96,5 +96,5 @@ def _run_pitloom(project_dir: str, output_path: str) -> None:
             # host paths (fragments, ID registry) or switch features on.
             pitloom_config=PitloomConfig(),
         )
-    except Exception as exc:  # noqa: BLE001 - normalised to GenerationError
+    except Exception as exc:
         raise GenerationError("pitloom.generation-failed", str(exc)) from exc

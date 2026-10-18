@@ -5,13 +5,6 @@
 
 version: 2
 updates:
-- package-ecosystem: "github-actions"
-  cooldown:
-    default-days: 7
-  directory: "/"
-  schedule:
-    interval: "weekly"
-  open-pull-requests-limit: 10
 - package-ecosystem: "pip"
   cooldown:
     default-days: 7
