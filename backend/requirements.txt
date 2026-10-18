@@ -18,7 +18,7 @@ pitloom>=0.20.1
 spdx-tools==0.8.5
 
 # Conformance checking
-ntia-conformance-checker @ git+https://github.com/bact/ntia-conformance-checker.git@9b7017487f40938248ba7840c9a8167c86ca85ca
+ntia-conformance-checker @ git+https://github.com/bact/ntia-conformance-checker.git@b7785f48362b52a5c6b4e13dfade55ae4754e4d2
 
 # Data validation
 pydantic==2.14.1
