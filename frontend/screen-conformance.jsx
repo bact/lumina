@@ -281,7 +281,7 @@ function RuleClusters({ regulationId, rules, judgedByModel }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {regulationId === "g7ai" && judgedByModel && (
         <MarginNote title="System judged by model">
-          This SBOM has no AI system of its own. The system-level rules were judged by the model <Mono>{judgedByModel}</Mono>.
+          This SBOM describes only one AI model and nothing else. The system-level rules were judged by that model, <Mono>{judgedByModel}</Mono>.
         </MarginNote>
       )}
       {ruleClusters(regulationId, rules).map(cl => (

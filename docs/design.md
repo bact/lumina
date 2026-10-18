@@ -180,9 +180,9 @@ in `CHECKER_STANDARDS`, and parses its SARIF into `ConformanceResult` with
   `bsi` (verdict only) are supported.
 - Per-rule results carry every rule's outcome. `out-of-scope` rules are
   catalogue-only (the checker cannot check them) and are shown as "not
-  checked", never as missing. When the SBOM has no AI system of its own, the
-  G7 AI check judges the system-level rules by its one AI model and the result
-  names it in `system_judged_by_model`.
+  checked", never as missing. When the SBOM's only root is one AI model, the G7 AI
+  check judges the system-level rules by that model and the result names it in
+  `system_judged_by_model`.
 - BSI gives no per-rule results: the log sets `ruleResults: false` and a
   `conformant` verdict, which Lumina reports as an `sbom.verdict` notification
   with all counts 0. Once the checker reports BSI per rule, the result renders
