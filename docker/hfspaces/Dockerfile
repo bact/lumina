@@ -32,6 +32,11 @@ RUN git clone --depth 1 --branch ${LUMINA_REF} ${LUMINA_REPO} /lumina
 WORKDIR /lumina/backend
 RUN pip install --no-cache-dir -r requirements.txt
 
+# SPDX licence list for Pitloom: without it licence ids stay as written (for
+# example "apache-2.0") and every generated SBOM carries a warning saying so.
+# A failed download does not fail the build; the warning then tells the truth.
+RUN licenseid update || echo "licenseid update failed: licence ids will not be canonicalised"
+
 # supervisord drop-in
 RUN cat > /etc/supervisor/conf.d/lumina.conf << 'EOF'
 [program:api]

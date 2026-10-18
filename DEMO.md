@@ -96,6 +96,7 @@ For a curl-only demo of the API (no web page). Needs Python 3.14 and `git`.
 cd backend
 python3.14 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt          # one to four minutes
+licenseid update                         # SPDX licence list; without it licence ids are not canonicalised
 uvicorn app.main:app --port 8000          # leave running; use a second terminal below
 # second terminal, from the repository root:
 cd backend && curl -s -F file=@../demo/phi-tiny-random.spdx3.json -F regulation=g7ai \
