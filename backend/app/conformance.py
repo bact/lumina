@@ -121,9 +121,10 @@ class EmbeddedSbom(BaseModel):
 
     Mirrors SARIF ``artifact.contents`` (§3.24.7).  Exactly one of ``text``
     or ``binary_base64`` is set, matching the SARIF spec's mutual exclusion.
-    Lumina populates this when ``ntia-conformance-checker --embed-sbom`` is
-    used so the frontend can render the SBOM alongside conformance findings
-    from a single round-trip.
+    Set on ``POST /api/v1/sarif/import`` when the producer embedded the SBOM
+    (``output_sarif(embed_sbom=True)``, the checker CLI's ``sarif-sbom``
+    output), so a client can show it alongside the findings from one
+    round-trip; the web UI does not yet.
     """
 
     uri: str

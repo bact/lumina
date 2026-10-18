@@ -28,7 +28,7 @@ from .sarif_ingest import SarifIngestError, parse_sarif
 
 app = FastAPI(
     title="Lumina",
-    description="SBOM viewer and conformance checker API.",
+    description="SBOM conformance checker API.",
     version="0.1.0",
 )
 

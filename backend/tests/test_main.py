@@ -26,7 +26,7 @@ def client_fixture() -> TestClient:
 
 
 def test_regulations_report_what_the_checker_supports(client: TestClient) -> None:
-    """ntia, bsi, g7ai, cisa2026 and fsct2024 are ready; mof is not."""
+    """Ntia, bsi, g7ai, cisa2026 and fsct2024 are ready; mof is not."""
     ready = {
         r["id"]: r["ready"]
         for r in client.get("/api/v1/regulations").json()["regulations"]
@@ -138,7 +138,7 @@ def test_a_body_over_the_default_cap_is_413(client: TestClient) -> None:
 def test_upload_suffix_is_a_plain_extension(
     filename: str | None, expected: str
 ) -> None:
-    """Upload suffix is a plain extension."""
+    """The temp file keeps a plain extension of the upload, else ``.spdx``."""
     assert main._suffix(filename) == expected  # pylint: disable=protected-access
 
 
@@ -161,7 +161,7 @@ def test_odd_upload_filenames_do_not_crash(client: TestClient, name: str) -> Non
 def test_max_sbom_bytes_ignores_a_bad_setting(
     monkeypatch: pytest.MonkeyPatch, raw: str, expected: int
 ) -> None:
-    """Max sbom bytes ignores a bad setting."""
+    """A missing, non-numeric or zero LUMINA_MAX_SBOM_BYTES gives the default."""
     monkeypatch.setenv("LUMINA_MAX_SBOM_BYTES", raw)
     assert main._max_sbom_bytes() == expected  # pylint: disable=protected-access
 
@@ -169,7 +169,7 @@ def test_max_sbom_bytes_ignores_a_bad_setting(
 def test_an_oversize_sarif_body_is_refused(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The SARIF import has the same size cap as an upload."""
+    """A SARIF body declared larger than the cap is refused (413)."""
     monkeypatch.setattr(main, "MAX_SBOM_BYTES", 10)
     response = client.post("/api/v1/sarif/import", json={"pad": "x" * 100})
     assert response.status_code == 413

@@ -19,7 +19,7 @@ _FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures", "sarif")
 
 
 def _load(name: str) -> dict[str, Any]:
-    """load."""
+    """The SARIF fixture *name* as a dict."""
     with open(os.path.join(_FIXTURES, name), encoding="utf-8") as f:
         result: dict[str, Any] = json.load(f)
         return result
@@ -181,7 +181,7 @@ def test_nothing_applies_is_all_not_applicable() -> None:
 
 
 def _rule_log() -> dict[str, Any]:
-    """rule log."""
+    """A G7 AI log with rule outcomes and a model standing in for the system."""
     log = _load("g7ai_missing_model_info.sarif.json")
     run = log["runs"][0]
     run["properties"]["systemJudgedByModel"] = "m"
@@ -259,7 +259,7 @@ def test_rule_title_names_the_element_not_the_failure(
 
 
 def _log_of_rule(rule_id: str, standard: str | None) -> dict[str, Any]:
-    """log of rule."""
+    """A log whose only rule is *rule_id*, with an optional standard hint."""
     log = _rule_log()
     run = log["runs"][0]
     run["properties"].pop("complianceStandard")
@@ -355,7 +355,7 @@ def test_wrongly_typed_sarif_is_refused_not_a_crash(
 
 
 def _result(rule_id: str) -> dict[str, Any]:
-    """result."""
+    """A SARIF result for *rule_id*."""
     return {"ruleId": rule_id, "message": {"text": "x"}}
 
 

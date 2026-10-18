@@ -28,7 +28,7 @@ BSI_MISSING_CREATOR = os.path.join(_SBOMS, "spdx3_bsi_missing_creator.json")
 
 
 def test_ntia_on_spdx2_reports_the_missing_supplier() -> None:
-    """Ntia on spdx2 reports the missing supplier."""
+    """NTIA on an SPDX 2 SBOM reports the missing supplier."""
     conf = run_checker(SPDX2, "ntia").conformance
     assert (conf.regulation_id, conf.source) == ("ntia", "ntia-conformance-checker")
     assert {g.field_key for g in conf.gaps} == {"supplier"}
@@ -36,15 +36,17 @@ def test_ntia_on_spdx2_reports_the_missing_supplier() -> None:
 
 
 def test_g7ai_on_spdx3_detects_the_format() -> None:
-    # An SPDX 3 file would read as SPDX 2 (all rules not applicable) without detection.
-    """G7ai on spdx3 detects the format."""
+    """An SPDX 3 file is read as SPDX 3.
+
+    Read as SPDX 2 (the checker's default), every rule would be not applicable.
+    """
     conf = run_checker(SPDX3_G7, "g7ai").conformance
     assert conf.regulation_id == "g7ai"
     assert (conf.total, conf.missing, conf.gaps) == (56, 1, [])
 
 
 def test_g7ai_on_spdx2_has_nothing_to_check() -> None:
-    """G7ai on spdx2 has nothing to check."""
+    """G7 AI on an SPDX 2 SBOM checks nothing and says so."""
     response = run_checker(SPDX2, "g7ai")
     assert response.conformance.total == 0
     notes = {n.descriptor_id for n in response.run.notifications}
@@ -52,7 +54,7 @@ def test_g7ai_on_spdx2_has_nothing_to_check() -> None:
 
 
 def _verdict(response: SbomCheckResponse) -> Notification:
-    """verdict."""
+    """The one ``sbom.verdict`` notification of *response*."""
     (note,) = [
         n for n in response.run.notifications if n.descriptor_id == "sbom.verdict"
     ]
@@ -60,8 +62,7 @@ def _verdict(response: SbomCheckResponse) -> Notification:
 
 
 def test_bsi_reports_its_verdict_as_a_notification() -> None:
-    # BSI has no per-requirement results; the verdict is all the log carries.
-    """Bsi reports its verdict as a notification."""
+    """BSI has no per-rule results: its verdict is an ``sbom.verdict`` note."""
     ok = run_checker(BSI_OK, "bsi")
     bad = run_checker(BSI_MISSING_CREATOR, "bsi")
     assert ok.conformance.gaps == bad.conformance.gaps == []
@@ -69,20 +70,20 @@ def test_bsi_reports_its_verdict_as_a_notification() -> None:
 
 
 def test_spdx21_is_still_checked() -> None:
-    """Spdx21 is still checked."""
+    """An SPDX 2.1 SBOM is still checked."""
     conf = run_checker(SPDX21, "ntia").conformance
     assert conf.total == 7
 
 
 def test_unsupported_regulation() -> None:
-    """Unsupported regulation."""
+    """MOF has no checker standard and is refused."""
     assert "mof" not in CHECKER_STANDARDS
     with pytest.raises(NotImplementedError, match="mof"):
         run_checker(SPDX2, "mof")
 
 
 def test_unreadable_sbom(tmp_path: Path) -> None:
-    """Unreadable sbom."""
+    """A file with no SPDX version is refused with ValueError."""
     path = tmp_path / "not-an-sbom.json"
     path.write_text("{}", encoding="utf-8")
     with pytest.raises(ValueError, match="SPDX version"):
