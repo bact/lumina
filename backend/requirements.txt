@@ -21,7 +21,7 @@ pitloom[fasttext,gguf,huggingface_hub,numpy,onnx,safetensors] @ git+https://gith
 spdx-tools==0.8.5
 
 # Conformance checking
-ntia-conformance-checker @ git+https://github.com/bact/ntia-conformance-checker.git@41438921eb9a1a190e7839ab483bb6e8b404a3bd
+ntia-conformance-checker @ git+https://github.com/bact/ntia-conformance-checker.git@34c00ba1c31ac3e3f43d159d1c6a3530eed0ed50
 
 # Data validation
 pydantic==2.14.1
