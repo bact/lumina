@@ -21,6 +21,8 @@ The web UI has four screens: *Generate & check* (a URL), *Upload SBOM*,
 
 ---
 
+For a demo on a new machine, see [DEMO.md](DEMO.md).
+
 ## Quick start with Docker
 
 **Prerequisites:** Docker and Docker Compose (v2).

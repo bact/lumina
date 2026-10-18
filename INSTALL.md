@@ -10,6 +10,8 @@ SPDX-License-Identifier: CC0-1.0
 Lumina runs as a Docker container (or two). Pick the option that fits your
 situation, then follow its section end-to-end.
 
+> Setting up a demo on a new machine? Follow [DEMO.md](DEMO.md).
+
 ## Deployment options
 
 | Option | Platform | Cost | Always-on | Config in |
