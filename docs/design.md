@@ -336,9 +336,10 @@ Guidance:
 
 The wire format between ntia-conformance-checker, Pitloom-mediated
 calls, third-party producers, and Lumina is **SARIF 2.1.0**.  Rule ids
-follow `SBOM-[SPEC]-[CATEGORY]-[NNN]` (see ntia-conformance-checker's
-`RULES.md`), where `SPEC` is the spec id uppercased (e.g. `NTIA`,
-`FSCT3`).  The lowercased rule id is OSCAL-control-id-shaped so a future
+follow `BOM-[SPEC][YEAR]-[CATEGORY]-[NNN]` (the SBOM requirements ontology),
+where `SPEC` and `YEAR` name the standard and edition (e.g. `NTIA2021`,
+`CISA2026`). No other form is read, and a standard or edition Lumina does not
+support is refused, not mapped to another.  The lowercased rule id is OSCAL-control-id-shaped so a future
 OSCAL exporter on either side can reuse them as `control` / `group`
 ids without remapping.
 

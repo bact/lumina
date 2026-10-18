@@ -9,7 +9,7 @@
           "version": "1.0.0",
           "rules": [
             {
-              "id": "SBOM-FSCT3-COMP-001",
+              "id": "BOM-NTIA2021-COMP-001",
               "name": "CustomCheck",
               "properties": {
                 "slug": "fsct3-component-name-missing",
@@ -32,7 +32,7 @@
         }
       ],
       "properties": {
-        "complianceStandard": "fsct3",
+        "complianceStandard": "ntia",
         "sbomName": "example",
         "sbomSpec": "spdx2",
         "maturityTarget": 0

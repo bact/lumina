@@ -18,8 +18,7 @@ requirements ontology (``https://bact.github.io/bom/``):
   kept in the rule lookup table, not interpreted.
 * ``NNN`` is a 3-digit sequence number; ``.M`` marks a sub-element of rule ``NNN``.
 
-The ``SBOM-[SPEC]-[CATEGORY]-[NNN]`` and ``[SPEC]-[CATEGORY]-[NN]`` forms are
-also read (see :func:`_spec_of`).
+Only this form is read; ids in any other shape name no standard.
 
 ``run.properties.ruleOutcomes``, when present, sets the counts: decided
 (present or missing) top-level rules only.
@@ -53,20 +52,12 @@ from .conformance import (
 
 # Map the SPEC segment of a rule id, uppercased and whole (``CISA2026`` keeps
 # its year: another edition is another document) -> Lumina regulation id.
-# Extend when a new edition or RegulationId literal is supported.  The forms
-# without a year are the older ``SBOM-[SPEC]-...`` and ``[SPEC]-...`` ids.
+# Extend when a new edition or RegulationId literal is supported.
 _SPEC_TO_REGULATION: dict[str, RegulationId] = {
     "NTIA2021": "ntia",
-    "FSCT2024": "ntia",  # FSCT (CISA Framing...) is a superset of NTIA.
     "BSI2025": "bsi",
     "G7AI2026": "g7ai",
     "CISA2026": "cisa2026",
-    "NTIA": "ntia",
-    "FSCT": "ntia",
-    "FSCT3": "ntia",  # FSCT 3rd edition; superset of NTIA, no separate UI yet.
-    "BSI": "bsi",
-    "G7AI": "g7ai",
-    "MOF": "mof",
 }
 
 # Map ntia-conformance-checker ``complianceStandard`` (the spec id) to a
@@ -74,10 +65,7 @@ _SPEC_TO_REGULATION: dict[str, RegulationId] = {
 # heterogeneous rule sets.
 _STANDARD_TO_REGULATION: dict[str, RegulationId] = {
     "ntia": "ntia",
-    "fsct3": "ntia",
-    "fsct3-min": "ntia",  # legacy spec id (pre-rename)
     "bsi": "bsi",
-    "g7-ai": "g7ai",
     "g7ai": "g7ai",
     "cisa2026": "cisa2026",
     "mof": "mof",
@@ -99,19 +87,15 @@ def _require(condition: bool, message: str) -> None:
 
 
 def _spec_of(rule_id: str) -> str:
-    """Return the SPEC segment of a rule id, uppercased.
+    """Return the SPEC+YEAR segment of a rule id, uppercased.
 
-    ``BOM-G7AI2026-MDL-001`` -> ``G7AI2026``, the year kept; also
-    ``SBOM-[SPEC]-...`` and ``[SPEC]-...``.
+    ``BOM-G7AI2026-MDL-001`` -> ``G7AI2026``. An id of any other shape gives
+    ``""``.
     """
-    parts = [p for p in rule_id.split("-") if p]
-    if not parts:
-        return ""
-    if parts[0].upper() == "BOM" and len(parts) > 1:
+    parts = rule_id.split("-")
+    if len(parts) > 1 and parts[0].upper() == "BOM":
         return parts[1].upper()
-    if parts[0].upper() == "SBOM" and len(parts) > 1:
-        return parts[1].upper()
-    return parts[0].upper()
+    return ""
 
 
 def _logical_location(result: dict[str, Any]) -> tuple[str, str]:
