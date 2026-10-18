@@ -33,7 +33,7 @@ Python minimum: **3.14**. Use `python3.14` when running outside Docker.
 
 ```text
 lumina/
-├── docker-compose.yml          Production compose (nginx target: prod)
+├── docker-compose.yml          Base compose (nginx target: prod; api with --reload)
 ├── docker-compose.override.yml Dev overrides — auto-loaded; nginx target: dev,
 │                               mounts frontend/ at /workspace/frontend
 ├── .dockerignore               Keeps caches/git/docs out of Docker build context

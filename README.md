@@ -7,12 +7,17 @@ SPDX-License-Identifier: CC0-1.0
 
 # Lumina
 
-A web-based Software Bill of Materials (SBOM) viewer and conformance checker.
+A web-based Software Bill of Materials (SBOM) conformance checker.
 
-Lumina reads an SBOM and shows whether the fields a given regulation actually
-asks for are present -- so the answer to *"are we conformant?"* stops being a
-folder of PDFs. The checks themselves are run by
+Lumina checks an SBOM against a regulation's minimum elements and shows, rule
+by rule, whether the SBOM has the property each rule asks for -- so the answer
+to *"are we conformant?"* stops being a folder of PDFs. Bring an SBOM file, a
+SARIF log from a checker, or a Git or Hugging Face URL for Lumina to generate
+an SBOM from. The checks themselves are run by
 [ntia-conformance-checker](https://github.com/spdx/ntia-conformance-checker).
+
+The web UI has four screens: *Generate & check* (a URL), *Upload SBOM*,
+*Import SARIF* and *About*. It shows only what the API returns.
 
 ---
 
@@ -93,6 +98,18 @@ uvicorn app.main:app --reload
 Requires Python 3.14. SBOM generation also needs `git` on PATH (for cloning
 repository URLs); Pitloom is installed via `requirements.txt`.
 
+Run the backend checks (from `backend/`):
+
+```shell
+pip install -r requirements-dev.txt
+pytest
+mypy
+pylint app tests
+```
+
+The frontend has a headless-browser smoke test, `scripts/ui-smoke.mjs`; see
+[AGENTS.md](AGENTS.md#ui-smoke-test).
+
 ### Open a shell in a running container
 
 ```shell
@@ -146,24 +163,26 @@ Requirement ids are the [SBOM requirements ontology][bom] ids, for example
 | Endpoint | Purpose |
 | - | - |
 | `GET /api/v1/regulations` | Regulations Lumina knows, with `ready` set when the checker supports them |
-| `POST /api/v1/sbom/check` | Upload an SBOM (SPDX 2.2, 2.3 or 3.0; JSON, XML, YAML, tag-value) and check it |
+| `POST /api/v1/sbom/check` | Upload an SBOM (SPDX 2 or 3; up to 10 MiB by default) and check it |
 | `POST /api/v1/artifact/check` | Generate an SBOM from a Git or Hugging Face URL, then check it (background job) |
 | `GET /api/v1/jobs/{job_id}` | Status and result of a background job |
 | `POST /api/v1/sarif/import` | Read a SARIF 2.1.0 log from any producer, without running a check |
 
-Every check returns one `SbomCheckResponse`: the conformance result (counts and
-gaps), the checker run (tool, version, notifications), and, when the log embeds
-it, the SBOM.
+Every check returns one `SbomCheckResponse`: the conformance result (counts,
+per-rule outcomes and gaps), the checker run (tool, version, the generator of a
+generated SBOM, notifications), and, when an imported SARIF log embeds it, the
+SBOM. A refused request (413 too large, 422 unreadable or unsupported, 501
+unsupported regulation) carries the reason in `detail`.
 
 ### Adding a regulation
 
 Add it to `RegulationId` and `CHECKER_STANDARDS` in
 [`backend/app/conformance.py`](backend/app/conformance.py) once the checker
-supports it. See [AGENTS.md](AGENTS.md) for the UI steps.
+supports it; the UI lists what `GET /api/v1/regulations` returns. See
+[AGENTS.md](AGENTS.md#adding-a-regulation) for the SARIF and UI steps.
 
-**Roadmap:** EU CRA, EO 14028, FDA PMP, and ISO/IEC 5230 are planned. Their
-ids are reserved in `plannedRegulations` (`frontend/data.js`); the UI shows
-only regulations that are actually supported.
+**Roadmap:** EU CRA, EO 14028, FDA PMP, and ISO/IEC 5230 are planned; none is
+in the API yet.
 
 See [docs/design.md](docs/design.md) for the full architecture.
 
@@ -177,20 +196,20 @@ See [docs/design.md](docs/design.md) for the full architecture.
 
 ```text
 lumina/
-├── docker-compose.yml          Production compose (nginx target: prod)
+├── docker-compose.yml          Base compose (nginx target: prod; api with --reload)
 ├── docker-compose.override.yml Dev overrides — auto-loaded; nginx target: dev
 ├── proxy/                      Reverse-proxy service (nginx)
 │   ├── Dockerfile              Multi-stage: dev (config only) / prod (self-contained)
 │   ├── prod.conf               Prod: root /app, frontend only
 │   └── dev.conf                Dev: root /workspace/frontend (bind-mounted frontend/)
-├── frontend/                   Frontend source — always in the Docker image
-│   ├── index.html              Implementation entry + router
-│   ├── colors-and-type.css     Design tokens (canonical copy)
+├── frontend/                   Static frontend (see frontend/readme.md)
+│   ├── index.html              Entry point + router
+│   ├── colors-and-type.css     Design tokens
 │   ├── assets/                 Logo SVGs
-│   └── *.jsx / *.js            Screens and components
+│   └── *.jsx / *.js            Shell, shared components, screens
 ├── backend/                    Python API
 │   ├── Dockerfile
-│   ├── requirements.txt        Pitloom as a minimum version, the rest pinned; the checker by commit SHA
+│   ├── requirements.txt        Pinned; Pitloom and the checker by Git commit
 │   └── app/
 │       ├── main.py             FastAPI app + endpoints
 │       ├── conformance.py      run_checker, CHECKER_STANDARDS, schemas
@@ -200,7 +219,9 @@ lumina/
 │       └── generators/         Pitloom-backed SBOM generators (git, hf)
 ├── scripts/
 │   ├── oci-launch.sh           Retry-launch an Oracle Cloud A1 free VM (capacity loop)
-│   └── cloud-init.sh           First-boot script: installs Docker on the VM
+│   ├── oci-launch.env.example  Template for oci-launch.sh's local config
+│   ├── cloud-init.sh           First-boot script: installs Docker on the VM
+│   └── ui-smoke.mjs            Headless-browser smoke test of the frontend (see AGENTS.md)
 ├── docs/
 │   └── design.md               Architecture and design decisions
 └── INSTALL.md                  Free public-deployment guide
