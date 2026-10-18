@@ -294,6 +294,8 @@ def test_rule_id_names_the_standard_with_its_edition(
         ("BOM-G7AI2027-MD-001", None),
         ("BOM-CISA2025-META-001", "cisa2025"),
         ("BOM-UNKNOWN-1", None),
+        # A hint naming an unknown standard is not overridden by the rule ids.
+        ("BOM-CISA2026-META-001", "cisa2025"),
     ],
 )
 def test_unsupported_standard_is_reported_not_guessed(
