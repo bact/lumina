@@ -175,3 +175,49 @@ def test_nothing_applies_is_all_not_applicable() -> None:
     }
     conf = parse_sarif(log).conformance
     assert (conf.total, conf.present, conf.missing) == (0, 0, 0)
+
+
+def _rule_log() -> dict[str, Any]:
+    log = _load("g7ai_missing_model_info.sarif.json")
+    run = log["runs"][0]
+    run["properties"]["systemJudgedByModel"] = "m"
+    return log
+
+
+def test_rule_results_carry_cluster_title_and_outcome() -> None:
+    conf = parse_sarif(_rule_log()).conformance
+    by_id = {r.rule_id: r for r in conf.rules}
+    outcomes = _rule_log()["runs"][0]["properties"]["ruleOutcomes"]
+    assert conf.rules and set(by_id) <= set(outcomes)
+    for rule in conf.rules:
+        assert rule.outcome == outcomes[rule.rule_id]
+        assert rule.cluster == rule.rule_id.split("-")[2]
+    assert {r.outcome for r in conf.rules} >= {"present", "missing"}
+    assert all(r.title for r in conf.rules)
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [("m", "m"), (None, None), ("", None), (3, None), (["m"], None)],
+)
+def test_system_judged_by_model_only_when_a_name(
+    value: object, expected: str | None
+) -> None:
+    log = _rule_log()
+    log["runs"][0]["properties"]["systemJudgedByModel"] = value
+    assert parse_sarif(log).conformance.system_judged_by_model == expected
+
+
+@pytest.mark.parametrize("outcomes", [None, "x", ["present"], {}])
+def test_no_usable_rule_outcomes_gives_no_rules(outcomes: object) -> None:
+    log = _rule_log()
+    log["runs"][0]["properties"]["ruleOutcomes"] = outcomes
+    assert parse_sarif(log).conformance.rules == []
+
+
+def test_unknown_outcome_value_is_skipped_not_guessed() -> None:
+    log = _rule_log()
+    props = log["runs"][0]["properties"]["ruleOutcomes"]
+    victim = next(iter(props))
+    props[victim] = "maybe"
+    assert victim not in {r.rule_id for r in parse_sarif(log).conformance.rules}

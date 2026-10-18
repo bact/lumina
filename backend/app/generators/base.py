@@ -38,6 +38,6 @@ def creation_info() -> Any:
     """Pitloom ``CreationMetadata`` identifying Lumina as the SBOM creator."""
     # Imported lazily; see module docstring.
     # pylint: disable=import-outside-toplevel
-    from pitloom.core.creation import CreationMetadata
+    from pitloom.core.creation import CreationMetadata, Creator
 
-    return CreationMetadata(creator_name="Lumina")
+    return CreationMetadata(creators=[Creator(name="Lumina", type="software-agent")])

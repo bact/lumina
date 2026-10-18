@@ -46,6 +46,8 @@ from .conformance import (
     Notification,
     NotificationLevel,
     RegulationId,
+    RuleOutcome,
+    RuleResult,
     SbomCheckResponse,
 )
 
@@ -303,6 +305,47 @@ def _count_totals(
     return total, present, missing
 
 
+def _judged_by_model(properties: dict[str, Any]) -> str | None:
+    """Return ``run.properties.systemJudgedByModel`` when it is a non-empty string."""
+    value = properties.get("systemJudgedByModel")
+    return value if isinstance(value, str) and value else None
+
+
+def _cluster_of(rule_id: str) -> str:
+    """Return the cluster code of ``BOM-G7AI2026-MDL-006.1`` -> ``MDL``."""
+    parts = rule_id.split("-")
+    return parts[2].upper() if len(parts) > 3 else ""
+
+
+def _build_rule_results(
+    outcomes: Any, rule_index: dict[str, dict[str, Any]]
+) -> list[RuleResult]:
+    """List the outcome of every catalogue rule named in ``ruleOutcomes``.
+
+    Outcomes without a rule descriptor and values outside the known outcome
+    vocabulary are skipped, not guessed.
+    """
+    if not isinstance(outcomes, dict):
+        return []
+    known: tuple[RuleOutcome, ...] = get_args(RuleOutcome)
+    rules: list[RuleResult] = []
+    for rule_id, rule in rule_index.items():
+        outcome = next((k for k in known if k == outcomes.get(rule_id)), None)
+        if outcome is None:
+            continue
+        props = rule.get("properties") or {}
+        rules.append(
+            RuleResult(
+                rule_id=rule_id,
+                cluster=_cluster_of(rule_id),
+                title=str((rule.get("shortDescription") or {}).get("text") or ""),
+                provision=str(props.get("provision") or ""),
+                outcome=outcome,
+            )
+        )
+    return rules
+
+
 def _build_conformance_result(
     run: dict[str, Any],
     driver: dict[str, Any],
@@ -331,6 +374,8 @@ def _build_conformance_result(
         missing=missing,
         unverified=0,
         gaps=_build_gaps(results, rule_index),
+        rules=_build_rule_results(outcomes, rule_index),
+        system_judged_by_model=_judged_by_model(properties),
     )
 
 

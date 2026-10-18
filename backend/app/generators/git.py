@@ -7,7 +7,7 @@
 
 Pitloom does not fetch Git URLs itself, so Lumina does the fetch: a **shallow
 clone** (``git clone --depth 1``) into a temporary work directory, then Pitloom's
-``generate_sbom`` on the checkout (it reads the project's Python packaging
+``generate_project_sbom`` on the checkout (it reads the project's Python packaging
 metadata).  The work directory is always removed in a ``finally``; the clone is
 bounded by a timeout.
 """
@@ -80,13 +80,13 @@ def _shallow_clone(repo_url: str, work_dir: str) -> None:
 def _run_pitloom(project_dir: str, output_path: str) -> None:
     # Imported lazily; see app.generators.base.
     # pylint: disable=import-outside-toplevel
-    from pitloom.assemble import generate_sbom
+    from pitloom.assemble import generate_project_sbom
 
     try:
-        generate_sbom(
-            project_dir=Path(project_dir),
+        generate_project_sbom(
+            Path(project_dir),
             output_path=Path(output_path),
-            creation_info=creation_info(),
+            creation_metadata=creation_info(),
         )
     except Exception as exc:  # noqa: BLE001 - normalised to GenerationError
         raise GenerationError("pitloom.generation-failed", str(exc)) from exc

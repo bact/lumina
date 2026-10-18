@@ -37,6 +37,23 @@ class FieldGap(BaseModel):
     note: str
 
 
+RuleOutcome = Literal["present", "missing", "not-applicable", "out-of-scope"]
+
+
+class RuleResult(BaseModel):
+    """The checker's outcome for one rule of the standard.
+
+    ``out-of-scope`` rules are catalogue-only: the checker lists them but
+    cannot check them, so they never count as missing.
+    """
+
+    rule_id: str
+    cluster: str
+    title: str
+    provision: str
+    outcome: RuleOutcome
+
+
 class ConformanceResult(BaseModel):
     """What the checker found: conformance gaps and counts."""
 
@@ -47,6 +64,11 @@ class ConformanceResult(BaseModel):
     missing: int
     unverified: int
     gaps: list[FieldGap]
+    rules: list[RuleResult] = Field(default_factory=list)
+    """Per-rule outcomes, when the producer reports them."""
+    system_judged_by_model: str | None = None
+    """Name of the AI model standing in for the system, when the checker
+    judged the System-level rules by the model."""
 
 
 class Notification(BaseModel):

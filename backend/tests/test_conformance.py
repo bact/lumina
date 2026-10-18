@@ -79,3 +79,15 @@ def test_unreadable_sbom(tmp_path: Path) -> None:
     path.write_text("{}", encoding="utf-8")
     with pytest.raises(ValueError, match="SPDX version"):
         run_checker(str(path), "ntia")
+
+
+def test_g7ai_reports_every_rule_with_catalogue_only_ones_out_of_scope() -> None:
+    """All 81 rules carry an outcome; catalogue-only ones are out-of-scope."""
+    conf = run_checker(SPDX3_G7, "g7ai").conformance
+    outcomes = {r.outcome for r in conf.rules}
+    assert len(conf.rules) == 81
+    assert outcomes <= {"present", "missing", "not-applicable", "out-of-scope"}
+    assert "out-of-scope" in outcomes
+    assert conf.missing == sum(
+        r.outcome == "missing" for r in conf.rules if "." not in r.rule_id
+    )
