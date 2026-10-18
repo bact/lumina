@@ -4,12 +4,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Development overrides — loaded automatically by `docker compose up`.
-# For production (no ui-kit), use: docker compose -f docker-compose.yml up
+# Without them (frontend baked into the image): docker compose -f docker-compose.yml up
 
 services:
 
   nginx:
     build:
-      target: dev                 # serves ui-kit at /ui-kits/lumina-app/
+      target: dev                 # nginx config only; the frontend is mounted
     volumes:
-      - .:/workspace:ro           # project root → /workspace (nginx.dev.conf reads here)
+      - ./frontend:/workspace/frontend:ro   # proxy/dev.conf serves this

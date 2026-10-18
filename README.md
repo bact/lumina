@@ -27,18 +27,18 @@ docker compose up
 ```
 
 `docker compose up` auto-loads `docker-compose.override.yml` (development
-mode). The nginx image uses the `dev` stage, which also serves the UI kit.
+mode). The nginx image uses the `dev` stage, which serves `frontend/` from a
+bind mount, so frontend edits show up on reload without a rebuild.
 
 Then open **<http://localhost>** in your browser.
 
 | Service | URL | Notes |
 | - | - | - |
-| Frontend | <http://localhost> | Production frontend (implementation) |
-| UI kit | <http://localhost/ui-kits/lumina-app/> | Design source of truth (dev only) |
+| Frontend | <http://localhost> | Static frontend |
 | API | <http://localhost/api/> | Proxied by nginx |
 | API (direct) | <http://localhost:8000> | For development / curl |
 
-**Production mode** (UI kit excluded from image):
+**Production mode** (frontend baked into the nginx image):
 
 ```shell
 docker compose -f docker-compose.yml up
@@ -81,18 +81,6 @@ docker compose logs -f api
 docker compose logs -f nginx
 ```
 
-### Serve the frontend locally (no Docker)
-
-```shell
-python3.14 -m http.server 3000 --directory frontend
-```
-
-Then open **<http://localhost:3000>**.
-
-> **UI kit:** the UI kit at `ui-kits/lumina-app/` requires the dev Docker
-> image to resolve its design-token paths correctly. Browse it via
-> `docker compose up` at **<http://localhost/ui-kits/lumina-app/>**.
-
 ### Run the API outside Docker (faster iteration)
 
 ```shell
@@ -118,9 +106,8 @@ docker compose exec nginx sh
 
 ```text
 nginx   → http://localhost:80
-          Reverse proxy: serves the static frontend, proxies /api/ to FastAPI,
-          and (in dev) also serves the UI kit at /ui-kits/lumina-app/.
-          Built from proxy/Dockerfile.
+          Reverse proxy: serves the static frontend and proxies /api/ to
+          FastAPI. Built from proxy/Dockerfile.
 
 api     → http://localhost:8000
           FastAPI -- SBOM upload + conformance checking, plus Mode-1 SBOM
@@ -195,11 +182,7 @@ lumina/
 ├── proxy/                      Reverse-proxy service (nginx)
 │   ├── Dockerfile              Multi-stage: dev (config only) / prod (self-contained)
 │   ├── prod.conf               Prod: root /app, frontend only
-│   └── dev.conf                Dev: root /workspace/frontend, aliases for ui-kit paths
-├── ui-kits/lumina-app/         Design source of truth — dev Docker only, not in prod image
-│   ├── index.html              Entry point; design-token paths routed by proxy/dev.conf
-│   ├── data.js                 Demo SBOM and field definitions for the design
-│   └── *.jsx / *.js            Screens and components
+│   └── dev.conf                Dev: root /workspace/frontend (bind-mounted frontend/)
 ├── frontend/                   Frontend source — always in the Docker image
 │   ├── index.html              Implementation entry + router
 │   ├── colors-and-type.css     Design tokens (canonical copy)
