@@ -324,19 +324,14 @@ def _count_outcomes(outcomes: dict[str, Any], optional: frozenset[str]) -> _Coun
 
 
 def _count_findings(results: list[dict[str, Any]], optional: frozenset[str]) -> _Counts:
-    """Return ``(total, present, missing)`` for a run without ``ruleOutcomes``.
+    """Return the counts for a run without ``ruleOutcomes``.
 
     Such a log says only what is missing: the rules that were present are not
-    known, so neither they nor the total are counted.
+    known, so neither they nor the total are counted. A rule in *optional* is
+    counted in ``optional_missing``, not in ``missing``.
     """
-    missing = len(
-        {
-            str(r.get("ruleId"))
-            for r in results
-            if r.get("ruleId") and r.get("ruleId") not in optional
-        }
-    )
-    return _Counts(0, 0, missing)
+    ids = {str(r.get("ruleId")) for r in results if r.get("ruleId")}
+    return _Counts(0, 0, len(ids - optional), 0, len(ids & optional))
 
 
 def _judged_by_model(properties: dict[str, Any]) -> str | None:

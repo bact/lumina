@@ -17,6 +17,7 @@ import threading
 from pathlib import Path
 
 import pytest
+from pitloom.logging_config import configure_logging
 
 from app import generate
 from app.conformance import Notification
@@ -259,3 +260,35 @@ def test_failure_message_hides_the_server_temp_dir(
     message = response.run.notifications[0].message
     assert tmp not in message
     assert "<tmp>/x/y" in message
+
+
+@pytest.mark.parametrize(
+    ("template", "hidden"),
+    [
+        ("fatal: {tmp}/x/y not found", True),
+        ("timeout for https://gitlab.example.org{tmp}/project", False),
+        ("see 'file://{tmp}/x'", False),
+    ],
+)
+def test_hide_temp_dir_leaves_urls_alone(template: str, hidden: bool) -> None:
+    """Only a path is hidden, not a part of a URL that looks like the temp dir."""
+    text = template.format(tmp=tempfile.gettempdir())
+    assert (generate.hide_temp_dir(text) != text) is hidden
+
+
+def test_pitloom_warnings_survive_its_logging_setup(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Pitloom's ``configure_logging()`` replaces its logger's handlers; its
+    warnings still reach the user, with the temp dir hidden."""
+    def fake_generate(_url: str, sbom_path: str) -> None:
+        configure_logging()
+        logging.getLogger("pitloom.assemble").warning(
+            "WARNING-ish: %s/clone failed", tempfile.gettempdir()
+        )
+        shutil.copy(SPDX3_FIXTURE, sbom_path)
+
+    monkeypatch.setattr(generate, "_generate", fake_generate)
+    response = generate.generate_and_check("https://example.org/r", "ntia")
+    messages = [n.message for n in response.run.notifications]
+    assert messages == ["WARNING-ish: <tmp>/clone failed"]

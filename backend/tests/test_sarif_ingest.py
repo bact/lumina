@@ -506,3 +506,21 @@ def test_a_permission_is_counted_apart_and_is_no_gap(
         conf.optional_missing,
     ) == counts
     assert len(conf.gaps) == (1 if required == "missing" else 0)
+
+
+def test_permission_results_without_outcomes_are_counted_apart() -> None:
+    """A log with results but no ``ruleOutcomes`` keeps a permission apart too."""
+    log = _log_with_permission("missing", "missing")
+    del log["runs"][0]["properties"]["ruleOutcomes"]
+    conf = parse_sarif(log).conformance
+    assert (conf.total, conf.missing, conf.optional_missing) == (0, 1, 1)
+    assert len(conf.gaps) == 1
+
+
+def test_a_rule_without_a_provision_is_required() -> None:
+    """No ``provision`` on a rule: it is not taken for a permission."""
+    log = _log_with_permission("missing", "present")
+    for rule in log["runs"][0]["tool"]["driver"]["rules"]:
+        del rule["properties"]["provision"]
+    conf = parse_sarif(log).conformance
+    assert (conf.total, conf.missing, conf.optional_missing) == (2, 1, 0)

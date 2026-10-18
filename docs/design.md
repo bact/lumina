@@ -31,7 +31,7 @@ Backend processing uses the SPDX Python toolchain:
 The backend normalises every result to a single `SbomCheckResponse` envelope and
 passes it to the web UI.
 
-[ncc]: https://github.com/spdx/ntia-conformance-checker
+[ncc]: https://github.com/bact/ntia-conformance-checker
 [pitloom]: https://github.com/bact/pitloom
 
 ## Web UI

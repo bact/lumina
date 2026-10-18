@@ -219,7 +219,9 @@ cd lumina
 ### Step 4 — Start Lumina
 
 The base `docker-compose.yml` is dev-oriented. Apply the production override
-from [`docker/compose/docker-compose.prod.yml`](docker/compose/docker-compose.prod.yml):
+from [`docker/compose/docker-compose.prod.yml`](docker/compose/docker-compose.prod.yml)
+(it uses `!reset`, so Docker Compose 2.24 or later is required; `!override`
+needs 2.24.4 or later):
 
 ```bash
 docker compose \

@@ -36,6 +36,7 @@ import importlib.metadata
 import ipaddress
 import logging
 import os
+import re
 import socket
 import tempfile
 import threading
@@ -153,26 +154,37 @@ class _WarningCollector(logging.Handler):
 
     def emit(self, record: logging.LogRecord) -> None:
         """Keep the record as a notification, unless it is from another thread."""
-        if record.thread == self._thread:
+        if record.thread == self._thread and record.name.split(".")[0] == "pitloom":
             self._sink.append(
                 Notification(
                     level="error" if record.levelno >= logging.ERROR else "warning",
-                    message=record.getMessage(),
+                    message=hide_temp_dir(record.getMessage()),
                     descriptor_id="pitloom.log",
                 )
             )
 
 
+def hide_temp_dir(text: str) -> str:
+    """*text* without the server's temporary directory (a path, not a URL part)."""
+    pattern = rf"(?<![\w./:-]){re.escape(tempfile.gettempdir())}"
+    return re.sub(pattern, "<tmp>", text)
+
+
 @contextlib.contextmanager
 def _collect_warnings(sink: list[Notification]) -> Iterator[None]:
-    """Turn what Pitloom warns while it generates into notifications for the user."""
+    """Turn what Pitloom warns while it generates into notifications for the user.
+
+    The handler sits on the root logger: Pitloom's ``configure_logging()``
+    replaces the handlers of the ``pitloom`` logger itself, which would drop
+    one added there, and its records still propagate to the root.
+    """
     handler = _WarningCollector(sink)
-    pitloom_logger = logging.getLogger("pitloom")
-    pitloom_logger.addHandler(handler)
+    root_logger = logging.getLogger()
+    root_logger.addHandler(handler)
     try:
         yield
     finally:
-        pitloom_logger.removeHandler(handler)
+        root_logger.removeHandler(handler)
 
 
 def _pitloom_version() -> str:
@@ -200,7 +212,7 @@ def generate_and_check(
             return _failure_response(
                 regulation_id,
                 exc.descriptor_id,
-                exc.message.replace(tempfile.gettempdir(), "<tmp>"),
+                hide_temp_dir(exc.message),
             )
         response = run_checker(sbom_path, regulation_id)
         response.run.generator = f"pitloom {_pitloom_version()}"
