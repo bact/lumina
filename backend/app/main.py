@@ -50,6 +50,9 @@ app.add_middleware(
 # Stage 0-1 job backend: runs Mode-1 SBOM generation in-process (see jobs.py and
 # docs/design.md "Background job execution").  Swappable for an RQ/Taskiq backend
 # at Stage 2 without touching the endpoints below.
+# Upload cap for POST /api/v1/sbom/check; the whole file is held in memory.
+MAX_SBOM_BYTES = int(os.environ.get("LUMINA_MAX_SBOM_BYTES", 50 * 1024 * 1024))
+
 _jobs = InProcessJobQueue()
 _jobs.register("generate_and_check", generate_and_check)
 
@@ -115,7 +118,12 @@ async def check_sbom(
 
     A regulation that ntia-conformance-checker does not support returns 501.
     """
-    content = await file.read()
+    content = await file.read(MAX_SBOM_BYTES + 1)
+    if len(content) > MAX_SBOM_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"SBOM is larger than {MAX_SBOM_BYTES} bytes.",
+        )
 
     with tempfile.NamedTemporaryFile(
         delete=False, suffix=_suffix(file.filename)
@@ -163,7 +171,16 @@ async def check_artifact(req: ArtifactCheckRequest) -> JobSubmission:
 
     Generation can take minutes, so this returns a ``job_id`` immediately;
     poll ``GET /api/v1/jobs/{job_id}`` for the result.
+
+    A regulation the checker does not support returns 501 at once, before any
+    clone or generation work.
     """
+    if req.regulation_id not in CHECKER_STANDARDS:
+        raise HTTPException(
+            status_code=501,
+            detail=f"Regulation '{req.regulation_id}' is not supported by "
+            "ntia-conformance-checker.",
+        )
     job_id = _jobs.enqueue(
         "generate_and_check",
         artifact_url=req.artifact_url,
