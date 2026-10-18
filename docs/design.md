@@ -183,7 +183,10 @@ in `CHECKER_STANDARDS`, and parses its SARIF into `ConformanceResult` with
   `system_judged_by_model`.
 - BSI results are per rule, in clusters `DOC` (SBOM document) and `COMP`
   (components). A rule's `provision` is `requirement` or `permission`
-  (optional); Lumina passes it through and counts only `missing` outcomes.
+  (optional). Lumina passes the provision through; `total`, `present` and
+  `missing` count only the other rules, a permission is counted in
+  `optional_present` / `optional_missing`, and its missing outcome is shown as
+  "Not provided" and is not a gap.
 - `mof` is not supported by the checker; the API returns 501 for it.
 
 When the checker adds a regulation, add it to `RegulationId` and

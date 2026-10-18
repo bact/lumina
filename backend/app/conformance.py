@@ -63,6 +63,11 @@ class ConformanceResult(BaseModel):
     present: int
     missing: int
     unverified: int
+    optional_present: int = 0
+    optional_missing: int = 0
+    """Rules of the standard that only permit a property (BSI "optional"):
+    decided like the others but kept out of ``total``, ``present`` and
+    ``missing``, since lacking them is not a gap."""
     gaps: list[FieldGap]
     rules: list[RuleResult] = Field(default_factory=list)
     """Per-rule outcomes, when the producer reports them."""

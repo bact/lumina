@@ -58,7 +58,13 @@ def test_bsi_reports_its_rules_per_requirement() -> None:
     assert {r.cluster for r in conf.rules} == {"DOC", "COMP"}
     assert {r.provision for r in conf.rules} == {"requirement", "permission"}
     assert "out-of-scope" in {r.outcome for r in conf.rules}
-    assert conf.missing == sum(r.outcome == "missing" for r in conf.rules)
+    # A permission (BSI "optional") is counted apart: lacking it is no gap.
+    required = [r for r in conf.rules if r.provision != "permission"]
+    optional = [r for r in conf.rules if r.provision == "permission"]
+    assert conf.missing == sum(r.outcome == "missing" for r in required)
+    assert conf.optional_missing == sum(r.outcome == "missing" for r in optional)
+    assert conf.optional_present == sum(r.outcome == "present" for r in optional)
+    assert conf.optional_missing > 0  # the fixture really lacks one
 
 
 def test_spdx21_is_still_checked() -> None:

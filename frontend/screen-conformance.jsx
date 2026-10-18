@@ -279,8 +279,16 @@ function ruleClusters(regulationId, rules) {
   })).filter(cl => cl.rules.length > 0);
 }
 
+// A rule the standard only permits (BSI "optional") is never a gap: lacking it
+// is shown as "Not provided", not "Missing", and counted apart.
+const isOptional = r => r.provision === "permission";
+const ruleChip = r => (isOptional(r) && r.outcome === "missing"
+  ? { status: "neutral", label: "Not provided" }
+  : RULE_CHIP[r.outcome] || { status: "neutral", label: r.outcome });
+
 function RuleClusters({ regulationId, rules, judgedByModel }) {
-  const count = (list, outcome) => list.filter(r => r.outcome === outcome).length;
+  const count = (list, outcome) => list.filter(r => r.outcome === outcome && !(isOptional(r) && outcome === "missing")).length;
+  const notProvided = list => list.filter(r => isOptional(r) && r.outcome === "missing").length;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {regulationId === "g7ai" && judgedByModel && (
@@ -293,11 +301,11 @@ function RuleClusters({ regulationId, rules, judgedByModel }) {
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 500, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <span>{cl.name}</span>
             <span style={{ fontWeight: 400, color: "var(--ink-3)" }}>
-              {count(cl.rules, "present")} present · {count(cl.rules, "missing")} missing · {count(cl.rules, "not-applicable")} not applicable · {count(cl.rules, "out-of-scope")} not checked
+              {count(cl.rules, "present")} present · {count(cl.rules, "missing")} missing · {count(cl.rules, "not-applicable")} not applicable · {count(cl.rules, "out-of-scope")} not checked{notProvided(cl.rules) > 0 ? ` · ${notProvided(cl.rules)} optional not provided` : ""}
             </span>
           </div>
           {cl.rules.map((r, i) => {
-            const chip = RULE_CHIP[r.outcome] || { status: "neutral", label: r.outcome };
+            const chip = ruleChip(r);
             return (
               <div key={r.rule_id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "9px 16px", borderBottom: i < cl.rules.length - 1 ? "1px solid var(--border)" : "none" }}>
                 <div style={{ flex: "0 0 112px", paddingTop: 1 }}><StatusChip status={chip.status}>{chip.label}</StatusChip></div>
@@ -330,6 +338,7 @@ function ArtifactResult({ result }) {
   const ok = run.execution_successful !== false;
   const nothingApplies = notes.some(n => n.descriptor_id === "sbom.nothing-applies");
   const showFindings = ok && !nothingApplies;
+  const optionalTotal = (c.optional_present ?? 0) + (c.optional_missing ?? 0);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <RunLine result={result} />
@@ -352,11 +361,12 @@ function ArtifactResult({ result }) {
         </Card>
       )}
       {showFindings && (
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${(c.unverified ?? 0) > 0 ? 4 : 3}, 1fr)`, gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${3 + ((c.unverified ?? 0) > 0 ? 1 : 0) + (optionalTotal > 0 ? 1 : 0)}, 1fr)`, gap: 12 }}>
           <SummaryTile label="Fields checked" value={c.total ?? 0} />
           <SummaryTile label="Present" value={c.present ?? 0} accent="var(--moss)" />
           <SummaryTile label="Missing" value={c.missing ?? 0} accent={(c.missing ?? 0) > 0 ? "var(--ochre)" : undefined} />
           {(c.unverified ?? 0) > 0 && <SummaryTile label="Unverified" value={c.unverified} accent="var(--indigo)" />}
+          {optionalTotal > 0 && <SummaryTile label="Optional provided" value={`${c.optional_present ?? 0} of ${optionalTotal}`} />}
         </div>
       )}
 

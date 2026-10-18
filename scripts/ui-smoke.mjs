@@ -68,7 +68,7 @@ const NTIA_RESULT = {
   embedded_sbom: null,
 };
 const BSI_RESULT = {
-  conformance: { regulation_id: "bsi", source: "ntia-conformance-checker", total: 3, present: 1, missing: 2, unverified: 0,
+  conformance: { regulation_id: "bsi", source: "ntia-conformance-checker", total: 3, present: 1, missing: 2, unverified: 0, optional_present: 0, optional_missing: 1,
     gaps: [{ component_id: "document", field_key: "BOM-BSI2025-DOC-001", level: "missing", note: "Doc creator is missing." }],
     rules: [
       { rule_id: "BOM-BSI2025-DOC-001", cluster: "DOC", title: "Doc creator", provision: "requirement", outcome: "missing" },
@@ -229,9 +229,11 @@ await page.waitForSelector("text=SBOM document", { timeout: 5000 }).catch(() => 
 body = await text();
 check(body.includes("SBOM document") && body.includes("Components") && body.includes("Doc creator")
     && body.includes("1 present · 1 missing · 0 not applicable · 1 not checked")
-    && body.includes("0 present · 2 missing · 1 not applicable · 0 not checked")
+    && body.includes("0 present · 1 missing · 1 not applicable · 0 not checked · 1 optional not provided")
     && body.includes("FIELDS CHECKED") && !body.includes("erdict"),
   "Upload SBOM: BSI shows its DOC and COMP clusters with per-rule counts");
+check(/not provided/i.test(body) && body.includes("OPTIONAL PROVIDED") && body.includes("0 of 1"),
+  "Upload SBOM: an optional rule is Not provided, apart from Missing");
 await shot("5-upload-bsi-rules");
 await page.getByRole("radio", { name: LABELS.g7ai }).click();
 await page.getByRole("button", { name: "Check SBOM" }).click();

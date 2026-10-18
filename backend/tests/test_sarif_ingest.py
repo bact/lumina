@@ -453,3 +453,56 @@ def test_extra_runs_are_reported_not_dropped_silently(
     log["runs"] = log["runs"] * (1 + extra_runs)
     ids = [n.descriptor_id for n in parse_sarif(log).run.notifications]
     assert ("sarif.extra-runs-ignored" in ids) is shown
+
+
+def _log_with_permission(optional_outcome: str, req_outcome: str) -> dict[str, Any]:
+    """A BSI log with one required and one permission rule (both with results
+    when missing)."""
+    rules = [
+        {"id": "BOM-BSI2025-COMP-001", "properties": {"provision": "requirement"}},
+        {"id": "BOM-BSI2025-COMP-017", "properties": {"provision": "permission"}},
+    ]
+    outcomes = {
+        "BOM-BSI2025-COMP-001": req_outcome,
+        "BOM-BSI2025-COMP-017": optional_outcome,
+    }
+    results = [
+        {"ruleId": k, "message": {"text": "missing"}}
+        for k, v in outcomes.items()
+        if v == "missing"
+    ]
+    return {
+        "version": "2.1.0",
+        "runs": [
+            {
+                "tool": {
+                    "driver": {"name": "ntia-conformance-checker", "rules": rules}
+                },
+                "properties": {"complianceStandard": "bsi", "ruleOutcomes": outcomes},
+                "results": results,
+            }
+        ],
+    }
+
+
+@pytest.mark.parametrize(
+    ("optional", "required", "counts"),
+    [
+        ("missing", "present", (1, 1, 0, 0, 1)),
+        ("present", "missing", (1, 0, 1, 1, 0)),
+        ("missing", "missing", (1, 0, 1, 0, 1)),
+    ],
+)
+def test_a_permission_is_counted_apart_and_is_no_gap(
+    optional: str, required: str, counts: tuple[int, int, int, int, int]
+) -> None:
+    """Lacking an optional (permission) rule is neither Missing nor a gap."""
+    conf = parse_sarif(_log_with_permission(optional, required)).conformance
+    assert (
+        conf.total,
+        conf.present,
+        conf.missing,
+        conf.optional_present,
+        conf.optional_missing,
+    ) == counts
+    assert len(conf.gaps) == (1 if required == "missing" else 0)

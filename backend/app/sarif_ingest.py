@@ -35,7 +35,7 @@ rule's ``properties.slug`` (spec prefix stripped) and finally to the rule id.
 
 from __future__ import annotations
 
-from typing import Any, get_args
+from typing import Any, NamedTuple, get_args
 
 from .conformance import (
     CheckerSource,
@@ -258,13 +258,16 @@ def _infer_regulation_id(standard_hint: str, rule_ids: list[str]) -> RegulationI
 
 
 def _build_gaps(
-    results: list[dict[str, Any]], rule_index: dict[str, dict[str, Any]]
+    results: list[dict[str, Any]],
+    rule_index: dict[str, dict[str, Any]],
+    optional: frozenset[str],
 ) -> list[FieldGap]:
-    """Convert SARIF ``run.results`` entries into Lumina field gaps."""
+    """Convert SARIF ``run.results`` entries into Lumina field gaps; a rule
+    the standard only permits is no gap."""
     gaps: list[FieldGap] = []
     for result in results:
         rule_id = str(result.get("ruleId") or "")
-        if not rule_id:
+        if not rule_id or rule_id in optional:
             continue
         rule_descriptor = rule_index.get(rule_id)
         message = (result.get("message") or {}).get("text") or rule_id
@@ -279,26 +282,61 @@ def _build_gaps(
     return gaps
 
 
-def _count_outcomes(outcomes: dict[str, Any]) -> tuple[int, int, int]:
-    """Return ``(total, present, missing)`` from ``run.properties.ruleOutcomes``.
+class _Counts(NamedTuple):
+    """Rule counts of a run; ``optional_*`` are the permission rules."""
 
-    Every decided rule counts (present or missing), sub-rules included, as in
+    total: int
+    present: int
+    missing: int
+    optional_present: int = 0
+    optional_missing: int = 0
+
+
+def _optional_rule_ids(rule_index: dict[str, dict[str, Any]]) -> frozenset[str]:
+    """Ids of the rules the standard only permits (provision ``permission``)."""
+    return frozenset(
+        rule_id
+        for rule_id, rule in rule_index.items()
+        if (rule.get("properties") or {}).get("provision") == "permission"
+    )
+
+
+def _count_outcomes(outcomes: dict[str, Any], optional: frozenset[str]) -> _Counts:
+    """Return the counts from ``run.properties.ruleOutcomes``.
+
+    Every decided rule (present or missing) counts, sub-rules included, as in
     the checker's own report and the cluster lists: a sub-rule can be decided
-    differently from its parent, so neither stands for the other.
+    differently from its parent, so neither stands for the other. Rules in
+    *optional* are counted apart, not in the first three.
     """
-    decided = [o for o in outcomes.values() if o in ("present", "missing")]
-    missing = decided.count("missing")
-    return len(decided), len(decided) - missing, missing
+    decided = {k: o for k, o in outcomes.items() if o in ("present", "missing")}
+    required = [o for k, o in decided.items() if k not in optional]
+    extra = [o for k, o in decided.items() if k in optional]
+    missing = required.count("missing")
+    optional_missing = extra.count("missing")
+    return _Counts(
+        len(required),
+        len(required) - missing,
+        missing,
+        len(extra) - optional_missing,
+        optional_missing,
+    )
 
 
-def _count_findings(results: list[dict[str, Any]]) -> tuple[int, int, int]:
+def _count_findings(results: list[dict[str, Any]], optional: frozenset[str]) -> _Counts:
     """Return ``(total, present, missing)`` for a run without ``ruleOutcomes``.
 
     Such a log says only what is missing: the rules that were present are not
     known, so neither they nor the total are counted.
     """
-    missing = len({str(r.get("ruleId")) for r in results if r.get("ruleId")})
-    return 0, 0, missing
+    missing = len(
+        {
+            str(r.get("ruleId"))
+            for r in results
+            if r.get("ruleId") and r.get("ruleId") not in optional
+        }
+    )
+    return _Counts(0, 0, missing)
 
 
 def _judged_by_model(properties: dict[str, Any]) -> str | None:
@@ -386,19 +424,22 @@ def _build_conformance_result(
         # The checker could not read the SBOM: its per-rule "missing" results
         # are not findings, so none is reported.
         return ConformanceResult.nothing_checked(regulation_id, source)
-    total, present, missing = (
-        _count_outcomes(outcomes)
+    optional = _optional_rule_ids(rule_index)
+    counts = (
+        _count_outcomes(outcomes, optional)
         if isinstance(outcomes, dict)
-        else _count_findings(results)
+        else _count_findings(results, optional)
     )
     return ConformanceResult(
         regulation_id=regulation_id,
         source=source,
-        total=total,
-        present=present,
-        missing=missing,
+        total=counts.total,
+        present=counts.present,
+        missing=counts.missing,
         unverified=0,
-        gaps=_build_gaps(results, rule_index),
+        optional_present=counts.optional_present,
+        optional_missing=counts.optional_missing,
+        gaps=_build_gaps(results, rule_index, optional),
         rules=_build_rule_results(outcomes, rule_index),
         system_judged_by_model=_judged_by_model(properties),
     )
