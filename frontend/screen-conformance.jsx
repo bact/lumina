@@ -4,428 +4,55 @@ SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: SOURCE
 SPDX-License-Identifier: Apache-2.0
 */
-// Lumina UI Kit -- Conformance + Import screens
+// Lumina frontend -- regulations, API helpers, the Generate & check screen and
+// the result view every check screen shares.
 //
-// Conformance shows one regulation at a time, with a big % completeness header
-// and per-field cards listing which components are missing the field, plus
-// "Where to look" guidance pulled from data.findHints.
+// Every screen renders only what the API returns: the regulation list comes
+// from GET /api/v1/regulations, results are SbomCheckResponse objects, and a
+// failed request shows the server's own error `detail`.
 
 const { useState: _useSC, useRef: _useRef, useEffect: _useEffect } = React;
 
-function ConformanceScreen({ data, onOpenComponent }) {
-  const activeRegInit = data.regulations.find(r => r.active)?.id || data.regulations[0].id;
-  const [activeReg, setActiveReg] = _useSC(activeRegInit);
+// The one place regulation ids get human labels and a short description of
+// what the check covers. Which regulations exist, and which are ready, comes
+// from GET /api/v1/regulations; an id missing here is shown by its id.
+const IMPORT_REGULATIONS = {
+  ntia: {
+    label: "NTIA Minimum Elements",
+    covers: "NTIA 2021 minimum elements: the seven data fields (supplier, component name, version, other unique identifiers, dependency relationship, SBOM author, timestamp). Per-rule results.",
+    href: "https://www.ntia.gov/report/2021/minimum-elements-software-bill-materials-sbom",
+  },
+  bsi: {
+    label: "BSI TR-03183-2",
+    covers: "BSI TR-03183-2. The checker reports a verdict only (conforms or not), with no per-rule detail.",
+    href: "https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/TechGuidelines/TR03183/BSI-TR-03183-2_v2_1_0.html",
+  },
+  g7ai: {
+    label: "G7 SBOM for AI",
+    covers: "G7 2026 SBOM for AI minimum elements. Partial, SPDX 3 only: rules the checker cannot check are listed as not checked.",
+    href: "https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/KI/SBOM-for-AI_minimum-elements.pdf",
+  },
+  cisa2026: {
+    label: "CISA 2026 Minimum Elements",
+    covers: "CISA 2026 minimum elements. Partial, SPDX 3 only: rules the checker cannot check are listed as not checked.",
+    href: "https://www.cisa.gov/sites/default/files/2026-07/2026_cisa_sbom_minimum_elements_508c.pdf",
+  },
+  fsct2024: {
+    label: "FSCT 2024 (CISA Framing)",
+    covers: "2024 CISA Framing Software Component Transparency, minimum expectation. Partial.",
+    href: "https://www.cisa.gov/resources-tools/resources/framing-software-component-transparency-2024",
+  },
+  mof: {
+    label: "Model Openness Framework",
+    covers: "Not supported by the checker; the API refuses it with HTTP 501.",
+    href: "https://isitopen.ai/",
+  },
+};
 
-  const reg = data.regulations.find(r => r.id === activeReg);
-  const summary = data.regSummary(activeReg);
-  const pct = summary.total > 0 ? Math.round((summary.present / summary.total) * 100) : 100;
-  const inScopeCount = data.componentsForReg(reg).length;
-
-  return (
-    <div style={{ padding: "32px 48px", display: "flex", flexDirection: "column", gap: 22, maxWidth: 1240, margin: "0 auto" }}>
-      <div>
-        <Eyebrow>Conformance</Eyebrow>
-        <h1 style={{ margin: "6px 0 4px", fontSize: 32, fontWeight: 500, letterSpacing: "-0.018em" }}>What the regulations ask for</h1>
-        <p style={{ margin: 0, fontSize: 14.5, color: "var(--ink-3)" }}>Pick a regulation. Lumina compares your SBOM against its minimum fields, shows what's missing, and points to where the answer usually lives.</p>
-      </div>
-
-      {/* Regulation picker -- single-select chip strip (radio group).
-         auto-fit so adding/removing regulations doesn't break the layout. */}
-      <div role="radiogroup" aria-label="Active regulation" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10 }}>
-        {data.regulations.map(r => {
-          const sel = r.id === activeReg;
-          const s = data.regSummary(r.id);
-          const rPct = s.total > 0 ? Math.round((s.present / s.total) * 100) : 100;
-          // For tiered regs, surface the strongest qualified class as the
-          // headline summary (e.g. "Class III") -- it's more useful than a
-          // mean-across-fields percentage when the model is being judged
-          // on a ladder.
-          let headline = `${rPct}%`;
-          if (r.tiered && s.tiers) {
-            const ids = s.tiers.map(t => t.qualified).filter(x => x != null);
-            const best = ids.length ? Math.min(...ids) : null;  // smaller id = stronger class
-            headline = best == null ? "--" : (r.classes.find(c => c.id === best)?.label || "--");
-          }
-          return (
-            <Card key={r.id} variant={sel ? "default" : "recessed"} padding={14} onClick={() => setActiveReg(r.id)}
-              role="radio"
-              ariaChecked={sel}
-              ariaLabel={`${r.name}. ${r.tiered ? `Best qualified class: ${headline}` : `${rPct}% present`}. ${r.fields.length} required fields${r.scope === "ai" ? ", AI scope" : ""}.`}
-              style={{ borderColor: sel ? "var(--ink)" : "var(--border-soft)", cursor: "pointer" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <RegTag active={sel}>{r.tag}</RegTag>
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: sel ? "var(--ink-2)" : "var(--ink-3)" }}>{headline}</span>
-              </div>
-              <div style={{ fontSize: 13, fontWeight: 500, marginTop: 10, color: sel ? "var(--ink)" : "var(--ink-2)" }}>{r.name}</div>
-              <div style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 4 }}>
-                {r.fields.length} required fields{r.scope === "ai" ? (r.kind === "model" ? " · model scope" : " · AI scope") : ""}
-              </div>
-              <div style={{ display: "flex", height: 3, marginTop: 12, borderRadius: 999, overflow: "hidden", background: "var(--paper-3)" }}>
-                <span style={{ flex: s.present, background: "var(--moss)" }} />
-                <span style={{ flex: s.unverified, background: "var(--indigo)" }} />
-                <span style={{ flex: s.missing, background: "var(--ochre)" }} />
-              </div>
-            </Card>
-          );
-        })}
-      </div>
-
-      {reg.tiered
-        ? <MofTierLadder reg={reg} summary={summary} />
-        : <ConformancePercentCard reg={reg} summary={summary} pct={pct} inScopeCount={inScopeCount} />}
-
-      <MarginNote title="A note --" onLearnMore={() => {}} onDismiss={() => {}}>
-        {reg.tiered
-          ? <>MOF is a <strong>tiered</strong> openness assessment, not a pass/fail check. Each model is awarded the highest class it fully satisfies; the field cards below are grouped by class, so you can see exactly what each model would need to climb the ladder.</>
-          : <>Lumina checks <strong>fields</strong>, not just files. Each card below counts how many in-scope components have the field filled, lists the ones that don't, and shows where that information usually lives.</>}
-      </MarginNote>
-
-      {/* Required fields -- per-field card list (grouped by class for tiered regs) */}
-      {reg.tiered
-        ? <MofFieldsByClass reg={reg} data={data} onOpenComponent={onOpenComponent} />
-        : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {reg.fields.map(f => (
-              <FieldCard key={f.key} field={f} reg={reg} data={data} onOpenComponent={onOpenComponent} />
-            ))}
-          </div>
-        )}
-    </div>
-  );
-}
-
-// ─── ConformancePercentCard ─ standard "% present" summary header ──────
-function ConformancePercentCard({ reg, summary, pct, inScopeCount }) {
-  return (
-    <Card padding={24}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 24, alignItems: "center" }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
-            <RegTag active>{reg.tag}</RegTag>
-            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 500, letterSpacing: "-0.018em" }}>{reg.name}</h2>
-            <Mono style={{ color: "var(--ink-3)", fontSize: 13 }}>{reg.version}</Mono>
-          </div>
-          <p style={{ margin: "6px 0 0", fontSize: 13.5, color: "var(--ink-3)", lineHeight: 1.55 }}>
-            Checked against {inScopeCount} {reg.scope === "ai" ? "AI element" + (inScopeCount === 1 ? "" : "s") : "component" + (inScopeCount === 1 ? "" : "s")} · {reg.fields.length} required fields
-          </p>
-        </div>
-        {summary.missing === 0 && summary.unverified === 0
-          ? <StatusChip status="present">Conformant</StatusChip>
-          : <StatusChip status="missing">{summary.missing + summary.unverified} gaps</StatusChip>}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 32, alignItems: "center", marginTop: 22 }}>
-        <div>
-          <div aria-hidden="true" style={{ fontSize: 64, fontWeight: 300, letterSpacing: "-0.028em", lineHeight: 1, color: summary.missing === 0 ? "var(--moss)" : "var(--ink)" }}>{pct}%</div>
-          <div style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 8 }}>
-            <strong style={{ color: "var(--ink-2)", fontWeight: 500 }}>{summary.present}</strong> of <strong style={{ color: "var(--ink-2)", fontWeight: 500 }}>{summary.total}</strong> required fields present
-          </div>
-        </div>
-        <div>
-          <div role="progressbar"
-            aria-valuemin="0" aria-valuemax="100" aria-valuenow={pct}
-            aria-label={`${reg.tag} required-field completeness: ${pct}%`}
-            style={{ display: "flex", height: 10, borderRadius: 999, overflow: "hidden", background: "var(--paper-3)" }}>
-            <span style={{ flex: summary.present, background: "var(--moss)" }} />
-            <span style={{ flex: summary.unverified, background: "var(--indigo)" }} />
-            <span style={{ flex: summary.missing, background: "var(--ochre)" }} />
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 12, color: "var(--ink-3)", fontFamily: "var(--font-mono)" }}>
-            <span><span style={{ display: "inline-block", width: 6, height: 6, borderRadius: 999, background: "var(--moss)", marginRight: 6, verticalAlign: "middle" }} />{summary.present} present</span>
-            <span><span style={{ display: "inline-block", width: 6, height: 6, borderRadius: 999, background: "var(--indigo)", marginRight: 6, verticalAlign: "middle" }} />{summary.unverified} unverified</span>
-            <span><span style={{ display: "inline-block", width: 6, height: 6, borderRadius: 999, background: "var(--ochre)", marginRight: 6, verticalAlign: "middle" }} />{summary.missing} missing</span>
-          </div>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-// ─── MofTierLadder ─ per-model class assessment + progress to next ────
-//
-// MOF is tiered, not pass/fail. Each model gets a row showing the highest
-// class it fully satisfies plus progress toward the next one up (e.g.
-// "Class III · in progress to Class II 60%"). Mirrors the readout style
-// used by https://mot.isitopen.ai/ so users coming from that tool feel
-// at home.
-function MofTierLadder({ reg, summary }) {
-  const tiers = summary.tiers || [];
-  return (
-    <Card padding={24}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, flexWrap: "wrap" }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
-            <RegTag active>{reg.tag}</RegTag>
-            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 500, letterSpacing: "-0.018em" }}>{reg.name}</h2>
-            <Mono style={{ color: "var(--ink-3)", fontSize: 13 }}>{reg.version}</Mono>
-          </div>
-          <p style={{ margin: "6px 0 0", fontSize: 13.5, color: "var(--ink-3)", lineHeight: 1.55, maxWidth: 640 }}>
-            Per-model openness class. Each model is awarded the highest class for which all required
-            disclosures are present; the bar shows progress to the next class up.
-          </p>
-        </div>
-      </div>
-
-      {/* Legend -- one row describing what each class means */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginTop: 18 }}>
-        {reg.classes.map(cls => (
-          <div key={cls.id} style={{
-            border: "1px solid var(--border-soft)", borderRadius: 3, padding: "10px 12px",
-            background: "var(--paper-2)",
-          }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-2)", fontWeight: 500 }}>{cls.label}</span>
-              <span style={{ fontSize: 12, color: "var(--ink)", fontWeight: 500 }}>{cls.subtitle}</span>
-            </div>
-            <div style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 4, lineHeight: 1.5 }}>{cls.description}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Per-model rows */}
-      <div style={{ marginTop: 18, display: "flex", flexDirection: "column" }}>
-        {tiers.length === 0 && (
-          <div style={{ fontSize: 13, color: "var(--ink-3)", padding: "12px 4px" }}>No models in scope.</div>
-        )}
-        {tiers.map((t, i) => <MofModelRow key={t.component.id} tier={t} reg={reg} isLast={i === tiers.length - 1} />)}
-      </div>
-    </Card>
-  );
-}
-
-function MofModelRow({ tier, reg, isLast }) {
-  const { component: c, qualified, next, progress, perClass } = tier;
-  const qualifiedCls = qualified ? reg.classes.find(x => x.id === qualified) : null;
-  // Bar widths per class -- cumulative: each segment shows the share of that
-  // class's fields the model has so far.
-  return (
-    <div style={{
-      padding: "14px 0",
-      borderBottom: isLast ? 0 : "1px solid var(--border-soft)",
-      display: "grid", gridTemplateColumns: "260px 1fr 220px", gap: 18, alignItems: "center",
-    }}>
-      {/* Identity */}
-      <div>
-        <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--ink)" }}>{c.name}</div>
-        <Mono style={{ fontSize: 11, color: "var(--ink-3)" }}>{c.version} · {c.ecosystem}</Mono>
-      </div>
-
-      {/* Class progression bar -- three segments, one per class, with the
-         qualified ones filled solid and the next-up one filled partially. */}
-      <div>
-        <div style={{ display: "flex", height: 10, borderRadius: 999, overflow: "hidden", background: "var(--paper-3)", gap: 2 }}
-          role="img"
-          aria-label={qualifiedCls
-            ? `${c.name}: qualifies for ${qualifiedCls.label} (${qualifiedCls.subtitle}).` + (next ? ` Progress toward ${next.label}: ${progress.present} of ${progress.total} fields.` : " Top class achieved.")
-            : `${c.name}: below Class III. ${perClass[3].present} of ${perClass[3].total} Class III fields present.`}>
-          {[3, 2, 1].map(id => {
-            const pc = perClass[id];
-            const filled = qualified !== null && id >= qualified;
-            const partial = next && id === next.id;
-            const fillPct = filled ? 100 : partial ? Math.round((pc.present / pc.total) * 100) : 0;
-            const color = id === 3 ? "var(--moss)" : id === 2 ? "var(--shu)" : "var(--indigo)";
-            return (
-              <div key={id} style={{ flex: 1, background: "var(--paper-3)", position: "relative", borderRadius: 999, overflow: "hidden" }}>
-                <div style={{ position: "absolute", inset: 0, width: `${fillPct}%`, background: color, transition: "width var(--dur-base)" }} />
-              </div>
-            );
-          })}
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 10.5, color: "var(--ink-3)", fontFamily: "var(--font-mono)", letterSpacing: "0.02em" }}>
-          <span>III · {perClass[3].present}/{perClass[3].total}</span>
-          <span>II · {perClass[2].present}/{perClass[2].total}</span>
-          <span>I · {perClass[1].present}/{perClass[1].total}</span>
-        </div>
-      </div>
-
-      {/* Headline status */}
-      <div style={{ textAlign: "right" }}>
-        {qualifiedCls ? (
-          <>
-            <div style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-3)" }}>{qualifiedCls.label}</span>
-              <span style={{ fontSize: 14, color: "var(--ink)", fontWeight: 500 }}>{qualifiedCls.subtitle}</span>
-            </div>
-            {next ? (
-              <div style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 4 }}>
-                {Math.round((progress.present / progress.total) * 100)}% to {next.label}
-              </div>
-            ) : (
-              <div style={{ fontSize: 11.5, color: "var(--moss-ink)", marginTop: 4 }}>Top class</div>
-            )}
-          </>
-        ) : (
-          <>
-            <div style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ochre-ink)" }}>Below III</span>
-              <span style={{ fontSize: 14, color: "var(--ink)", fontWeight: 500 }}>Not yet open</span>
-            </div>
-            <div style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 4 }}>
-              {Math.round((perClass[3].present / perClass[3].total) * 100)}% to Class III
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── MofFieldsByClass ─ group the per-field cards under each class ────
-function MofFieldsByClass({ reg, data, onOpenComponent }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-      {reg.classes.map(cls => {
-        const fields = reg.fields.filter(f => f.cls === cls.id);
-        return (
-          <div key={cls.id}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
-              <Eyebrow>{cls.label}</Eyebrow>
-              <span style={{ fontSize: 13, color: "var(--ink-2)", fontWeight: 500 }}>{cls.subtitle}</span>
-              <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>· {fields.length} disclosures</span>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {fields.map(f => <FieldCard key={f.key} field={f} reg={reg} data={data} onOpenComponent={onOpenComponent} />)}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function FieldCard({ field, reg, data, onOpenComponent }) {
-  const inScope = data.componentsForReg(reg).filter(c => data.fieldAppliesTo(field, c, reg));
-  const missing = inScope.filter(c => !data.componentFieldForReg(c, field, reg).present);
-  const unverified = field.key === "provenance"
-    ? inScope.filter(c => data.componentFieldForReg(c, field, reg).present && c.provenance && !c.provenance.signed)
-    : [];
-  const ok = missing.length === 0 && unverified.length === 0;
-  const presentCount = inScope.length - missing.length - unverified.length;
-  const hint = data.findHints[field.key];
-
-  const dotColor = missing.length > 0 ? "var(--ochre)"
-                 : unverified.length > 0 ? "var(--indigo)"
-                 : "var(--moss)";
-
-  return (
-    <Card padding={0} variant={ok ? "recessed" : "default"}>
-      <div style={{ padding: "16px 20px", display: "grid", gridTemplateColumns: "1fr auto", gap: 16, alignItems: "start" }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ width: 8, height: 8, borderRadius: 999, background: dotColor, flex: "0 0 8px" }} />
-            <span style={{ fontSize: 15, fontWeight: 500, color: "var(--ink)" }}>{field.label}</span>
-            <Mono style={{ fontSize: 11, color: "var(--ink-3)" }}>{field.cite}</Mono>
-          </div>
-          <div style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 6, lineHeight: 1.55, maxWidth: 720 }}>{field.rationale}</div>
-        </div>
-        <div style={{ textAlign: "right", minWidth: 140 }}>
-          <Mono style={{ fontSize: 13, color: "var(--ink-2)" }}>{presentCount}/{inScope.length}</Mono>
-          <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 4 }}>components with this field</div>
-          <div style={{ display: "flex", height: 4, marginTop: 8, borderRadius: 999, overflow: "hidden", background: "var(--paper-3)", width: 140, marginLeft: "auto" }}>
-            <span style={{ flex: presentCount, background: "var(--moss)" }} />
-            <span style={{ flex: unverified.length, background: "var(--indigo)" }} />
-            <span style={{ flex: missing.length, background: "var(--ochre)" }} />
-          </div>
-        </div>
-      </div>
-
-      {(missing.length > 0 || unverified.length > 0) && (
-        <div style={{ padding: "0 20px 18px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-          <div>
-            {missing.length > 0 && (
-              <div>
-                <div style={{ fontSize: 11, color: "var(--ochre-ink)", marginBottom: 8, fontWeight: 500 }}>
-                  Missing on {missing.length} {missing.length === 1 ? "component" : "components"}
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                  {missing.map(c => (
-                    <span key={c.id} onClick={() => onOpenComponent && onOpenComponent(c)} style={{
-                      fontFamily: "var(--font-mono)", fontSize: 11, padding: "3px 8px",
-                      background: "var(--ochre-soft)", color: "var(--ochre-ink)", borderRadius: 2,
-                      cursor: onOpenComponent ? "pointer" : "default",
-                    }}>{c.name}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {unverified.length > 0 && (
-              <div style={{ marginTop: missing.length > 0 ? 12 : 0 }}>
-                <div style={{ fontSize: 11, color: "var(--indigo-ink)", marginBottom: 8, fontWeight: 500 }}>
-                  Unverified on {unverified.length} {unverified.length === 1 ? "component" : "components"}
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                  {unverified.map(c => (
-                    <span key={c.id} onClick={() => onOpenComponent && onOpenComponent(c)} style={{
-                      fontFamily: "var(--font-mono)", fontSize: 11, padding: "3px 8px",
-                      background: "var(--indigo-soft)", color: "var(--indigo-ink)", borderRadius: 2,
-                      cursor: onOpenComponent ? "pointer" : "default",
-                    }}>{c.name}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-          {hint && missing.length > 0 && <WhereToLook hint={hint} />}
-        </div>
-      )}
-    </Card>
-  );
-}
-
-// ─── WhereToLook -- small inline panel with the "find this info" sources ──
-function WhereToLook({ hint }) {
-  return (
-    <div style={{ background: "var(--paper-2)", border: "1px solid var(--border-soft)", borderRadius: 2, padding: "12px 14px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-        <span style={{ width: 5, height: 5, background: "var(--shu)", borderRadius: 999 }} />
-        <span style={{ fontSize: 10.5, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--shu-deep)" }}>Where to look</span>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-        {hint.sources.map((s, i) => (
-          <div key={i} style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 10, fontSize: 11.5, lineHeight: 1.5 }}>
-            <span style={{ color: "var(--ink)", fontWeight: 500 }}>{s.who}</span>
-            <span style={{ color: "var(--ink-3)" }}>{s.detail}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── Import / Upload screen ─────────────────────────────────────────────
-//
-// "Bring an SBOM into Lumina." Art's framing settled the arrow direction
-// debate: up/down arrows mean opposite things to different people (upload
-// vs. download mental models clash), so we use the horizontal "into a box"
-// metaphor -- `log-in` for import here, `log-out` for export elsewhere.
-//
-// The drop area is the *only* ingress: drop a file, paste a GitHub repo
-// URL, or paste a Hugging Face Hub URL. Lumina does not generate SBOMs
-// itself -- for that, run Pitloom locally and bring the result back here.
-// (Large model files like GGUF would be infeasible to drop into a browser
-// tab anyway; metadata extraction belongs on the user's machine.)
-// ImportScreen -- Mode 1 (artefact URL). Paste a Git repository or Hugging Face
-// Hub URL; the backend generates an SBOM (Pitloom, server-side) and checks it
-// against a regulation. This talks to the real API:
-//   POST /api/v1/artifact/check  -> { job_id }
-//   GET  /api/v1/jobs/{job_id}   -> { status, result?, error? }
-//
-// TODO (not done yet): this is the ONLY screen wired to real backend results.
-// It is deliberately self-contained -- it renders its own compact result panel
-// from SbomCheckResponse and does NOT feed the data.js-driven viewer screens
-// (Overview, Inventory, Graph, Conformance), which still show static prototype
-// data. Mapping SbomCheckResponse + the generated SBOM into those screens'
-// data model is the remaining integration work. See docs/design.md
-// "Implementation status (Stage 0)".
-// Regulations the checker can report on a generated SBOM (see
-// CHECKER_STANDARDS in backend/app/conformance.py).
-const IMPORT_REGULATIONS = [
-  { id: "ntia", label: "NTIA Minimum Elements" },
-  { id: "g7ai", label: "G7 SBOM for AI" },
-  { id: "cisa2026", label: "CISA 2026 Minimum Elements" },
-  { id: "fsct2024", label: "FSCT 2024 (CISA Framing)" },
-];
+const regulationLabel = (id) => (IMPORT_REGULATIONS[id] && IMPORT_REGULATIONS[id].label) || id;
 
 // Rule clusters per regulation (the cluster segment of the rule id), in order.
+// A cluster the result has but this table lacks is still shown, by its code.
 const RULE_CLUSTERS = {
   ntia: [
     { code: "DF", name: "Data fields" },
@@ -450,9 +77,90 @@ const RULE_CLUSTERS = {
   ],
 };
 
-function ImportScreen({ onComplete }) {
+// ─── API helpers ───────────────────────────────────────────────────────
+// The explanation a failed response carries: FastAPI's `detail` (a string,
+// or a list of validation errors), else the body text, else the status text.
+async function apiErrorMessage(response) {
+  const text = await response.text().catch(() => "");
+  let detail = "";
+  try {
+    const body = JSON.parse(text);
+    if (typeof body.detail === "string") detail = body.detail;
+    else if (Array.isArray(body.detail)) {
+      detail = body.detail.map(d => {
+        const where = Array.isArray(d.loc) ? d.loc.join(".") + ": " : "";
+        const why = d.ctx && d.ctx.error ? ` (${d.ctx.error})` : "";
+        return where + (d.msg || JSON.stringify(d)) + why;
+      }).join("\n");
+    } else if (body.detail !== undefined) detail = JSON.stringify(body.detail);
+  } catch (e) {
+    detail = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 300);
+  }
+  return `HTTP ${response.status}${response.statusText ? " " + response.statusText : ""}${detail ? ": " + detail : ""}`;
+}
+
+// POST and return the SbomCheckResponse, or throw with the server's detail.
+async function postForResult(url, init) {
+  const response = await fetch(url, { method: "POST", ...init });
+  if (!response.ok) throw new Error(await apiErrorMessage(response));
+  return response.json();
+}
+
+// GET /api/v1/regulations -> { regulations: [{ id, ready }], error }.
+function useRegulations() {
+  const [state, setState] = _useSC({ regulations: null, error: "" });
+  _useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const response = await fetch("/api/v1/regulations");
+        if (!response.ok) throw new Error(await apiErrorMessage(response));
+        const body = await response.json();
+        if (!body || !Array.isArray(body.regulations)) throw new Error("The regulation list is malformed.");
+        if (alive) setState({ regulations: body.regulations, error: "" });
+      } catch (err) {
+        if (alive) setState({ regulations: null, error: String(err.message || err) });
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+  return state;
+}
+
+// The selected regulation id: the first ready one until the user picks.
+function useSelectedRegulation(regulations) {
+  const [picked, setPicked] = _useSC(null);
+  const ready = (regulations || []).filter(r => r.ready).map(r => r.id);
+  return [picked && ready.includes(picked) ? picked : ready[0] || null, setPicked];
+}
+
+// ─── RegulationPicker -- radio chips for the regulations the API lists ──
+function RegulationPicker({ state, value, onChange, disabled }) {
+  if (state.error) return <ErrorCard title="Could not load the regulation list">{state.error}</ErrorCard>;
+  if (!state.regulations) return <div style={{ fontSize: 12.5, color: "var(--ink-3)" }}>Loading regulations…</div>;
+  return (
+    <div role="radiogroup" aria-label="Regulation" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      {state.regulations.map(r => (
+        <RegTag key={r.id} role="radio" ariaChecked={value === r.id} active={value === r.id}
+          disabled={!r.ready}
+          ariaLabel={r.ready ? regulationLabel(r.id) : `${regulationLabel(r.id)} (not supported)`}
+          onClick={() => { if (!disabled) onChange(r.id); }}>
+          {regulationLabel(r.id)}{r.ready ? null : " (not supported)"}
+        </RegTag>
+      ))}
+    </div>
+  );
+}
+
+// ─── Generate & check (Mode 1) ─────────────────────────────────────────
+// Paste a Git repository or Hugging Face Hub URL; the backend generates an
+// SBOM (Pitloom, server-side) and checks it against a regulation:
+//   POST /api/v1/artifact/check  -> { job_id }
+//   GET  /api/v1/jobs/{job_id}   -> { status, result?, error? }
+function ImportScreen() {
+  const regs = useRegulations();
+  const [regId, setRegId] = useSelectedRegulation(regs.regulations);
   const [url, setUrl] = _useSC("");
-  const [regId, setRegId] = _useSC("ntia");
   const [phase, setPhase] = _useSC("idle"); // idle | running | done | error
   const [result, setResult] = _useSC(null); // SbomCheckResponse
   const [errorMsg, setErrorMsg] = _useSC("");
@@ -463,31 +171,25 @@ function ImportScreen({ onComplete }) {
 
   async function run() {
     const artifactUrl = url.trim();
-    if (!artifactUrl) return;
+    if (!artifactUrl || !regId) return;
     setPhase("running"); setResult(null); setErrorMsg("");
     try {
-      const submit = await fetch("/api/v1/artifact/check", {
-        method: "POST",
+      const { job_id } = await postForResult("/api/v1/artifact/check", {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ artifact_url: artifactUrl, regulation_id: regId }),
       });
-      if (!submit.ok) throw new Error(`Submit failed (HTTP ${submit.status})`);
-      const { job_id } = await submit.json();
-
       // Poll until the job finishes. Jobs are minutes-long at most; a ~2.5s
       // interval keeps the UI responsive without hammering the API.
       while (aliveRef.current) {
         await sleep(2500);
-        const poll = await fetch(`/api/v1/jobs/${job_id}`);
-        if (!poll.ok) throw new Error(`Status check failed (HTTP ${poll.status})`);
+        const poll = await fetch(`/api/v1/jobs/${encodeURIComponent(job_id)}`);
+        if (!poll.ok) throw new Error(await apiErrorMessage(poll));
         const rec = await poll.json();
         if (rec.status === "done") {
           if (!aliveRef.current) return;
           setResult(rec.result); setPhase("done"); return;
         }
-        if (rec.status === "error") {
-          throw new Error(rec.error || "Generation job failed");
-        }
+        if (rec.status === "error") throw new Error(rec.error || "The generation job failed.");
       }
     } catch (err) {
       if (!aliveRef.current) return;
@@ -495,22 +197,12 @@ function ImportScreen({ onComplete }) {
     }
   }
 
-  return (
-    <div style={{ padding: "32px 48px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 880, margin: "0 auto" }}>
-      <div>
-        <Eyebrow>Generate &amp; check</Eyebrow>
-        <h1 style={{ margin: "6px 0 4px", fontSize: 32, fontWeight: 500, letterSpacing: "-0.018em" }}>Check a repository or model</h1>
-        <p style={{ margin: 0, fontSize: 14.5, color: "var(--ink-3)" }}>
-          Paste a Git repository URL or a Hugging Face Hub model URL. Lumina generates an SBOM for it (server-side, via Pitloom) and checks it against the regulation you pick.
-        </p>
-      </div>
+  const pick = (id) => { if (phase !== "running") { setRegId(id); setResult(null); setPhase("idle"); } };
 
-      <div role="radiogroup" aria-label="Regulation" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {IMPORT_REGULATIONS.map(r => (
-          <RegTag key={r.id} role="radio" ariaChecked={regId === r.id} active={regId === r.id}
-            onClick={() => { if (phase !== "running") { setRegId(r.id); setResult(null); setPhase("idle"); } }}>{r.label}</RegTag>
-        ))}
-      </div>
+  return (
+    <ScreenFrame eyebrow="Generate & check" title="Check a repository or model"
+      intro="Paste a Git repository URL or a Hugging Face Hub model URL. Lumina generates an SBOM for it (server-side, with Pitloom) and checks it against the regulation you pick.">
+      <RegulationPicker state={regs} value={regId} onChange={pick} disabled={phase === "running"} />
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <TextField
@@ -524,39 +216,45 @@ function ImportScreen({ onComplete }) {
           style={{ flex: 1, minWidth: 320 }}
         />
         <Button variant="primary" icon={phase === "running" ? "loader" : "play"}
-          onClick={run} disabled={phase === "running" || !url.trim()}>
+          onClick={run} disabled={phase === "running" || !url.trim() || !regId}>
           {phase === "running" ? "Working…" : "Generate & check"}
         </Button>
       </div>
 
       {phase === "running" && (
-        <div style={{ fontSize: 12.5, color: "var(--ink-3)", display: "flex", alignItems: "center", gap: 8 }}>
+        <div role="status" style={{ fontSize: 12.5, color: "var(--ink-3)", display: "flex", alignItems: "center", gap: 8 }}>
           <Icon name="loader" size={14} style={{ color: "var(--ink-3)" }} />
           Cloning &amp; generating the SBOM, then checking conformance. A large repository can take a couple of minutes.
         </div>
       )}
 
-      {phase === "error" && (
-        <Card variant="default" padding={16} style={{ borderColor: "var(--shu)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--shu)", fontSize: 14, fontWeight: 500 }}>
-            <Icon name="alert-triangle" size={16} /> Could not complete
-          </div>
-          <div style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 8, lineHeight: 1.6 }}>{errorMsg}</div>
-        </Card>
-      )}
-
+      {phase === "error" && <ErrorCard>{errorMsg}</ErrorCard>}
       {phase === "done" && result && <ArtifactResult result={result} />}
 
       <MarginNote title="What gets generated?">
         Lumina generates the SBOM on the server with{" "}
         <a href="https://github.com/bact/pitloom" target="_blank" rel="noopener noreferrer" style={{ color: "var(--ink)", borderBottom: "1px solid var(--ink-4)", paddingBottom: 1, textDecoration: "none" }}>Pitloom</a>{" "}
-        (SPDX 3 JSON-LD). For a Git URL it shallow-clones the repository and reads its Python packaging metadata; for a Hugging Face URL it reads model metadata via the HF API &mdash; no model files are downloaded. Already have an SBOM? Use the SBOM upload / SARIF import endpoints instead.
+        (SPDX 3 JSON-LD). For a Git URL it shallow-clones the repository and reads its Python packaging metadata; for a Hugging Face URL it reads model metadata through the Hugging Face API &mdash; no model files are downloaded. Already have an SBOM or a SARIF log? Use <em>Upload SBOM</em> or <em>Import SARIF</em>.
       </MarginNote>
+    </ScreenFrame>
+  );
+}
+
+// ─── ScreenFrame -- heading + column every check screen uses ──────────
+function ScreenFrame({ eyebrow, title, intro, children }) {
+  return (
+    <div style={{ padding: "32px 48px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 880, margin: "0 auto" }}>
+      <div>
+        <Eyebrow>{eyebrow}</Eyebrow>
+        <h1 style={{ margin: "6px 0 4px", fontSize: 32, fontWeight: 500, letterSpacing: "-0.018em" }}>{title}</h1>
+        <p style={{ margin: 0, fontSize: 14.5, color: "var(--ink-3)" }}>{intro}</p>
+      </div>
+      {children}
     </div>
   );
 }
 
-// RuleClusters -- per-rule outcomes grouped by cluster (rule-id segment).
+// ─── RuleClusters -- per-rule outcomes grouped by cluster ───────────────
 // "Not applicable" and "out of scope" rules are listed but never counted as
 // missing: out-of-scope rules are catalogue-only, the checker cannot check them.
 const RULE_CHIP = {
@@ -566,9 +264,18 @@ const RULE_CHIP = {
   "out-of-scope": { status: "neutral", label: "Not checked" },
 };
 
+function ruleClusters(regulationId, rules) {
+  const known = RULE_CLUSTERS[regulationId] || [];
+  const codes = known.map(cl => cl.code);
+  rules.forEach(r => { if (!codes.includes(r.cluster)) codes.push(r.cluster); });
+  return codes.map(code => ({
+    code,
+    name: (known.find(cl => cl.code === code) || {}).name || code || "Other",
+    rules: rules.filter(r => r.cluster === code),
+  })).filter(cl => cl.rules.length > 0);
+}
+
 function RuleClusters({ regulationId, rules, judgedByModel }) {
-  const clusters = (RULE_CLUSTERS[regulationId] || []).map(cl => ({ ...cl, rules: rules.filter(r => r.cluster === cl.code) }))
-    .filter(cl => cl.rules.length > 0);
   const count = (list, outcome) => list.filter(r => r.outcome === outcome).length;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -577,7 +284,7 @@ function RuleClusters({ regulationId, rules, judgedByModel }) {
           This SBOM has no AI system of its own. The system-level rules were judged by the model <Mono>{judgedByModel}</Mono>.
         </MarginNote>
       )}
-      {clusters.map(cl => (
+      {ruleClusters(regulationId, rules).map(cl => (
         <Card key={cl.code} padding={0}>
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 500, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <span>{cl.name}</span>
@@ -586,7 +293,7 @@ function RuleClusters({ regulationId, rules, judgedByModel }) {
             </span>
           </div>
           {cl.rules.map((r, i) => {
-            const chip = RULE_CHIP[r.outcome];
+            const chip = RULE_CHIP[r.outcome] || { status: "neutral", label: r.outcome };
             return (
               <div key={r.rule_id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "9px 16px", borderBottom: i < cl.rules.length - 1 ? "1px solid var(--border)" : "none" }}>
                 <div style={{ flex: "0 0 112px", paddingTop: 1 }}><StatusChip status={chip.status}>{chip.label}</StatusChip></div>
@@ -605,8 +312,13 @@ function RuleClusters({ regulationId, rules, judgedByModel }) {
   );
 }
 
-// ArtifactResult -- compact render of a SbomCheckResponse: conformance counts,
-// the gap list, and any run notifications. Self-contained on purpose.
+// ─── ArtifactResult -- render one SbomCheckResponse ────────────────────
+// Counts, per-rule outcomes, gaps and run notifications, exactly as the API
+// returned them. Three honest states replace the counts:
+//   - the SBOM could not be checked (run.execution_successful is false);
+//   - nothing was checked (an `sbom.nothing-applies` notification);
+//   - a verdict-only result (an `sbom.verdict` notification and no counts,
+//     rules or gaps, as BSI gives today): the verdict is the result.
 function ArtifactResult({ result }) {
   const c = result.conformance || {};
   const run = result.run || {};
@@ -614,13 +326,17 @@ function ArtifactResult({ result }) {
   const gaps = c.gaps || [];
   const rules = c.rules || [];
   const ok = run.execution_successful !== false;
-  // Nothing was checked (the SBOM could not be read, or no rule applies to it):
-  // the counts are not findings, so none is shown.
-  const nothingChecked = !ok || notes.some(n => n.descriptor_id === "sbom.nothing-applies");
-  const showFindings = !nothingChecked;
+  const nothingApplies = notes.some(n => n.descriptor_id === "sbom.nothing-applies");
+  const verdict = notes.find(n => n.descriptor_id === "sbom.verdict");
+  const verdictOnly = ok && !nothingApplies && verdict && rules.length === 0 && gaps.length === 0
+    && !(c.total > 0) && !(c.missing > 0);
+  const showFindings = ok && !nothingApplies && !verdictOnly;
+  const listed = verdictOnly ? notes.filter(n => n !== verdict) : notes;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {nothingChecked && ok && (
+      <RunLine result={result} />
+
+      {ok && nothingApplies && (
         <Card variant="default" padding={16}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--ink-2)", fontSize: 14, fontWeight: 500 }}>
             <Icon name="info" size={16} /> Nothing was checked: no rule of this regulation applies to this SBOM
@@ -633,7 +349,18 @@ function ArtifactResult({ result }) {
             <Icon name="alert-triangle" size={16} /> The SBOM could not be checked
           </div>
           <div style={{ fontSize: 12.5, color: "var(--ink-3)", marginTop: 6 }}>
-            Tool: <Mono>{run.tool_name || "?"}</Mono>{c.source ? <> · source <Mono>{c.source}</Mono></> : null}
+            See the notifications below.
+          </div>
+        </Card>
+      )}
+      {verdictOnly && (
+        <Card variant="default" padding={16} style={{ borderColor: verdict.level === "note" ? "var(--moss)" : "var(--ochre)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 500, color: verdict.level === "note" ? "var(--moss-ink)" : "var(--ochre-ink)" }}>
+            <Icon name={verdict.level === "note" ? "check" : "alert-triangle"} size={16} /> Verdict
+          </div>
+          <div style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 8, lineHeight: 1.6 }}>{verdict.message}</div>
+          <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 6 }}>
+            The checker reports only a verdict for {regulationLabel(c.regulation_id)}, so there are no per-rule counts.
           </div>
         </Card>
       )}
@@ -641,9 +368,9 @@ function ArtifactResult({ result }) {
       {showFindings && (
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${(c.unverified ?? 0) > 0 ? 4 : 3}, 1fr)`, gap: 12 }}>
           <SummaryTile label="Fields checked" value={c.total ?? 0} />
-          <SummaryTile label="Present" value={c.present ?? 0} accent="#5F7A4F" />
-          <SummaryTile label="Missing" value={c.missing ?? 0} accent={(c.missing ?? 0) > 0 ? "#B68333" : undefined} />
-          {(c.unverified ?? 0) > 0 && <SummaryTile label="Unverified" value={c.unverified} accent="#2F4A6B" />}
+          <SummaryTile label="Present" value={c.present ?? 0} accent="var(--moss)" />
+          <SummaryTile label="Missing" value={c.missing ?? 0} accent={(c.missing ?? 0) > 0 ? "var(--ochre)" : undefined} />
+          {(c.unverified ?? 0) > 0 && <SummaryTile label="Unverified" value={c.unverified} accent="var(--indigo)" />}
         </div>
       )}
 
@@ -678,16 +405,16 @@ function ArtifactResult({ result }) {
         </Card>
       )}
 
-      {notes.length > 0 && (
+      {listed.length > 0 && (
         <Card padding={0}>
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 500 }}>
-            Notifications ({notes.length})
+            Notifications ({listed.length})
           </div>
           <div>
-            {notes.map((n, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 16px", borderBottom: i < notes.length - 1 ? "1px solid var(--border)" : "none" }}>
+            {listed.map((n, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 16px", borderBottom: i < listed.length - 1 ? "1px solid var(--border)" : "none" }}>
                 <StatusChip status={n.level === "error" ? "invalid" : n.level === "warning" ? "missing" : "neutral"}>{n.level}</StatusChip>
-                <div style={{ minWidth: 0, fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
+                <div style={{ minWidth: 0, fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5, overflowWrap: "anywhere" }}>
                   {n.descriptor_id ? <Mono style={{ marginRight: 6 }}>{n.descriptor_id}</Mono> : null}{n.message}
                 </div>
               </div>
@@ -699,4 +426,29 @@ function ArtifactResult({ result }) {
   );
 }
 
-Object.assign(window, { ConformanceScreen, ImportScreen, ArtifactResult, RuleClusters, WhereToLook });
+// ─── RunLine -- which regulation, which tool, which generator ──────────
+const SOURCE_NOTE = {
+  "external-sarif": "a third-party SARIF producer",
+  "lumina-internal": "Lumina (the checker did not run)",
+};
+
+function RunLine({ result }) {
+  const c = result.conformance || {};
+  const run = result.run || {};
+  const tool = c.source === "lumina-internal" ? "" : [run.tool_name, run.tool_version].filter(Boolean).join(" ");
+  return (
+    <div style={{ fontSize: 12.5, color: "var(--ink-3)", display: "flex", gap: 6, flexWrap: "wrap", alignItems: "baseline" }}>
+      <RegTag active>{regulationLabel(c.regulation_id)}</RegTag>
+      {tool ? <span>· run by <Mono>{tool}</Mono></span> : null}
+      {SOURCE_NOTE[c.source] ? <span>· from {SOURCE_NOTE[c.source]}</span> : null}
+      {run.generator ? <span>· SBOM generated by <Mono>{run.generator}</Mono></span> : null}
+    </div>
+  );
+}
+
+Object.assign(window, {
+  ArtifactResult,
+  IMPORT_REGULATIONS, RULE_CLUSTERS, regulationLabel, apiErrorMessage, postForResult,
+  useRegulations, useSelectedRegulation, RegulationPicker, ScreenFrame,
+  ImportScreen, RuleClusters,
+});

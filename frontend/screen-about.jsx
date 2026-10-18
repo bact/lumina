@@ -4,47 +4,28 @@ SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: SOURCE
 SPDX-License-Identifier: Apache-2.0
 */
-// Lumina UI Kit -- About screen
+// Lumina frontend -- About screen
 //
-// Surfaces the app's identity: what it is, what it stands on, what it's
-// licensed under, what specs / regulations it tracks, and who's behind it.
-// Kept intentionally text-first; this is a reference page, not a marketing
-// piece.
+// What Lumina is, what it stands on, its licence, and the regulations the
+// API lists (GET /api/v1/regulations) with what each check covers.
 
-function AboutScreen({ data }) {
-  const { t } = useLocale();
+function AboutScreen() {
+  const regs = useRegulations();
 
   // ── Dependencies Lumina leans on directly ──────────────────────────────
   const dependencies = [
     {
-      name: "Pitloom",
-      role: "SBOM generator",
-      detail: "Resolves manifests and lockfiles into the SPDX 3.0 documents Lumina reads.",
-      href: "https://github.com/pitloom/pitloom",
-    },
-    {
-      name: "NTIA Conformance Checker",
-      role: "Minimum-elements validator",
-      detail: "Reference implementation Lumina cross-checks against when reporting NTIA conformance.",
+      name: "ntia-conformance-checker",
+      role: "Conformance checker",
+      detail: "Runs every check. Lumina turns its SARIF log into the result the screens show.",
       href: "https://github.com/spdx/ntia-conformance-checker",
     },
-  ];
-
-  // ── Specs & regulations Lumina recognises ──────────────────────────────
-  // Hand-picked source URLs -- these are the canonical references, not
-  // secondary explainers.
-  const specLinks = {
-    ntia:  "https://www.ntia.gov/report/2021/minimum-elements-software-bill-materials-sbom",
-    cra:   "https://eur-lex.europa.eu/eli/reg/2024/2847/oj",
-    bsi:   "https://www.bsi.bund.de/EN/Themen/Unternehmen-und-Organisationen/Standards-und-Zertifizierung/Technische-Richtlinien/TR-nach-Thema-sortiert/tr03183/TR-03183_node.html",
-    g7ai:  "https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/KI/SBOM-for-AI_minimum-elements.html",
-    mof:   "https://isitopen.ai/",
-  };
-  // SBOM format specs Lumina reads. Versions match what the underlying
-  // parser (spdx/tools-python) supports -- keep this list in lockstep with
-  // tools-python release notes.
-  const standards = [
-    { name: "SPDX",  version: "2.2, 2.3, 3.0",  href: "https://spdx.dev/use/specifications/" },
+    {
+      name: "Pitloom",
+      role: "SBOM generator",
+      detail: "Generates the SPDX 3 SBOM for a Git repository or Hugging Face model on the Generate & check screen.",
+      href: "https://github.com/bact/pitloom",
+    },
   ];
 
   return (
@@ -58,10 +39,10 @@ function AboutScreen({ data }) {
           <span style={{ color: "var(--ink-3)" }}> is.</span>
         </h1>
         <p style={{ margin: "12px 0 0", fontSize: 15, color: "var(--ink-2)", lineHeight: 1.6, maxWidth: 640 }}>
-          Lumina is a viewer for Software Bills of Materials. It reads an SBOM
-          and shows whether the fields a given regulation actually asks for
-          are present -- so the answer to <em>"are we conformant?"</em> stops being
-          a folder of PDFs.
+          Lumina checks a Software Bill of Materials (SBOM) against a
+          regulation's minimum elements and shows, rule by rule, which of them
+          the SBOM has a property for. Bring an SBOM, a SARIF log from a
+          checker, or a Git or Hugging Face URL to generate one from.
         </p>
       </div>
 
@@ -105,7 +86,7 @@ function AboutScreen({ data }) {
             <div style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.55 }}>
               Lumina is open source. Use, modify, and redistribute under the
               terms of the Apache License, Version 2.0. {" "}
-              <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener noreferrer" style={{ color: "var(--ink)", textDecoration: "none", borderBottom: "1px solid var(--ink-4)", paddingBottom: 1 }}>
+              <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener noreferrer" style={inlineLinkStyle}>
                 Read the license
               </a>.
             </div>
@@ -113,32 +94,25 @@ function AboutScreen({ data }) {
         </Card>
       </section>
 
-      {/* ── Supported specs / regulations ───────────────────────────────── */}
+      {/* ── Regulations, as the API lists them ──────────────────────────── */}
       <section aria-labelledby="about-specs-h">
-        <Eyebrow id="about-specs-h">Supported specs &amp; regulations</Eyebrow>
-        <Card padding={0} style={{ marginTop: 8 }}>
-          {/* Regulations sourced from the live data set so this page stays
-             in lockstep with the conformance engine. */}
-          {data.regulations.map((r, i) => (
-            <SpecRow key={r.id}
-              tag={r.tag}
-              name={r.name}
-              version={r.version}
-              scope={r.scope === "ai" ? "AI scope" : "Software scope"}
-              href={specLinks[r.id]}
-              isLast={false} />
-          ))}
-          {/* SBOM format specs Lumina reads. Versions reflect spdx/tools-python coverage. */}
-          {standards.map((s, i) => (
-            <SpecRow key={s.name}
-              tag="SPDX"
-              name={s.name}
-              version={s.version}
-              scope="SBOM format"
-              href={s.href}
-              isLast={i === standards.length - 1} />
-          ))}
-        </Card>
+        <Eyebrow id="about-specs-h">Regulations</Eyebrow>
+        <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--ink-3)", lineHeight: 1.55 }}>
+          Each check reports, per rule, whether the SBOM has the property the
+          rule asks for. Present means the property exists, not that its value
+          is right. SBOMs are read as SPDX 2 or SPDX 3; the version is detected
+          from the file.
+        </p>
+        {regs.error
+          ? <div style={{ marginTop: 8 }}><ErrorCard title="Could not load the regulation list">{regs.error}</ErrorCard></div>
+          : (
+            <Card padding={0} style={{ marginTop: 8 }}>
+              {!regs.regulations && <div style={{ padding: "14px 20px", fontSize: 12.5, color: "var(--ink-3)" }}>Loading regulations…</div>}
+              {(regs.regulations || []).map((r, i, all) => (
+                <SpecRow key={r.id} reg={r} isLast={i === all.length - 1} />
+              ))}
+            </Card>
+          )}
       </section>
 
       {/* ── Author / institution ────────────────────────────────────────── */}
@@ -178,27 +152,29 @@ function AboutScreen({ data }) {
   );
 }
 
-// ─── SpecRow -- one line of the specs table ──────────────────────────────
-function SpecRow({ tag, name, version, scope, href, isLast }) {
+// ─── SpecRow -- one regulation the API lists ─────────────────────────────
+function SpecRow({ reg, isLast }) {
+  const info = IMPORT_REGULATIONS[reg.id] || {};
   return (
     <div style={{
       padding: "14px 20px",
       borderBottom: isLast ? 0 : "1px solid var(--border-soft)",
-      display: "grid", gridTemplateColumns: "120px 1fr auto auto", gap: 14, alignItems: "center",
+      display: "grid", gridTemplateColumns: "1fr auto auto", gap: 14, alignItems: "center",
     }}>
-      <RegTag>{tag}</RegTag>
       <div>
-        <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--ink)" }}>{name}</div>
-        <Mono style={{ fontSize: 11, color: "var(--ink-3)" }}>{version}</Mono>
+        <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--ink)" }}>
+          {regulationLabel(reg.id)} <Mono style={{ fontSize: 11, color: "var(--ink-3)", fontWeight: 400 }}>{reg.id}</Mono>
+        </div>
+        {info.covers && <div style={{ fontSize: 12.5, color: "var(--ink-3)", marginTop: 3, lineHeight: 1.5 }}>{info.covers}</div>}
       </div>
-      <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{scope}</span>
-      {href ? (
-        <a href={href} target="_blank" rel="noopener noreferrer" style={{
+      <StatusChip status={reg.ready ? "present" : "neutral"}>{reg.ready ? "Supported" : "Not supported"}</StatusChip>
+      {info.href ? (
+        <a href={info.href} target="_blank" rel="noopener noreferrer" style={{
           fontSize: 12, color: "var(--ink-2)", textDecoration: "none",
           display: "inline-flex", alignItems: "center", gap: 5,
           borderBottom: "1px solid var(--ink-4)", paddingBottom: 1,
         }}
-        aria-label={`Open canonical source for ${name} (new tab)`}>
+        aria-label={`Open the source document for ${regulationLabel(reg.id)} (new tab)`}>
           Source <Icon name="external-link" size={11} />
         </a>
       ) : <span aria-hidden="true" style={{ fontSize: 12, color: "var(--ink-4)" }}>--</span>}
