@@ -1,0 +1,14 @@
+# SPDX-FileContributor: Arthit Suriyawongkul
+# SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
+# SPDX-FileType: SOURCE
+# SPDX-License-Identifier: Apache-2.0
+#
+# Cloud Build config for the single-container image (INSTALL.md, Option C):
+#   gcloud builds submit . --config docker/standalone/cloudbuild.yaml \
+#       --substitutions _IMAGE=<region>-docker.pkg.dev/<project>/lumina/app:latest
+# Not tested: no Docker daemon or Google Cloud project was available.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "docker/standalone/Dockerfile", "-t", "${_IMAGE}", "."]
+images:
+  - "${_IMAGE}"

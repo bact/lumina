@@ -18,7 +18,8 @@ services:
     # Port 80 on the host for local health checks and direct access.
     # With Cloudflare Tunnel the tunnel connects to nginx over the compose
     # network (http://nginx:80), so you can tighten this to
-    # "127.0.0.1:8080:80" if you want to keep it off the public interface.
+    # `ports: !override ["127.0.0.1:8080:80"]` to keep it off the public
+    # interface (`!override` replaces the base list instead of adding to it).
     ports:
       - "80:80"
 

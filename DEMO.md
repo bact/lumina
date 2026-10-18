@@ -22,7 +22,9 @@ deployment options (VM, Hugging Face Spaces, Cloud Run) see
 | Internet during the demo, for the *Generate & check* screen only | Lumina clones a Git repository or reads a Hugging Face model's metadata | |
 | Free ports 80 and 8000 | the page and the API | `ss -ltn` (Linux) or `lsof -i :80` (macOS) |
 
-*Upload SBOM* and *Import SARIF* work without internet once the images are built.
+*Upload SBOM* and *Import SARIF* work without internet once the images are built:
+the page's scripts are bundled (`frontend/vendor/`). Only the web fonts come from
+Google Fonts; offline the page falls back to system fonts.
 
 ## 2. Start it
 
@@ -72,8 +74,9 @@ made from it for the G7 SBOM for AI standard.
    run. Lumina generates the SBOM with Pitloom, checks it, and shows the result
    and any warnings Pitloom raised. A Git project takes tens of seconds; a
    Hugging Face model reads metadata only and downloads no weights.
-5. **Errors are shown, not hidden.** Upload a file over 10 MB or a text file:
-   the page shows the server's message.
+5. **Errors are shown, not hidden.** Upload a text file, or one over 10 MiB
+   (`head -c 11000000 /dev/zero > big.json`): the page shows the server's
+   message.
 
 To make your own SBOMs for the demo, install Pitloom and the checker as the
 "G7 SBOM for AI" page of the Pitloom documentation shows, then:
@@ -83,6 +86,8 @@ loom model path/to/model.safetensors -o model.spdx3.json
 sbomcheck -s spdx3 -c g7ai -r sarif -o model.g7ai.sarif.json model.spdx3.json
 ```
 
+`sbomcheck` exits 1 when the SBOM does not conform; that is a result, not an error.
+
 ## 4. The API alone, without Docker
 
 For a curl-only demo of the API (no web page). Needs Python 3.14 and `git`.
@@ -90,9 +95,10 @@ For a curl-only demo of the API (no web page). Needs Python 3.14 and `git`.
 ```shell
 cd backend
 python3.14 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt          # about a minute
-uvicorn app.main:app --port 8000
-curl -s -F file=@../demo/phi-tiny-random.spdx3.json -F regulation=g7ai \
+pip install -r requirements.txt          # one to four minutes
+uvicorn app.main:app --port 8000          # leave running; use a second terminal below
+# second terminal, from the repository root:
+cd backend && curl -s -F file=@../demo/phi-tiny-random.spdx3.json -F regulation=g7ai \
   http://localhost:8000/api/v1/sbom/check
 ```
 
@@ -107,6 +113,7 @@ address), so use Docker for the page.
 | the build fails on a `git+https://github.com/...` line | the machine cannot reach GitHub: check the network or proxy settings of Docker |
 | the page loads but every check says "Could not complete" | read `docker compose logs api`; the page shows the server's message |
 | *Generate & check* says the URL is refused | Lumina only accepts public `http(s)` addresses; a private or local address is refused on purpose (set `LUMINA_ALLOW_PRIVATE_URLS=1` for the `api` service only on a trusted network) |
+| a Git URL of a private repository fails | Lumina clones without credentials, so only public repositories work |
 | a Hugging Face URL is slow or fails | Hub rate limits without a token; wait, or set `HF_TOKEN` for the `api` service (which also lets Lumina read private models: do not do this on a public instance) |
 | after updating, results look old | pip keeps an already installed package of the same version number even when the pinned commit changed: rebuild with `docker compose build --no-cache api`, or in a virtual environment run `pip install --force-reinstall --no-deps -r requirements.txt` for the two pinned lines |
 | an upload is refused as too large | the default cap is 10 MiB; raise `LUMINA_MAX_SBOM_BYTES` and nginx's `client_max_body_size` together |

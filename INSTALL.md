@@ -375,10 +375,11 @@ git commit --allow-empty -m "Rebuild"
 git push
 ```
 
-To pin a specific Lumina version, set `LUMINA_REF` in the Dockerfile:
+To pin a specific Lumina version, set `LUMINA_REF` in the Dockerfile to a
+branch or tag (a commit SHA does not work with a shallow clone):
 
 ```dockerfile
-ARG LUMINA_REF=v0.2.0   # tag or commit SHA
+ARG LUMINA_REF=v0.2.0   # branch or tag
 ```
 
 ---
@@ -443,9 +444,12 @@ reads it at start.
    ```bash
    # Run from the Lumina repo root
    gcloud builds submit . \
-       --dockerfile docker/standalone/Dockerfile \
-       --tag ${REGION}-docker.pkg.dev/${PROJECT}/lumina/app:latest
+       --config docker/standalone/cloudbuild.yaml \
+       --substitutions _IMAGE=${REGION}-docker.pkg.dev/${PROJECT}/lumina/app:latest
    ```
+
+   This path has not been tested by the maintainers: no Docker daemon or
+   Google Cloud project was available when it was written.
 
 5. **Deploy:**
 
@@ -477,8 +481,8 @@ reads it at start.
 
 ```bash
 gcloud builds submit . \
-    --dockerfile docker/standalone/Dockerfile \
-    --tag ${REGION}-docker.pkg.dev/${PROJECT}/lumina/app:latest
+    --config docker/standalone/cloudbuild.yaml \
+    --substitutions _IMAGE=${REGION}-docker.pkg.dev/${PROJECT}/lumina/app:latest
 
 gcloud run deploy lumina \
     --image ${REGION}-docker.pkg.dev/${PROJECT}/lumina/app:latest \
@@ -507,8 +511,8 @@ When load grows and the in-process queue is no longer enough, the upgrade path i
 
 1. Add a `worker` service and a local `redis:alpine` container (or Upstash
    serverless Redis) to the compose stack.
-2. Swap `InProcessJobQueue` for an `RQJobQueue` or `TaskiqJobQueue` by
-   changing a single env var (`JOB_BACKEND`).
+2. Add an `RQJobQueue` or `TaskiqJobQueue` next to `InProcessJobQueue` in
+   `backend/app/jobs.py` and use it where the app creates its queue.
 3. Nothing else changes — the HTTP contract, the frontend polling loop, the
    generators, and the conformance pipeline are all untouched.
 
@@ -556,8 +560,10 @@ These apply to all options once the deployment is working.
    ```
 
 4. **Keep the port off the public interface** (Option A). With Cloudflare
-   Tunnel you don't need `80:80` on the host — set nginx `ports` to
-   `127.0.0.1:8080:80` in `docker/compose/docker-compose.prod.yml`, and keep
+   Tunnel you don't need `80:80` on the host — set nginx
+   `ports: !override ["127.0.0.1:8080:80"]` in
+   `docker/compose/docker-compose.prod.yml` (`!override` replaces the base
+   list; a plain list would add to it), and keep
    the OCI security list closed.
 
 5. **Set a budget alert** (Option C). Cloud Run billing must be enabled even for
