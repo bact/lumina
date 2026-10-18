@@ -51,6 +51,10 @@ def _shallow_clone(repo_url: str, work_dir: str) -> None:
         subprocess.run(
             [
                 "git",
+                # The URL was checked once; a redirect to an internal host
+                # would skip that check, so none is followed.
+                "-c",
+                "http.followRedirects=false",
                 "clone",
                 "--depth",
                 "1",

@@ -259,6 +259,7 @@ def test_rule_title_names_the_element_not_the_failure(
 
 
 def _log_of_rule(rule_id: str, standard: str | None) -> dict[str, Any]:
+    """log of rule."""
     log = _rule_log()
     run = log["runs"][0]
     run["properties"].pop("complianceStandard")
@@ -318,3 +319,67 @@ def test_unsupported_standard_is_reported_not_guessed(
     """No fallback to another regulation: the log is refused, naming the spec."""
     with pytest.raises(SarifIngestError, match="Unsupported standard"):
         parse_sarif(_log_of_rule(rule_id, standard))
+
+
+def _mutate(path: list[Any], value: Any) -> dict[str, Any]:
+    """The test log with the field at *path* (keys and indexes) set to *value*."""
+    log = _rule_log()
+    node: Any = log
+    for key in path[:-1]:
+        node = node[key]
+    node[path[-1]] = value
+    return log
+
+
+@pytest.mark.parametrize(
+    ("path", "value"),
+    [
+        (["runs"], "x"),
+        (["runs"], {"a": 1}),
+        (["runs", 0, "tool", "driver"], "x"),
+        (["runs", 0, "tool", "driver", "rules"], {"a": 1}),
+        (["runs", 0, "tool", "driver", "rules"], ["x"]),
+        (["runs", 0, "properties"], [1]),
+        (["runs", 0, "results"], {"a": 1}),
+        (["runs", 0, "results"], [1]),
+        (["runs", 0, "invocations"], "x"),
+        (["runs", 0, "artifacts"], "x"),
+    ],
+)
+def test_wrongly_typed_sarif_is_refused_not_a_crash(
+    path: list[Any], value: Any
+) -> None:
+    """A field of the wrong type is a 422-class error, never an unhandled one."""
+    with pytest.raises(SarifIngestError):
+        parse_sarif(_mutate(path, value))
+
+
+def _result(rule_id: str) -> dict[str, Any]:
+    """result."""
+    return {"ruleId": rule_id, "message": {"text": "x"}}
+
+
+def test_results_and_outcomes_must_agree_with_the_standard() -> None:
+    """Foreign rule ids in results or ruleOutcomes are refused, not counted."""
+    log = _log_of_rule("BOM-NTIA2021-DF-001", "ntia")
+    log["runs"][0]["results"] = [_result("BOM-CISA2025-META-001")]
+    with pytest.raises(SarifIngestError, match="contradicts"):
+        parse_sarif(log)
+    log = _log_of_rule("BOM-NTIA2021-DF-001", "ntia")
+    log["runs"][0]["properties"]["ruleOutcomes"] = {"BOM-CISA2026-META-001": "present"}
+    with pytest.raises(SarifIngestError, match="contradicts"):
+        parse_sarif(log)
+
+
+def test_a_log_mixing_standards_is_refused_without_a_hint() -> None:
+    """A log mixing standards is refused without a hint."""
+    log = _log_of_rule("BOM-NTIA2021-DF-001", None)
+    log["runs"][0]["tool"]["driver"]["rules"].append({"id": "BOM-CISA2025-META-001"})
+    with pytest.raises(SarifIngestError, match="no single supported standard"):
+        parse_sarif(log)
+
+
+def test_mof_is_not_a_standard_a_sarif_log_can_claim() -> None:
+    """Mof is not a standard a sarif log can claim."""
+    with pytest.raises(SarifIngestError, match="Unsupported standard"):
+        parse_sarif(_log_of_rule("BOM-NTIA2021-DF-001", "mof"))

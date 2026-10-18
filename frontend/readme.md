@@ -18,8 +18,7 @@ Served by nginx; no build step required.
 | `index.html` | App entry + router. Loads all modules. Sets `lang`, `viewport`, skip-link, focus styles, `prefers-reduced-motion`. |
 | `colors-and-type.css` | Design tokens -- CSS variables for colours, typography, spacing, motion. |
 | `assets/` | Logo SVGs. |
-| `nginx.conf` | nginx config -- serves frontend, proxies `/api/` to FastAPI. |
-| `data.js` | One ghost-mesh SBOM in SPDX 3.0-ish shape -- components (software + AI), dependency edges, regulations with field-level requirements, "Where to look" hints, license metadata, known vulnerabilities. **Authoritative field list for all four regulations.** |
+| `data.js` | One ghost-mesh SBOM in SPDX 3.0-ish shape -- components (software + AI), dependency edges, regulations with field-level requirements, "Where to look" hints, license metadata, known vulnerabilities. **Authoritative field list for the regulations of the viewer screens; the *Generate & check* screen is driven by real results.** |
 | `i18n.js` | i18n / l10n module -- `t()`, `tNodes()`, `formatNumber()`, `formatDate()`, `formatRelativeTime()`, locale catalogue (14 languages), and the `useLocale()` hook (exported from `components.jsx`). |
 | `components.jsx` | `Icon`, `Logo`, `Button`, `StatusChip`, `RegTag`, `Card`, `MarginNote`, `TextField`, `Eyebrow`, `Divider`, `Mono`, `useLocale` -- all with built-in keyboard / aria support where they're interactive. |
 | `app-shell.jsx` | `TopBar` (`<header>`, project switcher with `aria-haspopup` / ESC, `LanguageSwitcher`), `SideNav` (`<nav aria-label="Primary">`, real `<button>` items, grouped Views / Conformance / Security / Source / Workspace). |
@@ -40,11 +39,11 @@ Served by nginx; no build step required.
 5. **Conformance** -- Pick a regulation, see a big % summary, then a per-field card list of what's missing and where that information usually lives ("Where to look" pulled from `data.findHints`).
 6. **Vulnerabilities** -- Known CVE / GHSA records grouped by component, with severity, fix availability, and disclosure timeline.
 7. **Component detail** -- Drill-in from any view. Findings, declared fields, provenance trail, signature margin note.
-8. **Import** -- Drop-to-upload zone with parsing → done states. CI / Pitloom connection cards.
+8. **Import** (*Generate & check*) -- paste a Git or Hugging Face URL, pick a regulation, see the checker's result by cluster. Not a file upload.
 
 ## Regulations covered
 
-The fixture data ships field-level definitions for four regulations / standards:
+The fixture data ships field-level definitions for these prototype regulations / standards (CISA 2026 and FSCT 2024 exist only on the *Generate & check* screen):
 
 | Regulation | Fields | Scope | Backend checker (now) |
 |---|---|---|---|

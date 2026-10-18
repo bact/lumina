@@ -206,7 +206,7 @@ lumina/
 │   └── *.jsx / *.js            Screens and components
 ├── backend/                    Python API
 │   ├── Dockerfile
-│   ├── requirements.txt        Deps pinned by version (the checker by commit SHA)
+│   ├── requirements.txt        Pitloom as a minimum version, the rest pinned; the checker by commit SHA
 │   └── app/
 │       ├── main.py             FastAPI app + endpoints
 │       ├── conformance.py      run_checker, CHECKER_STANDARDS, schemas

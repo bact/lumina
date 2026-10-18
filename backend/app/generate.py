@@ -55,6 +55,33 @@ _HF_HOSTS = {"huggingface.co", "www.huggingface.co"}
 
 _ALLOWED_SCHEMES = {"http", "https"}
 
+# Longer URLs are refused before they are parsed, logged or echoed back.
+MAX_URL_LENGTH = 2048
+
+_NAT64 = ipaddress.ip_network("64:ff9b::/96")
+_IPV4_COMPATIBLE = ipaddress.ip_network("::/96")
+
+
+def _is_public_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    """Whether *ip* is a unicast address that reaches the public internet.
+
+    An IPv6 address that embeds an IPv4 one (mapped, 6to4, Teredo, NAT64 and
+    the deprecated IPv4-compatible form) is public only if that IPv4 address is.
+    """
+    if not ip.is_global or ip.is_multicast:
+        return False
+    if isinstance(ip, ipaddress.IPv6Address):
+        if ip.is_site_local:
+            return False
+        embedded = ip.ipv4_mapped or ip.sixtofour
+        if ip.teredo:
+            embedded = ip.teredo[1]
+        if ip in _NAT64 or ip in _IPV4_COMPATIBLE:
+            embedded = ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)
+        if embedded is not None:
+            return _is_public_ip(embedded)
+    return True
+
 
 def _ensure_public_http_url(artifact_url: str) -> None:
     """Reject URLs that could reach internal services (SSRF guard).
@@ -69,14 +96,21 @@ def _ensure_public_http_url(artifact_url: str) -> None:
     rebinding between validation and clone.  Acceptable at this stage --
     network-level egress policy is the real control for a hardened deploy.
     """
-    parsed = urlparse(artifact_url)
+    if len(artifact_url) > MAX_URL_LENGTH:
+        raise GenerationError(
+            "lumina.url-too-long", f"URL is longer than {MAX_URL_LENGTH} characters."
+        )
+    try:
+        parsed = urlparse(artifact_url)
+        host = parsed.hostname
+    except ValueError as exc:
+        raise GenerationError("lumina.url-invalid", f"Invalid URL: {exc}") from exc
     if parsed.scheme.lower() not in _ALLOWED_SCHEMES:
         raise GenerationError(
             "lumina.url-scheme-blocked",
             f"URL scheme {parsed.scheme!r} is not allowed; "
             f"use http or https: {artifact_url!r}",
         )
-    host = parsed.hostname
     if not host:
         raise GenerationError(
             "pitloom.url-unsupported",
@@ -87,14 +121,14 @@ def _ensure_public_http_url(artifact_url: str) -> None:
         return
     try:
         infos = socket.getaddrinfo(host, None)
-    except socket.gaierror as exc:
+    except (socket.gaierror, UnicodeError) as exc:
         raise GenerationError(
             "lumina.url-unresolvable",
             f"Could not resolve host {host!r}: {exc}",
         ) from exc
     for info in infos:
         ip = ipaddress.ip_address(info[4][0])
-        if not ip.is_global:
+        if not _is_public_ip(ip):
             raise GenerationError(
                 "lumina.url-private-address",
                 f"Host {host!r} resolves to a non-public address ({ip}); "

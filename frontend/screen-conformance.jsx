@@ -611,12 +611,23 @@ function ArtifactResult({ result }) {
   const gaps = c.gaps || [];
   const rules = c.rules || [];
   const ok = run.execution_successful !== false;
+  // Nothing was checked (the SBOM could not be read, or no rule applies to it):
+  // the counts are not findings, so none is shown.
+  const nothingChecked = !ok || notes.some(n => n.descriptor_id === "sbom.nothing-applies");
+  const showFindings = !nothingChecked;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {nothingChecked && ok && (
+        <Card variant="default" padding={16}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--ink-2)", fontSize: 14, fontWeight: 500 }}>
+            <Icon name="info" size={16} /> Nothing was checked: no rule of this regulation applies to this SBOM
+          </div>
+        </Card>
+      )}
       {!ok && (
         <Card variant="default" padding={16} style={{ borderColor: "var(--shu)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--shu)", fontSize: 14, fontWeight: 500 }}>
-            <Icon name="alert-triangle" size={16} /> The run did not finish cleanly
+            <Icon name="alert-triangle" size={16} /> The SBOM could not be checked
           </div>
           <div style={{ fontSize: 12.5, color: "var(--ink-3)", marginTop: 6 }}>
             Tool: <Mono>{run.tool_name || "?"}</Mono>{c.source ? <> · source <Mono>{c.source}</Mono></> : null}
@@ -624,16 +635,18 @@ function ArtifactResult({ result }) {
         </Card>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-        <SummaryTile label="Fields checked" value={c.total ?? 0} />
-        <SummaryTile label="Present" value={c.present ?? 0} accent="#5F7A4F" />
-        <SummaryTile label="Missing" value={c.missing ?? 0} accent={(c.missing ?? 0) > 0 ? "#B68333" : undefined} />
-        <SummaryTile label="Unverified" value={c.unverified ?? 0} accent={(c.unverified ?? 0) > 0 ? "#2F4A6B" : undefined} />
-      </div>
+      {showFindings && (
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${(c.unverified ?? 0) > 0 ? 4 : 3}, 1fr)`, gap: 12 }}>
+          <SummaryTile label="Fields checked" value={c.total ?? 0} />
+          <SummaryTile label="Present" value={c.present ?? 0} accent="#5F7A4F" />
+          <SummaryTile label="Missing" value={c.missing ?? 0} accent={(c.missing ?? 0) > 0 ? "#B68333" : undefined} />
+          {(c.unverified ?? 0) > 0 && <SummaryTile label="Unverified" value={c.unverified} accent="#2F4A6B" />}
+        </div>
+      )}
 
-      {rules.length > 0 && <RuleClusters regulationId={c.regulation_id} rules={rules} judgedByModel={c.system_judged_by_model} />}
+      {showFindings && rules.length > 0 && <RuleClusters regulationId={c.regulation_id} rules={rules} judgedByModel={c.system_judged_by_model} />}
 
-      {gaps.length > 0 && (
+      {showFindings && gaps.length > 0 && (
         <Card padding={0}>
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 500 }}>
             Gaps ({gaps.length})
@@ -654,7 +667,7 @@ function ArtifactResult({ result }) {
         </Card>
       )}
 
-      {gaps.length === 0 && ok && (
+      {showFindings && gaps.length === 0 && (
         <Card padding={16}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--moss)", fontSize: 14, fontWeight: 500 }}>
             <Icon name="check" size={16} /> No conformance gaps found

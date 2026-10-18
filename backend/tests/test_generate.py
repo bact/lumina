@@ -7,7 +7,9 @@
 
 from __future__ import annotations
 
+import http.server
 import importlib.util
+import threading
 from pathlib import Path
 
 import pytest
@@ -15,7 +17,7 @@ import pytest
 from app.generate import _ensure_public_http_url
 from app.generators import GenerationError, generate_from_huggingface
 from app.generators.base import creation_info
-from app.generators.git import _run_pitloom
+from app.generators.git import _run_pitloom, _shallow_clone
 
 
 @pytest.mark.parametrize(
@@ -110,3 +112,84 @@ def test_git_generator_ignores_the_checkouts_own_pitloom_config(
 def test_huggingface_hub_client_is_installed() -> None:
     """Pitloom reads a Hub model through ``huggingface_hub`` (a Pitloom extra)."""
     assert importlib.util.find_spec("huggingface_hub") is not None
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://[64:ff9b::7f00:1]/r.git",  # NAT64 of 127.0.0.1
+        "http://[64:ff9b::a9fe:a9fe]/r.git",  # NAT64 of 169.254.169.254
+        "http://[::127.0.0.1]/r.git",
+        "http://[::ffff:10.0.0.1]/r.git",
+        "http://[fec0::1]/r.git",
+        "http://224.0.0.1/r.git",
+    ],
+)
+def test_embedded_or_special_addresses_are_blocked(url: str) -> None:
+    """IPv6 forms that embed a private IPv4, site-local and multicast addresses."""
+    with pytest.raises(GenerationError) as excinfo:
+        _ensure_public_http_url(url)
+    assert excinfo.value.descriptor_id == "lumina.url-private-address"
+
+
+@pytest.mark.parametrize(
+    ("url", "descriptor"),
+    [
+        ("http://[::1", "lumina.url-invalid"),
+        ("https://example.org/" + "a" * 3000, "lumina.url-too-long"),
+    ],
+)
+def test_odd_urls_are_refused_with_a_descriptor(url: str, descriptor: str) -> None:
+    """Odd urls are refused with a descriptor."""
+    with pytest.raises(GenerationError) as excinfo:
+        _ensure_public_http_url(url)
+    assert excinfo.value.descriptor_id == descriptor
+
+
+def test_clone_does_not_follow_a_redirect(tmp_path: Path) -> None:
+    """A public URL that redirects to another host must not be followed."""
+    hits: list[str] = []
+
+    class Target(http.server.BaseHTTPRequestHandler):
+        """A request handler."""
+
+        def do_GET(self) -> None:  # noqa: N802  # pylint: disable=invalid-name
+            """Answer a GET request."""
+            hits.append(self.path)
+            self.send_response(404)
+            self.end_headers()
+
+        def log_message(self, *_args: object) -> None:
+            """Keep the test output quiet."""
+
+    target = http.server.HTTPServer(("127.0.0.1", 0), Target)
+
+    class Redirect(http.server.BaseHTTPRequestHandler):
+        """A request handler."""
+
+        def do_GET(self) -> None:  # noqa: N802  # pylint: disable=invalid-name
+            """Answer a GET request."""
+            self.send_response(302)
+            self.send_header("Location", f"http://127.0.0.1:{target.server_port}/x")
+            self.end_headers()
+
+        def log_message(self, *_args: object) -> None:
+            """Keep the test output quiet."""
+
+    redirect = http.server.HTTPServer(("127.0.0.1", 0), Redirect)
+    threads = [
+        threading.Thread(target=server.serve_forever, daemon=True)
+        for server in (target, redirect)
+    ]
+    for thread in threads:
+        thread.start()
+    try:
+        with pytest.raises(GenerationError):
+            _shallow_clone(
+                f"http://127.0.0.1:{redirect.server_port}/r.git", str(tmp_path / "w")
+            )
+    finally:
+        for server in (target, redirect):
+            server.shutdown()
+            server.server_close()
+    assert not hits

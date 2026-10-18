@@ -108,3 +108,46 @@ def test_a_multi_megabyte_sbom_is_not_refused_for_size(client: TestClient) -> No
         "/api/v1/sbom/check", files={"file": ("x.json", b" " * (3 * 1024 * 1024))}
     )
     assert response.status_code != 413
+
+
+@pytest.mark.parametrize(
+    ("filename", "expected"),
+    [
+        ("a.json", ".json"),
+        ("a.SPDX", ".spdx"),
+        ("a./b", ".spdx"),
+        ("a." + "x" * 300, ".spdx"),
+        ("noext", ".spdx"),
+        (None, ".spdx"),
+        ("a.t/../../x", ".spdx"),
+    ],
+)
+def test_upload_suffix_is_a_plain_extension(
+    filename: str | None, expected: str
+) -> None:
+    """Upload suffix is a plain extension."""
+    assert main._suffix(filename) == expected  # pylint: disable=protected-access
+
+
+@pytest.mark.parametrize("name", ["a./b", "a." + "x" * 300])
+def test_odd_upload_filenames_do_not_crash(client: TestClient, name: str) -> None:
+    """Odd upload filenames do not crash."""
+    response = client.post("/api/v1/sbom/check", files={"file": (name, b"{}")})
+    assert response.status_code < 500
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("", 100 * 1024 * 1024),
+        ("abc", 100 * 1024 * 1024),
+        ("0", 100 * 1024 * 1024),
+        ("2048", 2048),
+    ],
+)
+def test_max_sbom_bytes_ignores_a_bad_setting(
+    monkeypatch: pytest.MonkeyPatch, raw: str, expected: int
+) -> None:
+    """Max sbom bytes ignores a bad setting."""
+    monkeypatch.setenv("LUMINA_MAX_SBOM_BYTES", raw)
+    assert main._max_sbom_bytes() == expected  # pylint: disable=protected-access

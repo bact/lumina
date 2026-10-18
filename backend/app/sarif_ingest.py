@@ -70,7 +70,6 @@ _STANDARD_TO_REGULATION: dict[str, RegulationId] = {
     "g7ai": "g7ai",
     "cisa2026": "cisa2026",
     "fsct3": "fsct2024",  # the checker's id for FSCT 2024
-    "mof": "mof",
 }
 
 # Map producer tool names to CheckerSource literals.
@@ -214,41 +213,48 @@ def _embedded_sbom(run: dict[str, Any]) -> EmbeddedSbom | None:
     )
 
 
-def _infer_regulation_id(
-    standard_hint: str, rule_index: dict[str, dict[str, Any]]
-) -> RegulationId:
+def _all_rule_ids(run: dict[str, Any], rule_index: dict[str, Any]) -> list[str]:
+    """Every rule id the run names: its catalogue, its results and its outcomes."""
+    ids = set(rule_index)
+    for result in run.get("results") or []:
+        ids.add(str(result.get("ruleId") or ""))
+    outcomes = (run.get("properties") or {}).get("ruleOutcomes")
+    if isinstance(outcomes, dict):
+        ids.update(str(rule_id) for rule_id in outcomes)
+    return sorted(ids - {""})
+
+
+def _infer_regulation_id(standard_hint: str, rule_ids: list[str]) -> RegulationId:
     """Pick a ``RegulationId`` from the SARIF log.
 
-    Preference order:
-
-    1. ``run.properties.complianceStandard`` matching a known standard id.
-       A hint that names an unknown standard is refused, whatever the rule ids,
-       and so is a hint that contradicts a rule id's standard or edition.
-    2. With no hint, the SPEC prefix of the first rule whose prefix is
-       recognised.
-    3. Otherwise the log is refused: a standard Lumina does not support (for
-       example another edition of CISA) is reported, not read as another one.
+    1. ``run.properties.complianceStandard``, when present, must name a known
+       standard, and every rule id must be of that standard and edition.
+    2. With no hint, every rule id must be of one supported standard and
+       edition.
+    A standard Lumina does not support (for example another edition of CISA),
+    or a log that mixes standards, is refused, never read as another.
     """
-    if standard_hint in _STANDARD_TO_REGULATION:
+    specs = {rule_id: _spec_of(rule_id) for rule_id in rule_ids}
+    if standard_hint:
+        if standard_hint not in _STANDARD_TO_REGULATION:
+            raise SarifIngestError(
+                f"Unsupported standard: complianceStandard {standard_hint!r}"
+            )
         regulation = _STANDARD_TO_REGULATION[standard_hint]
-        for rule_id in rule_index:
-            spec_code = _spec_of(rule_id)
-            if spec_code and _SPEC_TO_REGULATION.get(spec_code) != regulation:
+        for rule_id, spec_code in specs.items():
+            if _SPEC_TO_REGULATION.get(spec_code) != regulation:
                 raise SarifIngestError(
                     f"Unsupported standard: complianceStandard {standard_hint!r} "
                     f"contradicts rule id {rule_id!r}"
                 )
         return regulation
-
-    for rule_id in rule_index if not standard_hint else ():
-        spec_code = _spec_of(rule_id)
-        if spec_code in _SPEC_TO_REGULATION:
-            return _SPEC_TO_REGULATION[spec_code]
-
-    codes = sorted({_spec_of(rule_id) for rule_id in rule_index} - {""})
+    found = {_SPEC_TO_REGULATION.get(code) for code in specs.values()}
+    if len(found) == 1 and None not in found:
+        return next(iter(found))  # type: ignore[arg-type]
+    codes = sorted({code or "?" for code in specs.values()})
     raise SarifIngestError(
-        "Unsupported standard: complianceStandard "
-        f"{standard_hint!r}, rule id spec(s) {codes or 'none'}"
+        f"Unsupported standard: no single supported standard in rule id spec(s) "
+        f"{codes or 'none'}"
     )
 
 
@@ -384,7 +390,7 @@ def _build_conformance_result(
 
     properties = run.get("properties") or {}
     standard_hint = str(properties.get("complianceStandard") or "")
-    regulation_id = _infer_regulation_id(standard_hint, rule_index)
+    regulation_id = _infer_regulation_id(standard_hint, _all_rule_ids(run, rule_index))
 
     results = run.get("results") or []
     outcomes = properties.get("ruleOutcomes")
@@ -434,7 +440,21 @@ def _build_check_run(run: dict[str, Any], driver: dict[str, Any]) -> CheckRun:
 
 
 def parse_sarif(sarif: dict[str, Any]) -> SbomCheckResponse:
-    """Parse a SARIF 2.1.0 log dict into a Lumina :class:`SbomCheckResponse`."""
+    """Parse a SARIF 2.1.0 log dict into a Lumina :class:`SbomCheckResponse`.
+
+    Raises:
+        SarifIngestError: the log is not usable SARIF 2.1.0, is malformed
+            (a field of the wrong type) or names an unsupported standard.
+    """
+    try:
+        return _parse(sarif)
+    except SarifIngestError:
+        raise
+    except (AttributeError, TypeError, KeyError, ValueError) as exc:
+        raise SarifIngestError(f"Malformed SARIF log ({type(exc).__name__})") from exc
+
+
+def _parse(sarif: dict[str, Any]) -> SbomCheckResponse:
     _require(isinstance(sarif, dict), "SARIF log must be a JSON object")
     _require(
         sarif.get("version") == "2.1.0",

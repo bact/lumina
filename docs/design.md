@@ -69,7 +69,7 @@ SbomCheckResponse
 
 ConformanceResult                     # what was found
   regulation_id : str                 # "ntia" | "bsi" | "g7ai" | "cisa2026"
-                                      # | "mof"
+                                      # | "fsct2024" | "mof"
   source        : str                 # "ntia-conformance-checker"
                                       # | "lumina-internal" | "external-sarif"
   total         : int
@@ -136,8 +136,8 @@ in `CHECKER_STANDARDS`, and parses its SARIF into `ConformanceResult` with
   checked", never as missing. When the SBOM has no AI system of its own, the
   checker judges the system-level rules by its one AI model and the result
   names it in `system_judged_by_model`.
-- The *Generate & check* screen lets the user pick NTIA, G7 AI or CISA 2026
-  and shows G7 and CISA outcomes grouped by cluster. The static viewer screens (Overview,
+- The *Generate & check* screen lets the user pick NTIA, G7 AI, CISA 2026
+  or FSCT 2024 (not BSI: verdict only) and shows G7 and CISA outcomes grouped by cluster. The static viewer screens (Overview,
   Inventory, Conformance) still show prototype data; `frontend/data.js` keeps
   its `g7ai` entry `active: false` until they are fed from results.
 - `mof` is not supported by the checker; the API returns 501 for it.
@@ -145,7 +145,7 @@ in `CHECKER_STANDARDS`, and parses its SARIF into `ConformanceResult` with
 When the checker adds a regulation, add it to `CHECKER_STANDARDS` — the API
 response shape, the UI, and all downstream code stay unchanged.
 
-Beyond the four current regulations, EU CRA, EO 14028, FDA PMP, and
+Beyond the current regulations, EU CRA, EO 14028, FDA PMP, and
 ISO/IEC 5230 are on the roadmap. Their ids are reserved in
 `plannedRegulations` in `data.js`; the UI renders only supported regulations,
 and promotion follows the steps in `AGENTS.md` ("Adding a regulation").
@@ -239,7 +239,7 @@ forks.
 ### Mode 2 — SBOM upload or SBOM URL
 
 - **Endpoint:** `POST /api/v1/sbom/check`
-- **Body:** multipart file *or* `{ "sbom_url": "..." }`
+- **Body:** multipart file (an SBOM URL is not supported yet)
 - **Flow:** Lumina holds the SBOM (either the upload payload or a fetch
   of the URL) and passes the temp-file path to `run_checker`,
   which runs the checker, calls `output_sarif(embed_sbom=False)` and feeds the
@@ -252,7 +252,7 @@ forks.
 ### Mode 3 — SARIF upload or SARIF URL
 
 - **Endpoint:** `POST /api/v1/sarif/import`
-- **Body:** SARIF 2.1.0 JSON body *or* `{ "sarif_url": "..." }`
+- **Body:** SARIF 2.1.0 JSON body (a SARIF URL is not supported yet)
 - **Flow:** SARIF goes straight into `parse_sarif`.  No checker call;
   the SARIF log already contains the verdict.
 - **`embedded_sbom`:** **populated iff** the producer chose to embed.
@@ -328,7 +328,8 @@ Guidance:
 ### Resource safety (any stage)
 
 - Concurrency cap (semaphore at Stage 0; worker count at Stage 2).
-- Timeout on the `git clone` subprocess and on Pitloom generation; temp work-dir
+- Timeout on the `git clone` subprocess (600 s; Pitloom generation itself has no
+  timeout yet); temp work-dir
   removed in a `finally`.
 - Container memory limit so a runaway job is contained, not the whole host.
 - Optional: refuse clones above a size threshold.
