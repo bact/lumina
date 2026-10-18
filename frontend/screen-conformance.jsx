@@ -427,6 +427,9 @@ const IMPORT_REGULATIONS = [
 
 // Rule clusters per regulation (the cluster segment of the rule id), in order.
 const RULE_CLUSTERS = {
+  ntia: [
+    { code: "DF", name: "Data fields" },
+  ],
   g7ai: [
     { code: "MD",  name: "Metadata" },
     { code: "SLP", name: "System-level properties" },

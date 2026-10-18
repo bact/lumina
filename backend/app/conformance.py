@@ -70,6 +70,21 @@ class ConformanceResult(BaseModel):
     """Name of the AI model standing in for the system, when the checker
     judged the System-level rules by the model."""
 
+    @classmethod
+    def nothing_checked(
+        cls, regulation_id: RegulationId, source: CheckerSource
+    ) -> "ConformanceResult":
+        """A result with no counts and no findings: nothing was checked."""
+        return cls(
+            regulation_id=regulation_id,
+            source=source,
+            total=0,
+            present=0,
+            missing=0,
+            unverified=0,
+            gaps=[],
+        )
+
 
 class Notification(BaseModel):
     """A non-finding event from the run (parse error, validation warning, etc.).
@@ -94,6 +109,9 @@ class CheckRun(BaseModel):
 
     tool_name: str
     tool_version: str = ""
+    generator: str = ""
+    """What made the SBOM when Lumina generated it (``"pitloom 0.20.2"``); empty
+    for an uploaded SBOM or an imported SARIF log."""
     execution_successful: bool = True
     notifications: list[Notification] = Field(default_factory=list)
 

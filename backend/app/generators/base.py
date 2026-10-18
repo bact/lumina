@@ -35,9 +35,13 @@ class GenerationError(Exception):
 
 
 def creation_info() -> Any:
-    """Pitloom ``CreationMetadata`` identifying Lumina as the SBOM creator."""
+    """Pitloom ``CreationMetadata`` naming Lumina as the tool that made the SBOM.
+
+    Lumina is recorded as a tool, not as a creator: Pitloom treats the first
+    named creator as the supplier of the scanned project, and Lumina is not.
+    """
     # Imported lazily; see module docstring.
     # pylint: disable=import-outside-toplevel
-    from pitloom.core.creation import CreationMetadata, Creator
+    from pitloom.core.creation import CreationMetadata, Tool
 
-    return CreationMetadata(creators=[Creator(name="Lumina", type="software-agent")])
+    return CreationMetadata(tools=[Tool(name="Lumina")])

@@ -157,10 +157,10 @@ def test_ontology_rule_ids_identify_the_standard() -> None:
 
 
 def test_counts_follow_rule_outcomes() -> None:
-    """Decided top-level rules only: sub-rules and not-applicable rules are out."""
+    """Every decided rule counts, sub-rules included; not-applicable ones do not."""
     conf = parse_sarif(_load("g7ai_missing_model_info.sarif.json")).conformance
     assert conf.regulation_id == "g7ai"
-    assert (conf.total, conf.present, conf.missing) == (39, 36, 3)
+    assert (conf.total, conf.present, conf.missing) == (56, 50, 6)
     assert {g.field_key for g in conf.gaps} == {
         "model_hash_algorithm_missing",
         "model_hash_value_missing",
@@ -383,3 +383,62 @@ def test_mof_is_not_a_standard_a_sarif_log_can_claim() -> None:
     """Mof is not a standard a sarif log can claim."""
     with pytest.raises(SarifIngestError, match="Unsupported standard"):
         parse_sarif(_log_of_rule("BOM-NTIA2021-DF-001", "mof"))
+
+
+def test_counts_include_sub_rules() -> None:
+    """A sub-rule is decided on its own: it is not folded into its parent."""
+    log = _load("g7ai_missing_model_info.sarif.json")
+    outcomes = log["runs"][0]["properties"]["ruleOutcomes"]
+    decided = [o for o in outcomes.values() if o in ("present", "missing")]
+    assert any("." in r for r in outcomes)
+    assert parse_sarif(log).conformance.total == len(decided)
+
+
+def test_an_unreadable_sbom_reports_no_findings() -> None:
+    """The checker's all-missing result for an SBOM it could not read is not shown."""
+    log = _load("g7ai_missing_model_info.sarif.json")
+    log["runs"][0]["invocations"] = [{"executionSuccessful": False}]
+    conf = parse_sarif(log).conformance
+    assert (conf.total, conf.present, conf.missing, conf.gaps, conf.rules) == (
+        0,
+        0,
+        0,
+        [],
+        [],
+    )
+
+
+def test_a_log_without_rule_outcomes_does_not_invent_present_rules() -> None:
+    """Only what is missing is known, so nothing is counted as present."""
+    log = _load("g7ai_missing_model_info.sarif.json")
+    del log["runs"][0]["properties"]["ruleOutcomes"]
+    response = parse_sarif(log)
+    assert (response.conformance.total, response.conformance.present) == (0, 0)
+    assert response.conformance.missing == 3
+    assert "sarif.no-rule-outcomes" in {
+        n.descriptor_id for n in response.run.notifications
+    }
+
+
+@pytest.mark.parametrize(
+    ("short", "title"),
+    [
+        ("Model properties is missing.", "Model properties"),
+        (
+            "System input/output properties is missing.",
+            "System input/output properties",
+        ),
+        ("Component names are missing.", "Component names"),
+    ],
+)
+def test_title_is_the_checkers_own_wording(short: str, title: str) -> None:
+    """The element name is the checker's description, not an abbreviated slug."""
+    assert (
+        _rule_title(
+            {
+                "shortDescription": {"text": short},
+                "properties": {"slug": "g7ai-model-prop-missing"},
+            }
+        )
+        == title
+    )

@@ -151,3 +151,12 @@ def test_max_sbom_bytes_ignores_a_bad_setting(
     """Max sbom bytes ignores a bad setting."""
     monkeypatch.setenv("LUMINA_MAX_SBOM_BYTES", raw)
     assert main._max_sbom_bytes() == expected  # pylint: disable=protected-access
+
+
+def test_an_oversize_sarif_body_is_refused(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The SARIF import has the same size cap as an upload."""
+    monkeypatch.setattr(main, "MAX_SBOM_BYTES", 10)
+    response = client.post("/api/v1/sarif/import", json={"pad": "x" * 100})
+    assert response.status_code == 413

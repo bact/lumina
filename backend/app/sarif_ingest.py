@@ -284,39 +284,23 @@ def _build_gaps(
 def _count_outcomes(outcomes: dict[str, Any]) -> tuple[int, int, int]:
     """Return ``(total, present, missing)`` from ``run.properties.ruleOutcomes``.
 
-    Only decided (present or missing) top-level rules count; a sub-rule (dotted
-    id) is reported by its parent.
+    Every decided rule counts (present or missing), sub-rules included, as in
+    the checker's own report and the cluster lists: a sub-rule can be decided
+    differently from its parent, so neither stands for the other.
     """
-    decided = [
-        outcome
-        for rule_id, outcome in outcomes.items()
-        if "." not in rule_id and outcome in ("present", "missing")
-    ]
+    decided = [o for o in outcomes.values() if o in ("present", "missing")]
     missing = decided.count("missing")
     return len(decided), len(decided) - missing, missing
 
 
-def _count_totals(
-    results: list[dict[str, Any]], rule_index: dict[str, dict[str, Any]]
-) -> tuple[int, int, int]:
-    """Return ``(total, present, missing)`` counts for a SARIF run.
+def _count_findings(results: list[dict[str, Any]]) -> tuple[int, int, int]:
+    """Return ``(total, present, missing)`` for a run without ``ruleOutcomes``.
 
-    ``total`` = number of *active* rules in the driver catalogue; ``missing``
-    = number of unique rule ids that appeared in results; ``present`` =
-    ``total - missing``.  Catalogue-only rules (rules whose
-    ``properties.status != "active"``) are excluded so the counts reflect
-    what the checker actually verified.
+    Such a log says only what is missing: the rules that were present are not
+    known, so neither they nor the total are counted.
     """
-    active_rules = [
-        rid
-        for rid, rule in rule_index.items()
-        if str(((rule.get("properties") or {}).get("status")) or "active") == "active"
-    ]
-    total = len(active_rules) or len(rule_index)
-    missing_rule_ids = {str(r.get("ruleId")) for r in results if r.get("ruleId")}
-    missing = len(missing_rule_ids)
-    present = max(total - missing, 0)
-    return total, present, missing
+    missing = len({str(r.get("ruleId")) for r in results if r.get("ruleId")})
+    return 0, 0, missing
 
 
 def _judged_by_model(properties: dict[str, Any]) -> str | None:
@@ -337,9 +321,15 @@ _ACRONYMS = {"sbom": "SBOM", "ai": "AI", "url": "URL", "id": "ID"}
 def _rule_title(rule: dict[str, Any]) -> str:
     """Name the element a rule checks, not its failure message.
 
-    ``g7ai-sbom-data-format-version-missing`` -> ``SBOM data format version``.
-    A rule without a slug keeps its short description.
+    The checker's short description is a failure message
+    (``"Model properties is missing."``); the element is what precedes
+    ``" is missing."``. A rule without one falls back to its slug
+    (``g7ai-sbom-data-format-version-missing`` -> ``SBOM data format version``).
     """
+    short = str((rule.get("shortDescription") or {}).get("text") or "").strip()
+    for suffix in (" is missing.", " are missing."):
+        if short.endswith(suffix):
+            return short[: -len(suffix)]
     slug = str((rule.get("properties") or {}).get("slug") or "")
     parts = slug.split("-")[1:]
     if parts and parts[-1] == "missing":
@@ -347,7 +337,7 @@ def _rule_title(rule: dict[str, Any]) -> str:
     if parts:
         text = " ".join(_ACRONYMS.get(part, part) for part in parts)
         return text[0].upper() + text[1:]
-    return str((rule.get("shortDescription") or {}).get("text") or "")
+    return short
 
 
 def _build_rule_results(
@@ -394,10 +384,14 @@ def _build_conformance_result(
 
     results = run.get("results") or []
     outcomes = properties.get("ruleOutcomes")
+    if not _notifications_from_invocations(run)[1]:
+        # The checker could not read the SBOM: its per-rule "missing" results
+        # are not findings, so none is reported.
+        return ConformanceResult.nothing_checked(regulation_id, source)
     total, present, missing = (
         _count_outcomes(outcomes)
         if isinstance(outcomes, dict)
-        else _count_totals(results, rule_index)
+        else _count_findings(results)
     )
     return ConformanceResult(
         regulation_id=regulation_id,
@@ -429,6 +423,15 @@ def _build_check_run(run: dict[str, Any], driver: dict[str, Any]) -> CheckRun:
                     "The checker gives no per-requirement detail."
                 ),
                 descriptor_id="sbom.verdict",
+            )
+        )
+    elif "ruleOutcomes" not in properties and run.get("results"):
+        notifications.append(
+            Notification(
+                level="warning",
+                message="The SARIF log has no rule outcomes: only what is "
+                "missing is known, so the present rules are not counted.",
+                descriptor_id="sarif.no-rule-outcomes",
             )
         )
     return CheckRun(

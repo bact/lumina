@@ -8,16 +8,24 @@
 from __future__ import annotations
 
 import http.server
+import json
+import logging
+import shutil
 import importlib.util
 import threading
 from pathlib import Path
 
 import pytest
 
+from app import generate
+from app.conformance import Notification
 from app.generate import _ensure_public_http_url
 from app.generators import GenerationError, generate_from_huggingface
 from app.generators.base import creation_info
 from app.generators.git import _run_pitloom, _shallow_clone
+
+
+SPDX3_FIXTURE = Path(__file__).parent / "fixtures" / "sbom" / "spdx3_g7ai.json"
 
 
 @pytest.mark.parametrize(
@@ -57,10 +65,11 @@ def test_private_url_escape_hatch(monkeypatch: pytest.MonkeyPatch) -> None:
     _ensure_public_http_url("http://127.0.0.1/repo.git")
 
 
-def test_creation_info_names_lumina_as_software_agent() -> None:
-    """The creation metadata is the shape the installed Pitloom accepts."""
-    creator = creation_info().creators[0]
-    assert (creator.name, creator.type) == ("Lumina", "software-agent")
+def test_creation_info_names_lumina_as_a_tool_not_a_creator() -> None:
+    """Pitloom makes the first creator the project's supplier; Lumina is not."""
+    meta = creation_info()
+    assert [t.name for t in meta.tools] == ["Lumina"]
+    assert not meta.creators
 
 
 def test_hf_generator_writes_a_valid_aibom(tmp_path: Path) -> None:
@@ -193,3 +202,44 @@ def test_clone_does_not_follow_a_redirect(tmp_path: Path) -> None:
             server.shutdown()
             server.server_close()
     assert not hits
+
+
+def test_a_scanned_project_does_not_get_lumina_as_its_supplier(tmp_path: Path) -> None:
+    """Regression: the supplier must come from the project, which states none."""
+    project = tmp_path / "p"
+    project.mkdir()
+    (project / "pyproject.toml").write_text(
+        '[project]\nname = "demo"\nversion = "1.0"\n', encoding="utf-8"
+    )
+    out = tmp_path / "out.spdx3.json"
+    _run_pitloom(str(project), str(out))
+    graph = json.loads(out.read_text(encoding="utf-8"))["@graph"]
+    demo = next(e for e in graph if e.get("name") == "demo")
+    assert "suppliedBy" not in demo
+    assert "Lumina" not in {e.get("name") for e in graph if e["type"] != "Tool"}
+
+
+def test_pitloom_warnings_reach_the_user_as_notifications(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """What Pitloom warns while it generates is shown, not left in the server log."""
+
+    def fake_generate(_url: str, sbom_path: str) -> None:
+        logging.getLogger("pitloom.extract.x").warning("FORMAT=gguf: reader missing")
+        shutil.copy(SPDX3_FIXTURE, sbom_path)
+
+    monkeypatch.setattr(generate, "_generate", fake_generate)
+    response = generate.generate_and_check("https://example.org/r", "ntia")
+    assert [n.message for n in response.run.notifications] == [
+        "FORMAT=gguf: reader missing"
+    ]
+    assert response.run.generator.startswith("pitloom ")
+
+
+def test_warnings_are_collected_only_during_generation() -> None:
+    """A warning logged after the context manager exits is not collected."""
+    sink: list[Notification] = []
+    with generate._collect_warnings(sink):  # pylint: disable=protected-access
+        pass
+    logging.getLogger("pitloom").warning("after")
+    assert not sink

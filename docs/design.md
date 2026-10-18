@@ -137,7 +137,7 @@ in `CHECKER_STANDARDS`, and parses its SARIF into `ConformanceResult` with
   checker judges the system-level rules by its one AI model and the result
   names it in `system_judged_by_model`.
 - The *Generate & check* screen lets the user pick NTIA, G7 AI, CISA 2026
-  or FSCT 2024 (not BSI: verdict only) and shows G7 and CISA outcomes grouped by cluster. The static viewer screens (Overview,
+  or FSCT 2024 (not BSI: verdict only) and shows each rule's outcome grouped by cluster. The static viewer screens (Overview,
   Inventory, Conformance) still show prototype data; `frontend/data.js` keeps
   its `g7ai` entry `active: false` until they are fed from results.
 - `mof` is not supported by the checker; the API returns 501 for it.

@@ -40,7 +40,7 @@ def test_g7ai_on_spdx3_detects_the_format() -> None:
     """G7ai on spdx3 detects the format."""
     conf = run_checker(SPDX3_G7, "g7ai").conformance
     assert conf.regulation_id == "g7ai"
-    assert (conf.total, conf.missing, conf.gaps) == (39, 0, [])
+    assert (conf.total, conf.missing, conf.gaps) == (56, 1, [])
 
 
 def test_g7ai_on_spdx2_has_nothing_to_check() -> None:
@@ -96,9 +96,7 @@ def test_g7ai_reports_every_rule_with_catalogue_only_ones_out_of_scope() -> None
     assert len(conf.rules) == 81
     assert outcomes <= {"present", "missing", "not-applicable", "out-of-scope"}
     assert "out-of-scope" in outcomes
-    assert conf.missing == sum(
-        r.outcome == "missing" for r in conf.rules if "." not in r.rule_id
-    )
+    assert conf.missing == sum(r.outcome == "missing" for r in conf.rules)
 
 
 def test_cisa2026_reports_its_rules_in_three_clusters() -> None:

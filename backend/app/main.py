@@ -161,7 +161,7 @@ async def check_sbom(
 
 
 @app.post("/api/v1/sarif/import", response_model=SbomCheckResponse)
-async def import_sarif(sarif: dict[str, Any]) -> SbomCheckResponse:
+async def import_sarif(sarif: dict[str, Any], request: Request) -> SbomCheckResponse:
     """
     Accept a SARIF 2.1.0 log produced by any conformance/static-analysis
     tool that follows the exchange-format spec and return a ConformanceResult.
@@ -170,6 +170,9 @@ async def import_sarif(sarif: dict[str, Any]) -> SbomCheckResponse:
     any other producer is reported as ``external-sarif`` so the UI can
     flag it as a third-party source.
     """
+    declared = request.headers.get("content-length", "")
+    if declared.isdigit() and int(declared) > MAX_SBOM_BYTES:
+        raise HTTPException(status_code=413, detail="SARIF log is too large.")
     try:
         return parse_sarif(sarif)
     except SarifIngestError as exc:

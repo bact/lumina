@@ -150,7 +150,16 @@
         "complianceStandard": "ntia",
         "sbomName": "example",
         "sbomSpec": "spdx2",
-        "maturityTarget": 0
+        "maturityTarget": 0,
+        "ruleOutcomes": {
+          "BOM-NTIA2021-DF-001": "missing",
+          "BOM-NTIA2021-DF-002": "present",
+          "BOM-NTIA2021-DF-003": "present",
+          "BOM-NTIA2021-DF-004": "present",
+          "BOM-NTIA2021-DF-005": "present",
+          "BOM-NTIA2021-DF-006": "present",
+          "BOM-NTIA2021-DF-007": "present"
+        }
       }
     }
   ]

@@ -35,7 +35,10 @@
         "complianceStandard": "ntia",
         "sbomName": "example",
         "sbomSpec": "spdx2",
-        "maturityTarget": 0
+        "maturityTarget": 0,
+        "ruleOutcomes": {
+          "BOM-NTIA2021-COMP-001": "present"
+        }
       }
     }
   ]

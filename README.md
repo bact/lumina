@@ -138,7 +138,8 @@ Redis are introduced only if load grows. See
 
 Lumina does no checking itself. [ntia-conformance-checker][checker] runs every
 check, and Lumina turns its [SARIF][sarif] log into a field-level result: which
-requirements each component meets, and which it misses. The checker detects SPDX
+requirements the SBOM has a property for, and which it lacks (`present` means the
+property exists, not that its value is right). The checker detects SPDX
 2 or 3 from the file.
 
 | Regulation | Checker standard | Result |
@@ -146,7 +147,7 @@ requirements each component meets, and which it misses. The checker detects SPDX
 | NTIA Minimum Elements (2021) | `ntia` | per-requirement gaps |
 | G7 SBOM for AI Minimum Elements (2026) | `g7ai` | per-requirement gaps; partial coverage, SPDX 3 only |
 | CISA 2026 Minimum Elements | `cisa2026` | per-requirement gaps; partial coverage, SPDX 3 only |
-| FSCT 2024 (CISA Framing) | `fsct3` | per-requirement gaps; partial coverage |
+| FSCT 2024 (CISA Framing) | `fsct3` (API id `fsct2024`) | per-requirement gaps; partial coverage |
 | BSI TR-03183-2 | `bsi` | verdict only, as a notification; no per-requirement gaps |
 | MOF | none | not supported; the API returns HTTP 501 |
 

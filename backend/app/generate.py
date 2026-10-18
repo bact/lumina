@@ -28,11 +28,15 @@ propagate and the queue marks the job ``error``.
 
 from __future__ import annotations
 
+import contextlib
+import importlib.metadata
 import ipaddress
 import logging
 import os
 import socket
 import tempfile
+import threading
+from collections.abc import Iterator
 from urllib.parse import urlparse
 
 from .conformance import (
@@ -136,15 +140,53 @@ def _ensure_public_http_url(artifact_url: str) -> None:
             )
 
 
+class _WarningCollector(logging.Handler):
+    """Collect the WARNING-and-above records Pitloom logs on one thread."""
+
+    def __init__(self, sink: list[Notification]) -> None:
+        super().__init__(level=logging.WARNING)
+        self._sink = sink
+        self._thread = threading.get_ident()
+
+    def emit(self, record: logging.LogRecord) -> None:
+        """Keep the record as a notification, unless it is from another thread."""
+        if record.thread == self._thread:
+            self._sink.append(
+                Notification(
+                    level="error" if record.levelno >= logging.ERROR else "warning",
+                    message=record.getMessage(),
+                    descriptor_id="pitloom.log",
+                )
+            )
+
+
+@contextlib.contextmanager
+def _collect_warnings(sink: list[Notification]) -> Iterator[None]:
+    """Turn what Pitloom warns while it generates into notifications for the user."""
+    handler = _WarningCollector(sink)
+    pitloom_logger = logging.getLogger("pitloom")
+    pitloom_logger.addHandler(handler)
+    try:
+        yield
+    finally:
+        pitloom_logger.removeHandler(handler)
+
+
+def _pitloom_version() -> str:
+    return importlib.metadata.version("pitloom")
+
+
 def generate_and_check(
     artifact_url: str, regulation_id: RegulationId = "ntia"
 ) -> SbomCheckResponse:
     """Generate an SBOM for *artifact_url* and check it against *regulation_id*."""
     fd, sbom_path = tempfile.mkstemp(prefix="lumina-sbom-", suffix=".spdx3.json")
     os.close(fd)
+    warnings: list[Notification] = []
     try:
         try:
-            _generate(artifact_url, sbom_path)
+            with _collect_warnings(warnings):
+                _generate(artifact_url, sbom_path)
         except GenerationError as exc:
             logger.warning(
                 "Generation failed for %s: [%s] %s",
@@ -153,7 +195,10 @@ def generate_and_check(
                 exc.message,
             )
             return _failure_response(regulation_id, exc.descriptor_id, exc.message)
-        return run_checker(sbom_path, regulation_id)
+        response = run_checker(sbom_path, regulation_id)
+        response.run.generator = f"pitloom {_pitloom_version()}"
+        response.run.notifications.extend(warnings)
+        return response
     finally:
         if os.path.exists(sbom_path):
             os.unlink(sbom_path)
@@ -176,17 +221,9 @@ def _failure_response(
 ) -> SbomCheckResponse:
     """A degraded response carrying the generation failure as a notification."""
     return SbomCheckResponse(
-        conformance=ConformanceResult(
-            regulation_id=regulation_id,
-            # Lumina itself produced this (empty) result -- the external
-            # checker never ran, so don't claim it as the source.
-            source="lumina-internal",
-            total=0,
-            present=0,
-            missing=0,
-            unverified=0,
-            gaps=[],
-        ),
+        # Lumina itself produced this (empty) result -- the external checker
+        # never ran, so don't claim it as the source.
+        conformance=ConformanceResult.nothing_checked(regulation_id, "lumina-internal"),
         run=CheckRun(
             tool_name="lumina",
             execution_successful=False,
