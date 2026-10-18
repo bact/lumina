@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 
 # ── Output schema ─────────────────────────────────────────────────────────
 
-RegulationId = Literal["ntia", "bsi", "g7ai", "cisa2026", "mof"]
+RegulationId = Literal["ntia", "bsi", "g7ai", "cisa2026", "fsct2024", "mof"]
 FieldLevel = Literal["missing", "unverified"]
 CheckerSource = Literal[
     "ntia-conformance-checker",
@@ -144,6 +144,7 @@ CHECKER_STANDARDS: dict[RegulationId, str] = {
     "bsi": "bsi",
     "g7ai": "g7ai",
     "cisa2026": "cisa2026",
+    "fsct2024": "fsct3",  # the checker's id for FSCT 2024
 }
 
 

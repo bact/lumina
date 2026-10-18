@@ -422,6 +422,7 @@ const IMPORT_REGULATIONS = [
   { id: "ntia", label: "NTIA Minimum Elements" },
   { id: "g7ai", label: "G7 SBOM for AI" },
   { id: "cisa2026", label: "CISA 2026 Minimum Elements" },
+  { id: "fsct2024", label: "FSCT 2024 (CISA Framing)" },
 ];
 
 // Rule clusters per regulation (the cluster segment of the rule id), in order.
@@ -439,6 +440,10 @@ const RULE_CLUSTERS = {
     { code: "META", name: "SBOM metadata" },
     { code: "COMP", name: "Component data" },
     { code: "PP",   name: "Practices and processes" },
+  ],
+  fsct2024: [
+    { code: "META", name: "SBOM meta-information" },
+    { code: "COMP", name: "Component attributes" },
   ],
 };
 

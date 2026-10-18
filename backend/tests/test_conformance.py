@@ -108,3 +108,11 @@ def test_cisa2026_reports_its_rules_in_three_clusters() -> None:
     assert len(conf.rules) == 23
     assert {r.cluster for r in conf.rules} == {"META", "COMP", "PP"}
     assert {r.outcome for r in conf.rules if r.cluster == "PP"} == {"out-of-scope"}
+
+
+def test_fsct2024_reports_its_rules_and_is_not_ntia() -> None:
+    """FSCT 2024 is a regulation of its own."""
+    conf = run_checker(SPDX3_G7, "fsct2024").conformance
+    assert conf.regulation_id == "fsct2024"
+    assert len(conf.rules) == 13
+    assert {r.cluster for r in conf.rules} == {"META", "COMP"}

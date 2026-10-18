@@ -39,8 +39,8 @@ G7 AI SBOM Minimum Elements, and MOF (Model Openness Framework).
 
 **Current checker support:**
 `ntia-conformance-checker` covers **NTIA Minimum Elements** and, partially,
-**G7 AI SBOM** and **CISA 2026 Minimum Elements** (both SPDX 3 only; rules the checker does not check are reported as
-out of scope). **BSI TR-03183** reports a verdict only. **MOF** is not
+**G7 AI SBOM**, **CISA 2026 Minimum Elements** (both SPDX 3 only; rules the checker does not check are reported as
+out of scope) and **FSCT 2024** (the CISA Framing document, the checker's `fsct3`). **BSI TR-03183** reports a verdict only. **MOF** is not
 implemented in the checker.
 
 **Design principle:** the backend must present a single, uniform
@@ -128,7 +128,7 @@ truth) runs `ntia-conformance-checker` for a regulation, using the standard id
 in `CHECKER_STANDARDS`, and parses its SARIF into `ConformanceResult` with
 `parse_sarif`. The SPDX version (2 or 3) is detected from the file.
 
-- `ntia`, `g7ai` (partial), `cisa2026` (partial) and `bsi` (verdict only) are
+- `ntia`, `g7ai` (partial), `cisa2026` (partial), `fsct2024` (partial) and `bsi` (verdict only) are
   supported.
 - G7 AI results carry every rule's outcome. `out-of-scope` rules are
   catalogue-only (the checker cannot check them) and are shown as "not

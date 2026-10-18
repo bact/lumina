@@ -270,10 +270,17 @@ def _log_of_rule(rule_id: str, standard: str | None) -> dict[str, Any]:
     return log
 
 
+def test_the_checkers_fsct3_id_is_fsct_2024() -> None:
+    """The standard name the checker uses for FSCT 2024 is mapped, not NTIA."""
+    log = _log_of_rule("BOM-FSCT2024-COMP-001", "fsct3")
+    assert parse_sarif(log).conformance.regulation_id == "fsct2024"
+
+
 @pytest.mark.parametrize(
     ("rule_id", "regulation"),
     [
         ("BOM-CISA2026-META-001", "cisa2026"),
+        ("BOM-FSCT2024-COMP-001", "fsct2024"),
         ("BOM-NTIA2021-DF-001", "ntia"),
         ("BOM-BSI2025-DOC-001", "bsi"),
     ],
@@ -293,11 +300,10 @@ def test_rule_id_names_the_standard_with_its_edition(
         ("BOM-G7AI2027-MD-001", None),
         ("BOM-CISA2025-META-001", "cisa2025"),
         ("BOM-UNKNOWN-1", None),
-        # No older year-less forms, and FSCT is not NTIA.
+        # No older year-less forms.
         ("SBOM-NTIA-DF-001", None),
         ("NTIA-DF-01", None),
-        ("BOM-FSCT2024-COMP-001", None),
-        ("BOM-FSCT2024-COMP-001", "fsct3"),
+        ("BOM-FSCT2023-COMP-001", None),
         # A hint naming an unknown standard is not overridden by the rule ids.
         ("BOM-CISA2026-META-001", "cisa2025"),
     ],

@@ -58,6 +58,7 @@ _SPEC_TO_REGULATION: dict[str, RegulationId] = {
     "BSI2025": "bsi",
     "G7AI2026": "g7ai",
     "CISA2026": "cisa2026",
+    "FSCT2024": "fsct2024",
 }
 
 # Map ntia-conformance-checker ``complianceStandard`` (the spec id) to a
@@ -68,6 +69,7 @@ _STANDARD_TO_REGULATION: dict[str, RegulationId] = {
     "bsi": "bsi",
     "g7ai": "g7ai",
     "cisa2026": "cisa2026",
+    "fsct3": "fsct2024",  # the checker's id for FSCT 2024
     "mof": "mof",
 }
 
