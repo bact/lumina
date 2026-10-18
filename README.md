@@ -14,7 +14,7 @@ by rule, whether the SBOM has the property each rule asks for -- so the answer
 to *"are we conformant?"* stops being a folder of PDFs. Bring an SBOM file, a
 SARIF log from a checker, or a Git or Hugging Face URL for Lumina to generate
 an SBOM from. The checks themselves are run by
-[ntia-conformance-checker](https://github.com/spdx/ntia-conformance-checker).
+[ntia-conformance-checker][checker].
 
 The web UI has four screens: *Generate & check* (a URL), *Upload SBOM*,
 *Import SARIF* and *About*. It shows only what the API returns.
@@ -188,7 +188,7 @@ in the API yet.
 
 See [docs/design.md](docs/design.md) for the full architecture.
 
-[checker]: https://github.com/spdx/ntia-conformance-checker
+[checker]: https://github.com/bact/ntia-conformance-checker
 [sarif]: https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html
 [bom]: https://bact.github.io/bom/
 

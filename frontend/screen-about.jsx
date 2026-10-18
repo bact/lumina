@@ -17,8 +17,8 @@ function AboutScreen() {
     {
       name: "ntia-conformance-checker",
       role: "Conformance checker",
-      detail: "Runs every check. Lumina turns its SARIF log into the result the screens show.",
-      href: "https://github.com/spdx/ntia-conformance-checker",
+      detail: "Runs every check (the G7, CISA 2026, FSCT and BSI rules are in the bact fork Lumina pins). Lumina turns its SARIF log into the result the screens show.",
+      href: "https://github.com/bact/ntia-conformance-checker",
     },
     {
       name: "Pitloom",
