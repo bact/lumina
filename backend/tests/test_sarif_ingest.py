@@ -442,3 +442,14 @@ def test_title_is_the_checkers_own_wording(short: str, title: str) -> None:
         )
         == title
     )
+
+
+@pytest.mark.parametrize("extra_runs, shown", [(0, False), (1, True)])
+def test_extra_runs_are_reported_not_dropped_silently(
+    extra_runs: int, shown: bool
+) -> None:
+    """Only the first run is shown; a log with more says so."""
+    log = _load("conformant.sarif.json")
+    log["runs"] = log["runs"] * (1 + extra_runs)
+    ids = [n.descriptor_id for n in parse_sarif(log).run.notifications]
+    assert ("sarif.extra-runs-ignored" in ids) is shown

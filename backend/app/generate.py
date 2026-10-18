@@ -197,7 +197,11 @@ def generate_and_check(
                 exc.descriptor_id,
                 exc.message,
             )
-            return _failure_response(regulation_id, exc.descriptor_id, exc.message)
+            return _failure_response(
+                regulation_id,
+                exc.descriptor_id,
+                exc.message.replace(tempfile.gettempdir(), "<tmp>"),
+            )
         response = run_checker(sbom_path, regulation_id)
         response.run.generator = f"pitloom {_pitloom_version()}"
         response.run.notifications.extend(warnings)

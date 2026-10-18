@@ -12,6 +12,7 @@ import importlib.util
 import json
 import logging
 import shutil
+import tempfile
 import threading
 from pathlib import Path
 
@@ -242,3 +243,19 @@ def test_warnings_are_collected_only_during_generation() -> None:
         pass
     logging.getLogger("pitloom").warning("after")
     assert not sink
+
+
+def test_failure_message_hides_the_server_temp_dir(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A generation error does not reveal the server's temporary directory."""
+    tmp = tempfile.gettempdir()
+
+    def fail(_url: str, _path: str) -> None:
+        raise GenerationError("git.clone-failed", f"fatal: {tmp}/x/y not found")
+
+    monkeypatch.setattr(generate, "_generate", fail)
+    response = generate.generate_and_check("https://example.org/r", "ntia")
+    message = response.run.notifications[0].message
+    assert tmp not in message
+    assert "<tmp>/x/y" in message

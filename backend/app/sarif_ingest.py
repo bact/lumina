@@ -454,8 +454,18 @@ def _parse(sarif: dict[str, Any]) -> SbomCheckResponse:
     driver = (run.get("tool") or {}).get("driver") or {}
     rule_index = _build_rule_index(driver)
 
+    check_run = _build_check_run(run, driver)
+    if len(runs) > 1:
+        check_run.notifications.append(
+            Notification(
+                level="warning",
+                message=f"The SARIF log has {len(runs)} runs: only the first "
+                "is shown.",
+                descriptor_id="sarif.extra-runs-ignored",
+            )
+        )
     return SbomCheckResponse(
         conformance=_build_conformance_result(run, driver, rule_index),
-        run=_build_check_run(run, driver),
+        run=check_run,
         embedded_sbom=_embedded_sbom(run),
     )
