@@ -58,7 +58,9 @@ _SPEC_TO_REGULATION: dict[str, RegulationId] = {
     "NTIA": "ntia",
     "FSCT": "ntia",  # FSCT (CISA Framing...) is a superset of NTIA.
     "FSCT3": "ntia",  # FSCT 3rd edition; superset of NTIA, no separate UI yet.
-    "CISA": "cisa2026",  # BOM-CISA2026-...; the digits are stripped
+    # A standard that comes in editions is keyed with its year: the 2025 draft
+    # of CISA is a different document from the final 2026 one.
+    "CISA2026": "cisa2026",
     "BSI": "bsi",
     "G7AI": "g7ai",
     "MOF": "mof",
@@ -97,12 +99,17 @@ def _spec_of(rule_id: str) -> str:
     """Return the SPEC segment of a rule id, uppercased.
 
     ``BOM-G7AI2026-MDL-001`` -> ``G7AI``; also ``SBOM-[SPEC]-...`` and ``[SPEC]-...``.
+    A segment that names an edition (``CISA2026``) is returned whole, so an
+    edition not listed in :data:`_SPEC_TO_REGULATION` is never taken for another.
     """
     parts = [p for p in rule_id.split("-") if p]
     if not parts:
         return ""
     if parts[0].upper() == "BOM" and len(parts) > 1:
-        return re.sub(r"\d{4}$", "", parts[1]).upper()
+        segment = parts[1].upper()
+        if segment in _SPEC_TO_REGULATION:
+            return segment
+        return re.sub(r"\d{4}$", "", segment)
     if parts[0].upper() == "SBOM" and len(parts) > 1:
         return parts[1].upper()
     return parts[0].upper()

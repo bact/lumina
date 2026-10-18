@@ -260,10 +260,15 @@ def test_rule_title_names_the_element_not_the_failure(
 
 @pytest.mark.parametrize(
     ("rule_id", "regulation"),
-    [("BOM-CISA2026-META-001", "cisa2026"), ("BOM-FSCT2024-COMP-001", "ntia")],
+    [
+        ("BOM-CISA2026-META-001", "cisa2026"),
+        ("BOM-FSCT2024-COMP-001", "ntia"),
+        # An edition Lumina does not know is not taken for CISA 2026.
+        ("BOM-CISA2025-META-001", "ntia"),
+    ],
 )
 def test_cisa_2026_rules_are_not_read_as_ntia(rule_id: str, regulation: str) -> None:
-    """The CISA 2026 prefix gets its own regulation; the older FSCT stays NTIA."""
+    """CISA 2026 gets its own regulation; no other edition is read as it."""
     log = _rule_log()
     run = log["runs"][0]
     del run["properties"]["complianceStandard"]
