@@ -15,7 +15,8 @@ python-multipart==0.0.32  # required by FastAPI for Form / File uploads
 # is needed yet -- see docs/design.md "Background job execution".)
 pitloom[huggingface_hub]>=0.20.2
 
-# SBOM parsing
+# SPDX 2 support of the checker (it requires spdx-tools>=0.8.5); pinned exactly
+# here for reproducible builds. Lumina itself does not import it.
 spdx-tools==0.8.5
 
 # Conformance checking
