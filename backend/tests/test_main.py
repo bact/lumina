@@ -98,3 +98,12 @@ def test_declared_oversize_body_is_refused_before_it_is_read(
         headers={"content-length": str(10 + 64 * 1024 + 1)},
     )
     assert response.status_code == 413
+
+
+def test_a_multi_megabyte_sbom_is_not_refused_for_size(client: TestClient) -> None:
+    """Large SBOMs are normal: the default cap is far above 1 MB."""
+    assert main.MAX_SBOM_BYTES >= 100 * 1024 * 1024
+    response = client.post(
+        "/api/v1/sbom/check", files={"file": ("x.json", b" " * (3 * 1024 * 1024))}
+    )
+    assert response.status_code != 413

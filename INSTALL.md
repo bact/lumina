@@ -533,13 +533,14 @@ These apply to all options once the deployment is working.
    is `*`.)
 
 2. **Limit upload size.** Large SBOMs can exhaust memory and disk. Option A's
-   `proxy/prod.conf` already sets `client_max_body_size 50m;` for `/api/`,
-   matching the API's own cap (`LUMINA_MAX_SBOM_BYTES`, default 50 MB). The API
+   `proxy/prod.conf` already sets `client_max_body_size 100m;` for `/api/`,
+   as do the dev, standalone and Hugging Face Spaces configs, matching the API's
+   own cap (`LUMINA_MAX_SBOM_BYTES`, default 100 MB). Large SBOMs are normal. The API
    alone cannot stop an upload from being spooled to disk first, so keep the
-   proxy limit. Lower both to taste, for example:
+   proxy limit. Raise or lower both together, for example:
 
    ```nginx
-   client_max_body_size 25m;
+   client_max_body_size 25m;  # and LUMINA_MAX_SBOM_BYTES=26214400
    ```
 
    For Options B and C, add the same line to the nginx config template in

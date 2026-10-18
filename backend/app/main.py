@@ -53,7 +53,7 @@ app.add_middleware(
 # Upload cap for POST /api/v1/sbom/check; the whole file is held in memory.
 # Multipart framing and the other form fields add to the request body.
 _FORM_OVERHEAD = 64 * 1024
-MAX_SBOM_BYTES = int(os.environ.get("LUMINA_MAX_SBOM_BYTES", 50 * 1024 * 1024))
+MAX_SBOM_BYTES = int(os.environ.get("LUMINA_MAX_SBOM_BYTES", 100 * 1024 * 1024))
 
 _jobs = InProcessJobQueue()
 _jobs.register("generate_and_check", generate_and_check)

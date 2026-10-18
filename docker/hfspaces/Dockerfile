@@ -68,6 +68,9 @@ server {
     }
 
     location /api/ {
+        # Large SBOMs are normal; keep equal to LUMINA_MAX_SBOM_BYTES. nginx's own
+        # default, 1m, refuses real SBOMs.
+        client_max_body_size 100m;
         proxy_pass         http://127.0.0.1:8000/api/;
         proxy_set_header   Host $host;
         proxy_set_header   X-Real-IP $remote_addr;
