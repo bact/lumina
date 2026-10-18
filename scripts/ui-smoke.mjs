@@ -10,7 +10,7 @@
 //   - the regulation chips equal the mocked GET /api/v1/regulations response
 //     (same ids, same order, ready=false not selectable);
 //   - refused requests (413, 422, 501) show the server's `detail` text;
-//   - a verdict-only result (BSI) shows the verdict and no counts.
+//   - a per-rule BSI result shows its DOC and COMP clusters with their counts.
 // It writes one screenshot per state to the output directory.
 //
 // Needs Node 18+ and, in one node_modules directory (not committed):
@@ -68,10 +68,18 @@ const NTIA_RESULT = {
   embedded_sbom: null,
 };
 const BSI_RESULT = {
-  conformance: { regulation_id: "bsi", source: "ntia-conformance-checker", total: 0, present: 0, missing: 0, unverified: 0, gaps: [], rules: [], system_judged_by_model: null },
-  run: { ...TOOL, generator: "", execution_successful: true, notifications: [{
-    level: "error", descriptor_id: "sbom.verdict",
-    message: "The SBOM does not conform to the standard. The checker gives no per-requirement detail." }] },
+  conformance: { regulation_id: "bsi", source: "ntia-conformance-checker", total: 3, present: 1, missing: 2, unverified: 0,
+    gaps: [{ component_id: "document", field_key: "BOM-BSI2025-DOC-001", level: "missing", note: "Doc creator is missing." }],
+    rules: [
+      { rule_id: "BOM-BSI2025-DOC-001", cluster: "DOC", title: "Doc creator", provision: "requirement", outcome: "missing" },
+      { rule_id: "BOM-BSI2025-DOC-002", cluster: "DOC", title: "Timestamp", provision: "requirement", outcome: "present" },
+      { rule_id: "BOM-BSI2025-DOC-003", cluster: "DOC", title: "SBOM-URI", provision: "requirement", outcome: "out-of-scope" },
+      { rule_id: "BOM-BSI2025-COMP-001", cluster: "COMP", title: "Component creator", provision: "requirement", outcome: "missing" },
+      { rule_id: "BOM-BSI2025-COMP-011", cluster: "COMP", title: "Source code URI", provision: "requirement", outcome: "not-applicable" },
+      { rule_id: "BOM-BSI2025-COMP-017", cluster: "COMP", title: "URL of the security.txt", provision: "permission", outcome: "missing" },
+    ],
+    system_judged_by_model: null },
+  run: { ...TOOL, generator: "", execution_successful: true, notifications: [] },
   embedded_sbom: null,
 };
 const UNREADABLE_RESULT = {
@@ -224,11 +232,14 @@ check((await text()).includes(DETAIL_413), "Upload SBOM: a 413 shows the server 
 await shot("4-upload-413");
 await page.getByRole("radio", { name: LABELS.bsi }).click();
 await page.getByRole("button", { name: "Check SBOM" }).click();
-await page.waitForSelector("text=Verdict", { timeout: 5000 }).catch(() => {});
+await page.waitForSelector("text=SBOM document", { timeout: 5000 }).catch(() => {});
 body = await text();
-check(body.includes("does not conform") && !body.includes("Fields checked") && !body.includes("No conformance gaps"),
-  "Upload SBOM: BSI shows the verdict, no counts and no 'no gaps' banner");
-await shot("5-upload-bsi-verdict");
+check(body.includes("SBOM document") && body.includes("Components") && body.includes("Doc creator")
+    && body.includes("1 present · 1 missing · 0 not applicable · 1 not checked")
+    && body.includes("0 present · 2 missing · 1 not applicable · 0 not checked")
+    && body.includes("FIELDS CHECKED") && !body.includes("erdict"),
+  "Upload SBOM: BSI shows its DOC and COMP clusters with per-rule counts");
+await shot("5-upload-bsi-rules");
 await page.getByRole("radio", { name: LABELS.g7ai }).click();
 await page.getByRole("button", { name: "Check SBOM" }).click();
 await page.waitForSelector("text=could not be checked", { timeout: 5000 }).catch(() => {});

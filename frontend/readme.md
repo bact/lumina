@@ -27,8 +27,8 @@ refused request shows the server's own error `detail`.
 The three check screens render the result with the same `ArtifactResult`
 view: counts, per-rule outcomes grouped by cluster, gaps and run notifications.
 It shows no counts, and says why, when the SBOM could not be checked
-(`execution_successful` is false), when no rule applies (`sbom.nothing-applies`)
-and when the result is a verdict only (`sbom.verdict`, as BSI gives today). The
+(`execution_successful` is false) and when no rule applies
+(`sbom.nothing-applies`). The
 "judged by model" note appears only for G7 AI, and the *Unverified* tile only
 when that count is above 0.
 

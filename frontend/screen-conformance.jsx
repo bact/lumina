@@ -24,7 +24,7 @@ const IMPORT_REGULATIONS = {
   },
   bsi: {
     label: "BSI TR-03183-2",
-    covers: "BSI TR-03183-2. The checker reports a verdict only (conforms or not), with no per-rule detail.",
+    covers: "BSI TR-03183-2 v2.1 SBOM content requirements (section 5.2). Per-rule, SPDX 3 only: elements SPDX 3.0.1 cannot show are listed as not checked.",
     href: "https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/TechGuidelines/TR03183/BSI-TR-03183-2_v2_1_0.html",
   },
   g7ai: {
@@ -56,6 +56,10 @@ const regulationLabel = (id) => (IMPORT_REGULATIONS[id] && IMPORT_REGULATIONS[id
 const RULE_CLUSTERS = {
   ntia: [
     { code: "DF", name: "Data fields" },
+  ],
+  bsi: [
+    { code: "DOC",  name: "SBOM document" },
+    { code: "COMP", name: "Components" },
   ],
   g7ai: [
     { code: "MD",  name: "Metadata" },
@@ -314,11 +318,9 @@ function RuleClusters({ regulationId, rules, judgedByModel }) {
 
 // ─── ArtifactResult -- render one SbomCheckResponse ────────────────────
 // Counts, per-rule outcomes, gaps and run notifications, exactly as the API
-// returned them. Three honest states replace the counts:
+// returned them. Two honest states replace the counts:
 //   - the SBOM could not be checked (run.execution_successful is false);
-//   - nothing was checked (an `sbom.nothing-applies` notification);
-//   - a verdict-only result (an `sbom.verdict` notification and no counts,
-//     rules or gaps, as BSI gives today): the verdict is the result.
+//   - nothing was checked (an `sbom.nothing-applies` notification).
 function ArtifactResult({ result }) {
   const c = result.conformance || {};
   const run = result.run || {};
@@ -327,11 +329,7 @@ function ArtifactResult({ result }) {
   const rules = c.rules || [];
   const ok = run.execution_successful !== false;
   const nothingApplies = notes.some(n => n.descriptor_id === "sbom.nothing-applies");
-  const verdict = notes.find(n => n.descriptor_id === "sbom.verdict");
-  const verdictOnly = ok && !nothingApplies && verdict && rules.length === 0 && gaps.length === 0
-    && !(c.total > 0) && !(c.missing > 0);
-  const showFindings = ok && !nothingApplies && !verdictOnly;
-  const listed = verdictOnly ? notes.filter(n => n !== verdict) : notes;
+  const showFindings = ok && !nothingApplies;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <RunLine result={result} />
@@ -353,18 +351,6 @@ function ArtifactResult({ result }) {
           </div>
         </Card>
       )}
-      {verdictOnly && (
-        <Card variant="default" padding={16} style={{ borderColor: verdict.level === "note" ? "var(--moss)" : "var(--ochre)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 500, color: verdict.level === "note" ? "var(--moss-ink)" : "var(--ochre-ink)" }}>
-            <Icon name={verdict.level === "note" ? "check" : "alert-triangle"} size={16} /> Verdict
-          </div>
-          <div style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 8, lineHeight: 1.6 }}>{verdict.message}</div>
-          <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 6 }}>
-            The checker reports only a verdict for {regulationLabel(c.regulation_id)}, so there are no per-rule counts.
-          </div>
-        </Card>
-      )}
-
       {showFindings && (
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${(c.unverified ?? 0) > 0 ? 4 : 3}, 1fr)`, gap: 12 }}>
           <SummaryTile label="Fields checked" value={c.total ?? 0} />
@@ -405,14 +391,14 @@ function ArtifactResult({ result }) {
         </Card>
       )}
 
-      {listed.length > 0 && (
+      {notes.length > 0 && (
         <Card padding={0}>
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 500 }}>
-            Notifications ({listed.length})
+            Notifications ({notes.length})
           </div>
           <div>
-            {listed.map((n, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 16px", borderBottom: i < listed.length - 1 ? "1px solid var(--border)" : "none" }}>
+            {notes.map((n, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 16px", borderBottom: i < notes.length - 1 ? "1px solid var(--border)" : "none" }}>
                 <StatusChip status={n.level === "error" ? "invalid" : n.level === "warning" ? "missing" : "neutral"}>{n.level}</StatusChip>
                 <div style={{ minWidth: 0, fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5, overflowWrap: "anywhere" }}>
                   {n.descriptor_id ? <Mono style={{ marginRight: 6 }}>{n.descriptor_id}</Mono> : null}{n.message}
