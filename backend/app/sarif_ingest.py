@@ -222,14 +222,23 @@ def _infer_regulation_id(
     Preference order:
 
     1. ``run.properties.complianceStandard`` matching a known standard id.
-       A hint that names an unknown standard is refused, whatever the rule ids.
+       A hint that names an unknown standard is refused, whatever the rule ids,
+       and so is a hint that contradicts a rule id's standard or edition.
     2. With no hint, the SPEC prefix of the first rule whose prefix is
        recognised.
     3. Otherwise the log is refused: a standard Lumina does not support (for
        example another edition of CISA) is reported, not read as another one.
     """
     if standard_hint in _STANDARD_TO_REGULATION:
-        return _STANDARD_TO_REGULATION[standard_hint]
+        regulation = _STANDARD_TO_REGULATION[standard_hint]
+        for rule_id in rule_index:
+            spec_code = _spec_of(rule_id)
+            if spec_code and _SPEC_TO_REGULATION.get(spec_code) != regulation:
+                raise SarifIngestError(
+                    f"Unsupported standard: complianceStandard {standard_hint!r} "
+                    f"contradicts rule id {rule_id!r}"
+                )
+        return regulation
 
     for rule_id in rule_index if not standard_hint else ():
         spec_code = _spec_of(rule_id)

@@ -68,7 +68,7 @@ server {
     }
 
     location /api/ {
-        # Large SBOMs are normal; keep equal to LUMINA_MAX_SBOM_BYTES. nginx's own
+        # Large SBOMs are normal; keep at or above LUMINA_MAX_SBOM_BYTES (it limits the whole request, the form framing included). nginx's own
         # default, 1m, refuses real SBOMs.
         client_max_body_size 100m;
         proxy_pass         http://127.0.0.1:8000/api/;

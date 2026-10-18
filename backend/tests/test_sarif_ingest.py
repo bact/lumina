@@ -306,6 +306,10 @@ def test_rule_id_names_the_standard_with_its_edition(
         ("BOM-FSCT2023-COMP-001", None),
         # A hint naming an unknown standard is not overridden by the rule ids.
         ("BOM-CISA2026-META-001", "cisa2025"),
+        # A known hint does not override a rule id of another standard or edition.
+        ("BOM-CISA2025-META-001", "cisa2026"),
+        ("BOM-NTIA2021-DF-001", "fsct3"),
+        ("BOM-NTIA2021-DF-001", "cisa2026"),
     ],
 )
 def test_unsupported_standard_is_reported_not_guessed(

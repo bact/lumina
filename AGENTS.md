@@ -92,6 +92,13 @@ more. Their ids are reserved in `plannedRegulations` in `data.js` (both
 copies). The UI must only ever show regulations that are actually supported —
 never render a planned entry. To promote one:
 
+0. For the *Generate & check* screen (the one wired to real results), add the
+   regulation to `IMPORT_REGULATIONS` and its rule clusters (the cluster
+   segment of its rule ids) to `RULE_CLUSTERS` in
+   `frontend/screen-conformance.jsx`; rule ids must be the ontology form
+   `BOM-[SPEC][YEAR]-...`, and `_SPEC_TO_REGULATION` and
+   `_STANDARD_TO_REGULATION` in `backend/app/sarif_ingest.py` must name the
+   exact edition. `cisa2026` and `fsct2024` are wired this way only.
 1. Move its entry from `plannedRegulations` into `regulations` in
    `ui-kits/lumina-app/data.js` and give it a `fields` list (screens are
    data-driven and pick it up automatically); mirror to `frontend/data.js`.

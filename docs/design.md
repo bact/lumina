@@ -34,8 +34,9 @@ passes it to the web UI.
 
 ## Conformance checking architecture
 
-The UI supports four regulations: NTIA Minimum Elements, BSI TR-03183,
-G7 AI SBOM Minimum Elements, and MOF (Model Openness Framework).
+The UI knows six regulations: NTIA Minimum Elements, BSI TR-03183,
+G7 AI SBOM Minimum Elements, CISA 2026, FSCT 2024 and MOF (Model Openness
+Framework); the checker supports all but MOF.
 
 **Current checker support:**
 `ntia-conformance-checker` covers **NTIA Minimum Elements** and, partially,

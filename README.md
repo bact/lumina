@@ -145,6 +145,8 @@ requirements each component meets, and which it misses. The checker detects SPDX
 | - | - | - |
 | NTIA Minimum Elements (2021) | `ntia` | per-requirement gaps |
 | G7 SBOM for AI Minimum Elements (2026) | `g7ai` | per-requirement gaps; partial coverage, SPDX 3 only |
+| CISA 2026 Minimum Elements | `cisa2026` | per-requirement gaps; partial coverage, SPDX 3 only |
+| FSCT 2024 (CISA Framing) | `fsct3` | per-requirement gaps; partial coverage |
 | BSI TR-03183-2 | `bsi` | verdict only, as a notification; no per-requirement gaps |
 | MOF | none | not supported; the API returns HTTP 501 |
 
