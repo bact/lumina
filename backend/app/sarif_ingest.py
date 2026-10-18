@@ -20,8 +20,9 @@ requirements ontology (``https://bact.github.io/bom/``):
 
 Only this form is read; ids in any other shape name no standard.
 
-``run.properties.ruleOutcomes``, when present, sets the counts: decided
-(present or missing) top-level rules only.
+``run.properties.ruleOutcomes``, when present, sets the counts: every decided
+(present or missing) rule counts, sub-rules included. A log without it says
+only what is missing, so only the missing count is set.
 
 The producer is identified by ``run.tool.driver.name``;
 ``ntia-conformance-checker`` is recognised explicitly and anything else is
@@ -99,25 +100,23 @@ def _spec_of(rule_id: str) -> str:
     return ""
 
 
-def _logical_location(result: dict[str, Any]) -> tuple[str, str]:
-    """Return ``(component_id, kind)`` for a result.
+def _component_id(result: dict[str, Any]) -> str:
+    """Return the component a result is about.
 
-    Falls back to ``("document", "module")`` if the result has no
-    logicalLocations or the location's kind is ``"module"`` (our convention
-    for doc-level findings).
+    ``"document"`` if the result has no logicalLocations or the location's
+    kind is ``"module"`` (the convention for document-level findings).
     """
     locations = result.get("locations") or []
     if not locations:
-        return ("document", "module")
+        return "document"
     logical = locations[0].get("logicalLocations") or []
     if not logical:
-        return ("document", "module")
+        return "document"
     loc = logical[0]
     if loc.get("kind") == "module" or loc.get("name") == "document":
-        return ("document", "module")
+        return "document"
     # Prefer SPDX-style fully-qualified id; fall back to name.
-    comp_id = loc.get("fullyQualifiedName") or loc.get("name") or "document"
-    return (str(comp_id), str(loc.get("kind") or "package"))
+    return str(loc.get("fullyQualifiedName") or loc.get("name") or "document")
 
 
 def _build_rule_index(driver: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -268,11 +267,10 @@ def _build_gaps(
         if not rule_id:
             continue
         rule_descriptor = rule_index.get(rule_id)
-        component_id, _kind = _logical_location(result)
         message = (result.get("message") or {}).get("text") or rule_id
         gaps.append(
             FieldGap(
-                component_id=component_id,
+                component_id=_component_id(result),
                 field_key=_field_key_from_rule(rule_descriptor, rule_id),
                 level="missing",
                 note=str(message),

@@ -18,7 +18,10 @@ Flow:
    any other URL host is treated as a Git repo (shallow clone, then Pitloom).
 2. Pitloom writes an SPDX 3 JSON-LD file.
 3. The file is checked by the same :func:`run_checker` as an uploaded
-   SBOM (the checker detects the SPDX version itself).
+   SBOM, which detects the SPDX version from the file.
+4. What Pitloom logs at WARNING or above while it generates is added to the
+   result as ``pitloom.log`` notifications, and ``CheckRun.generator`` names
+   the Pitloom version.
 
 A generation failure is returned as a *degraded* response (zeroed conformance,
 ``execution_successful=False``, one ``error`` notification) rather than raised, so

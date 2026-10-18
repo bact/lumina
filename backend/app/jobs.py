@@ -97,13 +97,8 @@ class InProcessJobQueue(JobQueue):
     accepted trade at this stage (the user simply resubmits).
     """
 
-    def __init__(
-        self,
-        registry: dict[str, JobFn] | None = None,
-        concurrency: int = 1,
-        max_finished_jobs: int = 1000,
-    ) -> None:
-        super().__init__(registry=registry or {})
+    def __init__(self, concurrency: int = 1, max_finished_jobs: int = 1000) -> None:
+        super().__init__()
         self._jobs: dict[str, JobRecord] = {}
         self._semaphore = asyncio.Semaphore(concurrency)
         # Keep at most this many finished records; oldest are evicted first so

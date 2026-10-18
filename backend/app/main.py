@@ -166,12 +166,12 @@ async def check_sbom(
 @app.post("/api/v1/sarif/import", response_model=SbomCheckResponse)
 async def import_sarif(sarif: dict[str, Any], request: Request) -> SbomCheckResponse:
     """
-    Accept a SARIF 2.1.0 log produced by any conformance/static-analysis
-    tool that follows the exchange-format spec and return a ConformanceResult.
+    Read a SARIF 2.1.0 log from any producer, without running a check.
 
-    Lumina recognises ``ntia-conformance-checker`` as the producer name;
-    any other producer is reported as ``external-sarif`` so the UI can
-    flag it as a third-party source.
+    Rule ids must be of the SBOM requirements ontology form and name one
+    supported standard and edition; anything else is refused with 422 (see
+    :mod:`app.sarif_ingest`).  Lumina recognises ``ntia-conformance-checker``
+    as the producer name; any other producer is reported as ``external-sarif``.
     """
     declared = request.headers.get("content-length", "")
     if declared.isdigit() and int(declared) > MAX_SBOM_BYTES:
