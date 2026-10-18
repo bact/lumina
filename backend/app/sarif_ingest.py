@@ -10,9 +10,10 @@ requirements ontology (``https://bact.github.io/bom/``):
 
     BOM-[SPEC][YEAR]-[CATEGORY]-[NNN][.M]
 
-* ``SPEC`` + ``YEAR`` name the standard (``NTIA2021``, ``G7AI2026``); ``SPEC``
-  drives ``ConformanceResult.regulation_id`` when
-  ``run.properties.complianceStandard`` is absent.
+* ``SPEC`` + ``YEAR`` name the standard (``NTIA2021``, ``G7AI2026``); the two
+  together drive ``ConformanceResult.regulation_id`` when
+  ``run.properties.complianceStandard`` is absent. An edition Lumina does not
+  support is refused with :class:`SarifIngestError`, never read as another.
 * ``CATEGORY`` is a short category code (``DF``, ``META``, ``COMP``, ...); it is
   kept in the rule lookup table, not interpreted.
 * ``NNN`` is a 3-digit sequence number; ``.M`` marks a sub-element of rule ``NNN``.
@@ -34,7 +35,6 @@ rule's ``properties.slug`` (spec prefix stripped) and finally to the rule id.
 
 from __future__ import annotations
 
-import re
 from typing import Any, get_args
 
 from .conformance import (
@@ -51,16 +51,19 @@ from .conformance import (
     SbomCheckResponse,
 )
 
-# Map uppercase spec code (the SPEC segment of a rule id, i.e. the spec id
-# uppercased) -> Lumina regulation id.  Extend when new RegulationId literals
-# or specs are added.
+# Map the SPEC segment of a rule id, uppercased and whole (``CISA2026`` keeps
+# its year: another edition is another document) -> Lumina regulation id.
+# Extend when a new edition or RegulationId literal is supported.  The forms
+# without a year are the older ``SBOM-[SPEC]-...`` and ``[SPEC]-...`` ids.
 _SPEC_TO_REGULATION: dict[str, RegulationId] = {
-    "NTIA": "ntia",
-    "FSCT": "ntia",  # FSCT (CISA Framing...) is a superset of NTIA.
-    "FSCT3": "ntia",  # FSCT 3rd edition; superset of NTIA, no separate UI yet.
-    # A standard that comes in editions is keyed with its year: the 2025 draft
-    # of CISA is a different document from the final 2026 one.
+    "NTIA2021": "ntia",
+    "FSCT2024": "ntia",  # FSCT (CISA Framing...) is a superset of NTIA.
+    "BSI2025": "bsi",
+    "G7AI2026": "g7ai",
     "CISA2026": "cisa2026",
+    "NTIA": "ntia",
+    "FSCT": "ntia",
+    "FSCT3": "ntia",  # FSCT 3rd edition; superset of NTIA, no separate UI yet.
     "BSI": "bsi",
     "G7AI": "g7ai",
     "MOF": "mof",
@@ -98,18 +101,14 @@ def _require(condition: bool, message: str) -> None:
 def _spec_of(rule_id: str) -> str:
     """Return the SPEC segment of a rule id, uppercased.
 
-    ``BOM-G7AI2026-MDL-001`` -> ``G7AI``; also ``SBOM-[SPEC]-...`` and ``[SPEC]-...``.
-    A segment that names an edition (``CISA2026``) is returned whole, so an
-    edition not listed in :data:`_SPEC_TO_REGULATION` is never taken for another.
+    ``BOM-G7AI2026-MDL-001`` -> ``G7AI2026``, the year kept; also
+    ``SBOM-[SPEC]-...`` and ``[SPEC]-...``.
     """
     parts = [p for p in rule_id.split("-") if p]
     if not parts:
         return ""
     if parts[0].upper() == "BOM" and len(parts) > 1:
-        segment = parts[1].upper()
-        if segment in _SPEC_TO_REGULATION:
-            return segment
-        return re.sub(r"\d{4}$", "", segment)
+        return parts[1].upper()
     if parts[0].upper() == "SBOM" and len(parts) > 1:
         return parts[1].upper()
     return parts[0].upper()
@@ -165,7 +164,7 @@ def _field_key_from_rule(rule: dict[str, Any] | None, rule_id: str) -> str:
     if isinstance(slug, str) and slug:
         head, sep, tail = slug.partition("-")
         # Strip a known spec prefix if present, else keep the slug verbatim.
-        if sep and head.upper() in _SPEC_TO_REGULATION:
+        if sep and head.lower() in _STANDARD_TO_REGULATION:
             return tail.replace("-", "_")
         return slug.replace("-", "_")
 
@@ -238,7 +237,8 @@ def _infer_regulation_id(
 
     1. ``run.properties.complianceStandard`` matching a known standard id.
     2. The SPEC prefix of the first rule whose prefix is recognised.
-    3. ``"ntia"`` if that's a valid ``RegulationId``, else the first literal.
+    3. Otherwise the log is refused: a standard Lumina does not support (for
+       example another edition of CISA) is reported, not read as another one.
     """
     if standard_hint in _STANDARD_TO_REGULATION:
         return _STANDARD_TO_REGULATION[standard_hint]
@@ -248,8 +248,11 @@ def _infer_regulation_id(
         if spec_code in _SPEC_TO_REGULATION:
             return _SPEC_TO_REGULATION[spec_code]
 
-    valid_regs = get_args(RegulationId)
-    return "ntia" if "ntia" in valid_regs else valid_regs[0]
+    codes = sorted({_spec_of(rule_id) for rule_id in rule_index} - {""})
+    raise SarifIngestError(
+        "Unsupported standard: complianceStandard "
+        f"{standard_hint!r}, rule id spec(s) {codes or 'none'}"
+    )
 
 
 def _build_gaps(

@@ -258,21 +258,47 @@ def test_rule_title_names_the_element_not_the_failure(
     assert _rule_title(rule) == title
 
 
+def _log_of_rule(rule_id: str, standard: str | None) -> dict[str, Any]:
+    log = _rule_log()
+    run = log["runs"][0]
+    run["properties"].pop("complianceStandard")
+    if standard:
+        run["properties"]["complianceStandard"] = standard
+    run["tool"]["driver"]["rules"] = [{"id": rule_id}]
+    run["results"] = []
+    run["properties"]["ruleOutcomes"] = {rule_id: "present"}
+    return log
+
+
 @pytest.mark.parametrize(
     ("rule_id", "regulation"),
     [
         ("BOM-CISA2026-META-001", "cisa2026"),
         ("BOM-FSCT2024-COMP-001", "ntia"),
-        # An edition Lumina does not know is not taken for CISA 2026.
-        ("BOM-CISA2025-META-001", "ntia"),
+        ("BOM-NTIA2021-DF-001", "ntia"),
+        ("BOM-BSI2025-DOC-001", "bsi"),
     ],
 )
-def test_cisa_2026_rules_are_not_read_as_ntia(rule_id: str, regulation: str) -> None:
-    """CISA 2026 gets its own regulation; no other edition is read as it."""
-    log = _rule_log()
-    run = log["runs"][0]
-    del run["properties"]["complianceStandard"]
-    run["tool"]["driver"]["rules"] = [{"id": rule_id}]
-    run["results"] = []
-    run["properties"]["ruleOutcomes"] = {rule_id: "present"}
+def test_rule_id_names_the_standard_with_its_edition(
+    rule_id: str, regulation: str
+) -> None:
+    """The edition is part of the id: only a supported edition is recognised."""
+    log = _log_of_rule(rule_id, None)
     assert parse_sarif(log).conformance.regulation_id == regulation
+
+
+@pytest.mark.parametrize(
+    ("rule_id", "standard"),
+    [
+        ("BOM-CISA2025-META-001", None),  # the 2025 draft is not CISA 2026
+        ("BOM-G7AI2027-MD-001", None),
+        ("BOM-CISA2025-META-001", "cisa2025"),
+        ("BOM-UNKNOWN-1", None),
+    ],
+)
+def test_unsupported_standard_is_reported_not_guessed(
+    rule_id: str, standard: str | None
+) -> None:
+    """No fallback to another regulation: the log is refused, naming the spec."""
+    with pytest.raises(SarifIngestError, match="Unsupported standard"):
+        parse_sarif(_log_of_rule(rule_id, standard))
