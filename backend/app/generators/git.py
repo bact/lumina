@@ -81,12 +81,16 @@ def _run_pitloom(project_dir: str, output_path: str) -> None:
     # Imported lazily; see app.generators.base.
     # pylint: disable=import-outside-toplevel
     from pitloom.assemble import generate_project_sbom
+    from pitloom.core.config import PitloomConfig
 
     try:
         generate_project_sbom(
             Path(project_dir),
             output_path=Path(output_path),
             creation_metadata=creation_info(),
+            # The checkout is untrusted: its own [tool.pitloom] must not name
+            # host paths (fragments, ID registry) or switch features on.
+            pitloom_config=PitloomConfig(),
         )
     except Exception as exc:  # noqa: BLE001 - normalised to GenerationError
         raise GenerationError("pitloom.generation-failed", str(exc)) from exc

@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 from pathlib import Path
 
 import pytest
@@ -80,3 +81,32 @@ def test_git_generator_writes_a_valid_sbom(tmp_path: Path) -> None:
     out = tmp_path / "out.spdx3.json"
     _run_pitloom(str(project), str(out))
     assert "software_Package" in out.read_text(encoding="utf-8")
+
+
+def test_git_generator_ignores_the_checkouts_own_pitloom_config(
+    tmp_path: Path,
+) -> None:
+    """A cloned repo is untrusted: its ``[tool.pitloom]`` must not name host paths.
+
+    The missing registry and required fragment would each fail the run if read.
+    """
+    host = tmp_path / "host"
+    project = tmp_path / "p"
+    project.mkdir()
+    (project / "pyproject.toml").write_text(
+        '[project]\nname = "demo"\nversion = "1.0"\n'
+        "[tool.pitloom]\n"
+        f'id-registry = "{(host / "ids.json").as_posix()}"\n'
+        "[tool.pitloom.fragment]\n"
+        f'files = [{{path = "{(host / "f.json").as_posix()}", required = true}}]\n',
+        encoding="utf-8",
+    )
+    out = tmp_path / "out.spdx3.json"
+    _run_pitloom(str(project), str(out))
+    assert "software_Package" in out.read_text(encoding="utf-8")
+    assert not host.exists()
+
+
+def test_huggingface_hub_client_is_installed() -> None:
+    """Pitloom reads a Hub model through ``huggingface_hub`` (a Pitloom extra)."""
+    assert importlib.util.find_spec("huggingface_hub") is not None

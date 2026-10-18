@@ -10,9 +10,10 @@ python-multipart==0.0.32  # required by FastAPI for Form / File uploads
 
 # SBOM generation (Mode 1: artefact-URL input)
 # Generates SPDX 3 JSON-LD from a Git checkout or a Hugging Face Hub model.
-# (Stage 0-1 runs generation in-process; no task-queue broker is needed yet --
-# see docs/design.md "Background job execution".)
-pitloom>=0.20.1
+# The huggingface_hub extra reads Hub model metadata; without it every Hugging
+# Face URL fails. (Stage 0-1 runs generation in-process; no task-queue broker
+# is needed yet -- see docs/design.md "Background job execution".)
+pitloom[huggingface_hub]>=0.20.2
 
 # SBOM parsing
 spdx-tools==0.8.5

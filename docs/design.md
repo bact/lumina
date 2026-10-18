@@ -211,12 +211,16 @@ forks.
   need to round-trip via SARIF.
 - **Generators (one interface, dispatched by URL kind; both Pitloom):**
   - **Git repository URLs** — a **shallow clone** (`git clone --depth 1`) into a
-    temp work directory, then Pitloom's `generate_sbom(project_dir=...,
-    output_path=...)` on the checkout, then the temp directory is removed.
+    temp work directory, then Pitloom's `generate_project_sbom(dir,
+    output_path=..., pitloom_config=PitloomConfig())` on the checkout, then the
+    temp directory is removed. The checkout is untrusted, so an empty explicit
+    config replaces its own `[tool.pitloom]`: a repository cannot name host
+    paths (fragments, ID registry) or switch features on. Pitloom itself never
+    runs the project's build backend unless the caller asks.
     Bounded by a clone timeout and cleaned up in a `finally`. Covers GitHub and
     any Git host; Pitloom reads the project's Python packaging metadata.
-  - **Hugging Face Hub URLs** — Pitloom's `generate_huggingface_sbom(
-    model_source=...)`. Reads HF metadata via the HF API; it does **not**
+  - **Hugging Face Hub URLs** — Pitloom's `generate_model_sbom(url)`
+    (needs the `pitloom[huggingface_hub]` extra). Reads HF metadata via the HF API; it does **not**
     download model files, so the host stays light on disk and bandwidth. HF
     auth is optional (lower quota without a token, acceptable for now).
 - **Sync model:** asynchronous via the job queue (see
