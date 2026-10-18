@@ -532,19 +532,18 @@ These apply to all options once the deployment is working.
    No rebuild needed — restart the container. (Default without the variable
    is `*`.)
 
-2. **Limit upload size.** Large SBOMs can exhaust memory and disk. Option A's
-   `proxy/prod.conf` already sets `client_max_body_size 101m;` for `/api/`,
-   as do the dev, standalone and Hugging Face Spaces configs (1 MB above the
-   API's own cap, for the request framing) (`LUMINA_MAX_SBOM_BYTES`, default 100 MB). Large SBOMs are normal. The API
-   alone cannot stop an upload from being spooled to disk first, so keep the
-   proxy limit. Raise or lower both together, for example:
+2. **Limit upload size.** The API refuses an SBOM upload larger than
+   `LUMINA_MAX_SBOM_BYTES` (default 10 MiB) with HTTP 413; it holds the whole
+   file in memory. Every nginx config (`proxy/prod.conf`, `proxy/dev.conf`,
+   `docker/standalone/nginx.conf.template`, `docker/hfspaces/Dockerfile`) sets
+   `client_max_body_size 11m;` for `/api/`: 1 MiB above the API's cap, for the
+   multipart framing. The API alone cannot stop an upload from being spooled
+   to disk first, so keep the proxy limit. Raise or lower both together, for
+   example:
 
    ```nginx
    client_max_body_size 26m;  # and LUMINA_MAX_SBOM_BYTES=26214400 (25 MiB)
    ```
-
-   Options B and C set it in `docker/hfspaces/Dockerfile` and
-   `docker/standalone/nginx.conf.template`; change it there too.
 
 3. **Cap resources** (Option A). Per service in the prod compose override:
 

@@ -48,22 +48,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Stage 0-1 job backend: runs Mode-1 SBOM generation in-process (see jobs.py and
-# docs/design.md "Background job execution").  Swappable for an RQ/Taskiq backend
-# at Stage 2 without touching the endpoints below.
-# Upload cap for POST /api/v1/sbom/check; the whole file is held in memory.
-# Multipart framing and the other form fields add to the request body.
+# Upload cap for POST /api/v1/sbom/check (the whole file is held in memory) and
+# for the declared size of a POST /api/v1/sarif/import body.  Multipart framing
+# and the other form fields add to an upload's request body.  The nginx configs
+# allow 11m per request, 1 MiB above the default cap.
 _FORM_OVERHEAD = 64 * 1024
+_DEFAULT_MAX_SBOM_BYTES = 10 * 1024 * 1024
 
 
 def _max_sbom_bytes() -> int:
-    """``LUMINA_MAX_SBOM_BYTES``, or 100 MiB when unset or not a positive integer."""
+    """``LUMINA_MAX_SBOM_BYTES``, or 10 MiB when unset or not a positive integer."""
     raw = os.environ.get("LUMINA_MAX_SBOM_BYTES", "")
-    return int(raw) if raw.isdigit() and int(raw) > 0 else 100 * 1024 * 1024
+    return int(raw) if raw.isdigit() and int(raw) > 0 else _DEFAULT_MAX_SBOM_BYTES
 
 
 MAX_SBOM_BYTES = _max_sbom_bytes()
 
+# Stage 0-1 job backend: runs Mode-1 SBOM generation in-process (see jobs.py and
+# docs/design.md "Background job execution").  Swappable for an RQ/Taskiq backend
+# at Stage 2 without touching the endpoints below.
 _jobs = InProcessJobQueue()
 _jobs.register("generate_and_check", generate_and_check)
 

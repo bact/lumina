@@ -101,13 +101,26 @@ def test_declared_oversize_body_is_refused(
     assert response.status_code == 413
 
 
-def test_a_multi_megabyte_sbom_is_not_refused_for_size(client: TestClient) -> None:
-    """Large SBOMs are normal: the default cap is far above 1 MB."""
-    assert main.MAX_SBOM_BYTES >= 100 * 1024 * 1024
+def test_the_default_cap_is_10_mib() -> None:
+    """With no setting, the cap is 10 MiB."""
+    assert main.MAX_SBOM_BYTES == 10 * 1024 * 1024
+
+
+def test_a_9_mb_sbom_is_not_refused_for_size(client: TestClient) -> None:
+    """A 9 MB SBOM is under the default cap."""
     response = client.post(
-        "/api/v1/sbom/check", files={"file": ("x.json", b" " * (3 * 1024 * 1024))}
+        "/api/v1/sbom/check", files={"file": ("x.json", b" " * (9 * 1000 * 1000))}
     )
     assert response.status_code != 413
+
+
+def test_a_body_over_the_default_cap_is_413(client: TestClient) -> None:
+    """One byte over the default cap is refused."""
+    response = client.post(
+        "/api/v1/sbom/check",
+        files={"file": ("x.json", b" " * (main.MAX_SBOM_BYTES + 1))},
+    )
+    assert response.status_code == 413
 
 
 @pytest.mark.parametrize(
@@ -139,9 +152,9 @@ def test_odd_upload_filenames_do_not_crash(client: TestClient, name: str) -> Non
 @pytest.mark.parametrize(
     ("raw", "expected"),
     [
-        ("", 100 * 1024 * 1024),
-        ("abc", 100 * 1024 * 1024),
-        ("0", 100 * 1024 * 1024),
+        ("", 10 * 1024 * 1024),
+        ("abc", 10 * 1024 * 1024),
+        ("0", 10 * 1024 * 1024),
         ("2048", 2048),
     ],
 )

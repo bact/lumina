@@ -68,10 +68,10 @@ server {
     }
 
     location /api/ {
-        # Large SBOMs are normal. Keep this above LUMINA_MAX_SBOM_BYTES (100 MiB):
-        # it limits the whole request, framing included. nginx's own
-        # default, 1m, refuses real SBOMs.
-        client_max_body_size 101m;
+        # Keep this above the API's upload cap, LUMINA_MAX_SBOM_BYTES (default
+        # 10 MiB): it limits the whole request, multipart framing included.
+        # nginx's own default, 1m, would refuse many real SBOMs.
+        client_max_body_size 11m;
         proxy_pass         http://127.0.0.1:8000/api/;
         proxy_set_header   Host $host;
         proxy_set_header   X-Real-IP $remote_addr;
