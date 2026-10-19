@@ -130,6 +130,31 @@ def test_embedded_sbom_text_round_trip() -> None:
     assert response.embedded_sbom.binary_base64 is None
 
 
+@pytest.mark.parametrize(
+    ("contents", "expected"),
+    [
+        ({"text": '{"spdxVersion": "SPDX-2.3"}'}, ("sbom.spdx.json", "spdx2-json")),
+        ({"text": "[1]"}, ("sbom.spdx.json", "other")),
+        ({"text": "SPDXVersion: SPDX-2.3"}, None),
+        ({"binary": "aGVsbG8="}, None),
+    ],
+    ids=["json-object", "json-array", "not-json", "binary"],
+)
+def test_embedded_sbom_is_the_source_when_it_is_json(
+    contents: dict[str, str], expected: tuple[str, str] | None
+) -> None:
+    """An embedded SBOM whose text is JSON is also returned as ``sbom``."""
+    sarif = _load("conformant.sarif.json")
+    sarif["runs"][0]["artifacts"] = [
+        {"location": {"uri": "a/sbom.spdx.json"}, "contents": contents}
+    ]
+    sbom = parse_sarif(sarif).sbom
+    assert (sbom.filename, sbom.format) == expected if sbom else expected is None
+    if sbom is not None:
+        assert sbom.text == contents["text"]
+        assert all(not r.evidence for r in parse_sarif(sarif).conformance.rules)
+
+
 def test_embedded_sbom_binary_round_trip() -> None:
     """``artifact.contents.binary`` is preserved as base64 string."""
     log = _load("conformant.sarif.json")

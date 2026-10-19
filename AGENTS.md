@@ -53,6 +53,8 @@ lumina/
 │   │   ├── main.py             FastAPI endpoints
 │   │   ├── conformance.py      run_checker, CHECKER_STANDARDS, schemas
 │   │   ├── sarif_ingest.py     SARIF 2.1.0 → SbomCheckResponse
+│   │   ├── sbom_source.py      SbomSource (download + display text), @graph line index
+│   │   ├── evidence/           Per-rule evidence: SBOM elements and lines behind each outcome
 │   │   ├── jobs.py             JobQueue interface + in-process backend
 │   │   ├── generate.py         Mode-1 job: artefact URL → SBOM → check (SSRF guard)
 │   │   └── generators/         Pitloom-backed SBOM generators (git, hf)
@@ -82,8 +84,9 @@ supports it.
 
 Do not change the `SbomCheckResponse` models (`ConformanceResult`, `RuleResult`,
 `FieldGap`, `CheckRun`, `Notification`) in `conformance.py` without updating
-the frontend that reads them (`ArtifactResult` in
-`frontend/screen-conformance.jsx`) and the mocked responses in
+the frontend that reads them (`ArtifactResult` in `frontend/result-view.jsx`,
+`RuleClusters` and `RuleEvidence` in `frontend/rule-evidence.jsx`,
+`SbomSource` in `frontend/sbom-source.jsx`) and the mocked responses in
 `scripts/ui-smoke.mjs`.
 
 ### Adding a regulation
@@ -162,7 +165,9 @@ regulation appears in the UI only once the backend knows it. To add one:
 every side-nav screen in headless Chromium and fails on a page or console
 error, on an old sample-data string, when the regulation chips differ from the
 mocked `GET /api/v1/regulations`, when a refused request's `detail` is not
-shown, or when the per-rule BSI result lacks its DOC and COMP clusters and counts. It needs Node 18+ and
+shown, when the per-rule BSI result lacks its DOC and COMP clusters and counts,
+when G7 SBOM for AI is not preselected, or when the SBOM download, rule
+evidence, Show in SBOM or the windowed 50,000-line source view break. It needs Node 18+ and
 a `node_modules` directory (outside the repository; never commit it) with
 `playwright-core`. The page's scripts are vendored in `frontend/vendor/` (see
 its README), so the test uses no network and fails on a request to any other
@@ -208,7 +213,9 @@ WCAG 2.2 AA. Specifically:
 - Artefact-URL fetching (`POST /api/v1/artifact/check`) has an SSRF guard in
   `backend/app/generate.py`: http/https only, public addresses only. Set
   `LUMINA_ALLOW_PRIVATE_URLS=1` only in development.
-- Lumina does not parse SBOM files itself: the checker reads them (SPDX 2
+- Conformance comes from the checker alone: it reads the file (SPDX 2
   through `spdx-tools`, SPDX 3 through its own reader) and reports a file it
-  cannot read as an `spdx.parsing-error` notification. A file whose SPDX
+  cannot read as an `spdx.parsing-error` notification. Lumina only parses
+  SPDX 3 JSON itself to show the source and the rule evidence (line numbers),
+  never to decide a verdict. A file whose SPDX
   version cannot be determined is refused with HTTP 422.

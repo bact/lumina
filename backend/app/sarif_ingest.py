@@ -49,7 +49,9 @@ from .conformance import (
     RuleOutcome,
     RuleResult,
     SbomCheckResponse,
+    SbomSource,
 )
+from .sbom_source import load_sbom
 
 # Map the SPEC segment of a rule id, uppercased and whole (``CISA2026`` keeps
 # its year: another edition is another document) -> Lumina regulation id.
@@ -210,6 +212,15 @@ def _embedded_sbom(run: dict[str, Any]) -> EmbeddedSbom | None:
         text=str(text) if isinstance(text, str) else None,
         binary_base64=str(binary) if isinstance(binary, str) else None,
     )
+
+
+def _embedded_source(embedded: EmbeddedSbom | None) -> SbomSource | None:
+    """The embedded SBOM as an :class:`SbomSource`, when its text is JSON."""
+    if embedded is None or embedded.text is None:
+        return None
+    name = embedded.uri.replace("\\", "/").rsplit("/", 1)[-1] or "sbom.json"
+    loaded = load_sbom(name, embedded.text)
+    return loaded.source if loaded.is_json else None
 
 
 def _all_rule_ids(run: dict[str, Any], rule_index: dict[str, Any]) -> list[str]:
@@ -500,8 +511,10 @@ def _parse(sarif: dict[str, Any]) -> SbomCheckResponse:
                 descriptor_id="sarif.extra-runs-ignored",
             )
         )
+    embedded = _embedded_sbom(run)
     return SbomCheckResponse(
         conformance=_build_conformance_result(run, driver, rule_index),
         run=check_run,
-        embedded_sbom=_embedded_sbom(run),
+        embedded_sbom=embedded,
+        sbom=_embedded_source(embedded),
     )

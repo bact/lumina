@@ -83,6 +83,21 @@ SPDX-License-Identifier: Apache-2.0
   --status-missing:   var(--ochre);
   --status-info:      var(--indigo);
 
+  /* Syntax colours for the SBOM source view (JSON): the semantic hues,
+     darkened where needed so each keeps at least 4.5:1 contrast on --white
+     and on --mark; a theme redefines these. */
+  --syntax-key:       var(--indigo);
+  --syntax-string:    #4A6340;  /* moss, darkened */
+  --syntax-number:    #855A17;  /* ochre, darkened */
+  --syntax-literal:   var(--shu-deep);
+  --syntax-punct:     var(--ink-3);
+
+  /* A marked range (e.g. the SBOM lines a rule's evidence points at):
+     strong when it is first shown, fading to soft. */
+  --mark:             var(--ochre-soft);
+  --mark-soft:        #FAF4E4;
+  --mark-edge:        var(--shu);
+
   /* ─────────────────────────────────────────────────────────
      TYPE -- families
      ───────────────────────────────────────────────────────── */
@@ -329,4 +344,107 @@ a:hover { text-decoration-color: var(--shu); }
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+
+/* =============================================================
+   RESULT VIEW -- tabs, rule details, SBOM source
+   (result-view.jsx, rule-evidence.jsx, sbom-source.jsx)
+   ============================================================= */
+
+.result-header {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: var(--s-3); flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+}
+.result-tabs { display: flex; gap: var(--s-1); }
+.result-tab {
+  font-family: inherit; font-size: var(--text-sm); font-weight: 500;
+  color: var(--ink-3); background: transparent; cursor: pointer;
+  border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  padding: 8px 12px;
+}
+.result-tab:hover { color: var(--ink); }
+.result-tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--shu); }
+.result-header > button { margin-bottom: var(--s-2); }
+
+.summary-tiles { display: grid; gap: var(--s-3); }
+
+.rule-row { padding: 9px 16px; }
+.rule-row-main { display: flex; align-items: flex-start; gap: var(--s-3); flex-wrap: wrap; }
+.rule-row-main > button { margin-left: auto; margin-top: -3px; }
+.rule-details {
+  margin: var(--s-2) 0 2px 124px; padding: 10px 12px;
+  background: var(--paper); border: 1px solid var(--border-soft); border-radius: var(--r-2);
+}
+.rule-details-empty { font-size: 12.5px; color: var(--ink-3); }
+.evidence + .evidence { border-top: 1px solid var(--border-soft); padding-top: var(--s-2); }
+.evidence-items { margin: 6px 0 0; display: flex; flex-direction: column; gap: 3px; }
+.evidence-item { display: flex; flex-wrap: wrap; gap: 0 var(--s-2); font-size: 12px; align-items: baseline; min-width: 0; }
+.evidence-item dt { color: var(--ink-3); flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.evidence-item dt::after { content: ":"; }
+.evidence-item dd { margin: 0; min-width: 0; overflow-wrap: anywhere; display: flex; gap: var(--s-2); flex-wrap: wrap; align-items: baseline; }
+
+.link-button {
+  font-family: inherit; font-size: 12px; color: var(--ink-2); background: none;
+  border: 0; padding: 0; cursor: pointer;
+  text-decoration: underline; text-decoration-color: var(--ink-4);
+  text-underline-offset: 3px; white-space: nowrap;
+}
+.link-button:hover { color: var(--ink); text-decoration-color: var(--shu); }
+
+.sbom-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--s-2) var(--s-3); flex-wrap: wrap;
+}
+.sbom-goto { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-3); }
+.sbom-goto input {
+  width: 7em; height: 26px; box-sizing: border-box; padding: 0 6px;
+  font-family: var(--font-mono); font-size: 12px; color: var(--ink);
+  background: var(--white); border: 1px solid var(--border); border-radius: var(--r-2);
+}
+.sbom-source {
+  max-height: min(70vh, 720px); overflow: auto;
+  background: var(--white); border: 1px solid var(--border); border-radius: var(--r-2);
+  font-family: var(--font-mono); font-size: 12.5px; color: var(--ink);
+}
+.sbom-rows { position: absolute; left: 0; min-width: 100%; }
+.sbom-line { display: flex; height: 20px; line-height: 20px; white-space: pre; }
+.sbom-gutter {
+  position: sticky; left: 0; flex: 0 0 auto; box-sizing: content-box;
+  padding: 0 10px 0 6px; text-align: right; color: var(--ink-3);
+  background: var(--paper-2); border-right: 1px solid var(--border-soft);
+  user-select: none;
+}
+.sbom-code { padding: 0 16px 0 10px; }
+.sbom-cut { color: var(--ink-3); font-style: italic; }
+.sbom-line--hit { background: var(--mark-soft); animation: sbom-mark-fade 1.8s var(--ease-out); }
+.sbom-line--hit .sbom-gutter {
+  background: var(--mark); color: var(--ink); font-weight: 500;
+  box-shadow: inset 3px 0 0 0 var(--mark-edge);
+}
+@keyframes sbom-mark-fade { from { background: var(--mark); } to { background: var(--mark-soft); } }
+
+.sbom-tok-key { color: var(--syntax-key); }
+.sbom-tok-string { color: var(--syntax-string); }
+.sbom-tok-number { color: var(--syntax-number); }
+.sbom-tok-literal { color: var(--syntax-literal); font-weight: 500; }
+.sbom-tok-punct { color: var(--syntax-punct); }
+
+/* Narrow viewports (phones): the side nav becomes a scrolling strip above
+   the screen, and the screen column loses its wide gutters. Component
+   styles are inline, hence !important. */
+@media (max-width: 640px) {
+  .app-body { flex-direction: column; }
+  .side-nav {
+    width: auto !important; flex: 0 0 auto !important; flex-direction: row !important;
+    align-items: center; overflow-x: auto; padding: 6px 8px !important;
+    border-right: 0 !important; border-bottom: 1px solid var(--border);
+  }
+  .side-nav [role="group"] { display: flex; align-items: center; gap: 2px; }
+  .side-nav [role="group"] > div:first-child { display: none; }
+  .side-nav button { width: auto !important; white-space: nowrap; }
+  .screen-frame { padding: 20px 16px !important; }
+  .summary-tiles { grid-template-columns: repeat(2, 1fr) !important; }
+  .rule-details { margin-left: 0; }
 }

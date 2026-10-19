@@ -12,9 +12,12 @@ returns its SARIF log as the schema below; the API and UI consume only this sche
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from .sbom_source import LoadedSbom
 
 # ── Output schema ─────────────────────────────────────────────────────────
 
@@ -38,6 +41,45 @@ class FieldGap(BaseModel):
 
 
 RuleOutcome = Literal["present", "missing", "not-applicable", "out-of-scope"]
+SbomFormat = Literal["spdx3-json", "spdx2-json", "other"]
+EvidenceStatus = Literal["found", "absent"]
+
+
+class EvidenceItem(BaseModel):
+    """One property or relationship of an element that a rule reads."""
+
+    key: str
+    """The SPDX 3 property (``software_packageVersion``, ``verifiedUsing``) or,
+    for a relationship, its type (``hasDeclaredLicense``)."""
+    value: str
+    """A one-line preview of the value, at most 160 characters."""
+    line: int
+    """1-based line in ``SbomSource.display``: the key's line, or for a list
+    value the entry's (a typed entry's defining key, such as a hash's
+    ``algorithm``; a relationship's ``relationshipType``)."""
+
+
+class Evidence(BaseModel):
+    """Where in the SBOM a rule found, or did not find, what it asks for.
+
+    ``found`` evidence shows where the property is, not that its value is
+    right; ``absent`` names an element the rule judged that lacks it.
+    """
+
+    status: EvidenceStatus
+    element_id: str
+    """The element's ``spdxId`` (or ``@id`` for a blank node such as
+    ``_:CreationInfo0``)."""
+    element_type: str
+    """The element's SPDX 3 type (``ai_AIPackage``, ``CreationInfo``)."""
+    element_name: str | None = None
+    line: int
+    """1-based first line of the element object in ``SbomSource.display``."""
+    end_line: int
+    """1-based last line (inclusive) of the element object."""
+    items: list[EvidenceItem] = Field(default_factory=list)
+    """What satisfies the rule on this element; empty for ``absent`` and when
+    the rule's carrier cannot be told from its probe."""
 
 
 class RuleResult(BaseModel):
@@ -52,6 +94,11 @@ class RuleResult(BaseModel):
     title: str
     provision: str
     outcome: RuleOutcome
+    evidence: list[Evidence] = Field(default_factory=list)
+    """Up to 20 elements behind the outcome (see :mod:`app.evidence`); only
+    for an SPDX 3 JSON SBOM checked by Lumina."""
+    evidence_more: int = 0
+    """How many more evidence entries were left out."""
 
 
 class ConformanceResult(BaseModel):
@@ -148,6 +195,21 @@ class EmbeddedSbom(BaseModel):
     ``None`` for text artifacts."""
 
 
+class SbomSource(BaseModel):
+    """The SBOM a result is about, for download and for showing with line
+    numbers (see :mod:`app.sbom_source`)."""
+
+    filename: str
+    format: SbomFormat
+    text: str
+    """The original bytes decoded as UTF-8 (undecodable bytes replaced)."""
+    display: str
+    """``text`` pretty-printed (indent 2) when it is a JSON object, else
+    ``text`` itself.  Every line number in the response refers to it."""
+    line_count: int
+    """Number of ``\\n``-separated lines of ``display``."""
+
+
 class SbomCheckResponse(BaseModel):
     """API envelope returned by /sbom/check and /sarif/import."""
 
@@ -157,6 +219,9 @@ class SbomCheckResponse(BaseModel):
     """Source SBOM carried inside the SARIF log, if the producer embedded
     it.  ``None`` when the SARIF log links the artifact by URI only
     (the default of every SARIF producer including this one)."""
+    sbom: SbomSource | None = None
+    """The SBOM checked (uploaded or generated), or the embedded SBOM of an
+    imported SARIF log when its text is JSON."""
 
 
 # ── Checker ───────────────────────────────────────────────────────────────
@@ -172,11 +237,18 @@ CHECKER_STANDARDS: dict[RegulationId, str] = {
 }
 
 
-def run_checker(sbom_path: str, regulation_id: RegulationId) -> SbomCheckResponse:
+def run_checker(
+    sbom_path: str, regulation_id: RegulationId, loaded: LoadedSbom | None = None
+) -> SbomCheckResponse:
     """Check *sbom_path* against *regulation_id* with ntia-conformance-checker.
 
     The checker's SARIF log (without the embedded SBOM) is parsed by
     :func:`sarif_ingest.parse_sarif`, the same parser as ``POST /api/v1/sarif/import``.
+
+    *loaded* is the same file as read by :func:`app.sbom_source.load_sbom`:
+    when given, the response carries it as ``sbom`` and, for an SPDX 3 JSON
+    SBOM, each rule's evidence (:func:`app.evidence.add_evidence`, which
+    never fails the check).
 
     Raises:
         NotImplementedError: the checker does not support *regulation_id*.
@@ -200,4 +272,11 @@ def run_checker(sbom_path: str, regulation_id: RegulationId) -> SbomCheckRespons
         raise ValueError("Could not determine the SPDX version of the SBOM.")
     sbom_spec = "spdx3" if version[0] == 3 else "spdx2"
     checker = SbomChecker(sbom_path, compliance=standard, sbom_spec=sbom_spec)
-    return parse_sarif(checker.output_sarif(embed_sbom=False))
+    response = parse_sarif(checker.output_sarif(embed_sbom=False))
+    if loaded is not None:
+        response.sbom = loaded.source
+        if loaded.spdx3_document is not None and sbom_spec == "spdx3":
+            from .evidence import add_evidence
+
+            add_evidence(response, checker, loaded.spdx3_document)
+    return response

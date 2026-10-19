@@ -53,6 +53,22 @@ def test_g7_upload_returns_per_rule_outcomes(client: TestClient) -> None:
     assert len(response.json()["conformance"]["rules"]) == 81
 
 
+def test_upload_returns_the_sbom_and_evidence(client: TestClient) -> None:
+    """The uploaded SBOM comes back as sent, named as uploaded, with evidence."""
+    with open(SPDX3_G7, "rb") as f:
+        raw = f.read()
+    response = client.post(
+        "/api/v1/sbom/check",
+        files={"file": ("dir\\my sbom.json", raw)},
+        data={"regulation": "ntia"},
+    )
+    body = response.json()
+    assert body["sbom"]["filename"] == "my sbom.json"
+    assert body["sbom"]["format"] == "spdx3-json"
+    assert body["sbom"]["text"] == raw.decode("utf-8")
+    assert all(r["evidence"] for r in body["conformance"]["rules"])
+
+
 def test_unsupported_regulation_upload_is_501(client: TestClient) -> None:
     """MOF is refused for an upload."""
     response = client.post(

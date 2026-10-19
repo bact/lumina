@@ -170,7 +170,7 @@ function TopBar() {
 function SideNav({ current, onNav }) {
   const { t } = useLocale();
   return (
-    <nav aria-label={t("nav.primary")} style={{
+    <nav aria-label={t("nav.primary")} className="side-nav" style={{
       width: 200, flex: "0 0 200px", background: "var(--paper)",
       borderRight: "1px solid var(--border)", padding: "20px 12px",
       display: "flex", flexDirection: "column", gap: 2,
