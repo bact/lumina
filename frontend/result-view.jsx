@@ -45,13 +45,28 @@ function ResultTabs({ tabs, tab, onChange }) {
     <div role="tablist" aria-label="Result views" className="result-tabs" onKeyDown={onKeyDown}>
       {tabs.map(t => (
         <button key={t.id} type="button" role="tab" id={`result-tab-${t.id}`}
-          aria-selected={tab === t.id} aria-controls={`result-panel-${t.id}`}
+          aria-selected={tab === t.id} aria-controls="result-panel"
           tabIndex={tab === t.id ? 0 : -1} className="result-tab" onClick={() => onChange(t.id)}>
           {t.label}
         </button>
       ))}
     </div>
   );
+}
+
+// ─── ResultAnnouncer -- tells a screen reader the check has finished ────
+// Always mounted (a live region only announces changes to one that already
+// exists); `result` is the finished SbomCheckResponse, or null. A failed
+// request is announced by ErrorCard's own alert.
+function ResultAnnouncer({ result }) {
+  let message = "";
+  if (result) {
+    const c = result.conformance;
+    message = result.run && result.run.execution_successful === false
+      ? "The check could not be completed. See the result for why."
+      : `Check finished: ${c.present} present and ${c.missing} missing of ${c.total} rules checked.`;
+  }
+  return <div role="status" className="sr-only">{message}</div>;
 }
 
 // ─── ArtifactResult -- render one SbomCheckResponse ────────────────────
@@ -122,7 +137,7 @@ function ArtifactResult({ result }) {
         <ResultTabs tabs={tabs} tab={tab} onChange={setTab} />
         {canDownload && <DownloadSbomButton sbom={sbom} />}
       </div>
-      <div role="tabpanel" id={`result-panel-${tab}`} aria-labelledby={`result-tab-${tab}`}
+      <div role="tabpanel" id="result-panel" aria-labelledby={`result-tab-${tab}`}
         tabIndex={tab === "result" ? 0 : undefined} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {tab === "result" ? resultView : tab === "log" ? <GeneratorLog lines={log} /> : (
           <SbomSource sbom={sbom} target={target} onBack={origin ? back : null}
@@ -263,4 +278,4 @@ function RunLine({ result }) {
   );
 }
 
-Object.assign(window, { ArtifactResult, ResultTabs });
+Object.assign(window, { ArtifactResult, ResultAnnouncer, ResultTabs });

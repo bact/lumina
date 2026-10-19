@@ -306,7 +306,7 @@ async function evidenceAndSource(where) {
   check((await page.$$eval("button[aria-controls^=rule-details-]", els => els.map(e => e.getAttribute("aria-expanded")))).every(s => s === "false"),
     `${where}: Collapse all closes every rule`);
   await toggle.click();
-  await page.getByRole("button", { name: /^Show mock-pkg in SBOM/ }).first().click();
+  await page.getByRole("button", { name: /^Show in SBOM: mock-pkg/ }).first().click();
   await page.waitForSelector(".sbom-line--hit", { timeout: 5000 }).catch(() => {});
   check(await page.getAttribute("#result-tab-source", "aria-selected") === "true", `${where}: Show in SBOM switches to the source tab`);
   check(await lineVisible(PKG_BLOCK.line, "{") && await lineVisible(PKG_BLOCK.line + 2, '"spdxId": "https://example.org/mock/pkg"')
@@ -355,6 +355,9 @@ await page.getByRole("button", { name: "Model with a dataset" }).click();
 check((await page.getByPlaceholder(/github/).inputValue()).startsWith("https://huggingface.co/distilbert/")
   && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
   "Generate & check: the model example fills the URL and picks G7 SBOM for AI");
+check(await page.getByRole("group", { name: "Try an example:" }).count() === 1
+  && (await page.locator("[role=status].sr-only").allInnerTexts()).some(t => t.includes("Example chosen: Model with a dataset") && t.includes("G7 SBOM for AI")),
+  "Generate & check: the examples are a named group and the choice is announced");
 await page.getByPlaceholder(/github/).fill("https://github.com/o/refuse");
 await page.getByRole("button", { name: "Generate & check" }).last().click();
 await page.waitForSelector(`text=${DETAIL_501}`, { timeout: 5000 }).catch(() => {});
@@ -368,6 +371,12 @@ check(body.includes("Data fields") && body.includes("Component supplier") && bod
 check(posted.at(-1).regulation_id === "g7ai", "Generate & check: the default request names g7ai");
 await shot("2-generate-result");
 await evidenceAndSource("Generate & check");
+
+// A finished check is announced, and every tab's aria-controls names an existing panel.
+check((await page.locator("[role=status].sr-only").allInnerTexts()).some(t => /^Check finished: \d+ present and \d+ missing of \d+ rules checked\.$/.test(t)),
+  "Generate & check: the finished check is announced to screen readers");
+check(await page.$$eval("[role=tab]", els => els.every(e => document.getElementById(e.getAttribute("aria-controls")))),
+  "Generate & check: every tab's aria-controls names an existing panel");
 
 // Generator log: a tab of its own, in a monospace font, lines as returned.
 await page.getByRole("tab", { name: "Generator log" }).click();

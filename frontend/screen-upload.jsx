@@ -59,6 +59,7 @@ function useCheck() {
 function CheckOutcome({ check }) {
   return (
     <>
+      <ResultAnnouncer result={check.phase === "done" ? check.result : null} />
       {check.phase === "running" && (
         <div role="status" style={{ fontSize: 12.5, color: "var(--ink-3)", display: "flex", alignItems: "center", gap: 8 }}>
           <Icon name="loader" size={14} /> Working…
