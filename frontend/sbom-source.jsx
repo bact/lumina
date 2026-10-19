@@ -250,4 +250,4 @@ function SbomSource({ sbom, target, onJump, onBack, backLabel }) {
   );
 }
 
-Object.assign(window, { SbomSource, DownloadSbomButton, downloadSbom, highlightJsonLine, isJsonSbom });
+Object.assign(window, { copyText, SbomSource, DownloadSbomButton, downloadSbom, highlightJsonLine, isJsonSbom });

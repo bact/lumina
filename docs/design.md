@@ -231,6 +231,21 @@ warning and leaves every rule without evidence. An element written inline
 inside another one, rather than as its own `@graph` object, is never
 evidence.
 
+### Generator log
+
+A generated result also carries `generation_log`: what the generator side did,
+in order, for a user who wants to see the working. Each line has a `source`
+(`lumina`: a step Lumina took, including the real `git clone` command line;
+`git`: its own output on success; `pitloom`: a record Pitloom logged at INFO or
+above), a `level` (`info`, `warning`, `error`), the `message` and `elapsed_ms`
+since the start. A failed generation keeps its log, ending with the error.
+Nothing is added that the generator did not produce, so a quiet Pitloom run
+shows few `pitloom` lines. The server's temporary directory is shown as
+`<tmp>`. The log is bounded (1000 lines, 2000 characters a line; a closing line
+says how many were left out). `null` for an uploaded SBOM or an imported SARIF
+log. Code: [`backend/app/generation_log.py`](../backend/app/generation_log.py);
+the UI shows it as the "Generator log" tab, in a monospace font.
+
 ### Checker routing
 
 Lumina does no conformance checking itself. `run_checker` in

@@ -8,7 +8,8 @@ SPDX-License-Identifier: Apache-2.0
 // shares: one SbomCheckResponse rendered exactly as the API returned it.
 //
 // When the response carries the checked SBOM (`result.sbom`), the view has
-// two tabs, "Result" and "SBOM source", and a Download SBOM button. Without
+// two tabs, "Result" and "SBOM source", and a Download SBOM button; a
+// generated SBOM (or a failed generation) adds a "Generator log" tab. Without
 // it (older responses, SARIF logs with no embedded JSON SBOM) the view is the
 // result alone. "Show in SBOM" in a rule's details switches to the source
 // tab at the line range it names and sets the URL hash (#sbom-L57 or
@@ -19,28 +20,30 @@ const { useState: _useSR, useEffect: _useEffR } = React;
 const SBOM_HASH_RE = /^#sbom-L(\d+)(?:-L(\d+))?$/;
 const sbomHash = (range) => `#sbom-L${range.line}${range.end_line > range.line ? `-L${range.end_line}` : ""}`;
 
-// ─── ResultTabs -- "Result" | "SBOM source" (WAI-ARIA tabs pattern) ────
-const RESULT_TABS = [
-  { id: "result", label: "Result" },
-  { id: "source", label: "SBOM source" },
-];
+// ─── ResultTabs -- "Result" | "SBOM source" | "Generator log" ──────────
+// (WAI-ARIA tabs pattern). `tabs` lists only the views this result has.
+const ALL_RESULT_TABS = {
+  result: { id: "result", label: "Result" },
+  source: { id: "source", label: "SBOM source" },
+  log: { id: "log", label: "Generator log" },
+};
 
-function ResultTabs({ tab, onChange }) {
+function ResultTabs({ tabs, tab, onChange }) {
   const onKeyDown = (e) => {
-    const i = RESULT_TABS.findIndex(t => t.id === tab);
+    const i = tabs.findIndex(t => t.id === tab);
     let next = null;
-    if (e.key === "ArrowRight") next = (i + 1) % RESULT_TABS.length;
-    else if (e.key === "ArrowLeft") next = (i - 1 + RESULT_TABS.length) % RESULT_TABS.length;
+    if (e.key === "ArrowRight") next = (i + 1) % tabs.length;
+    else if (e.key === "ArrowLeft") next = (i - 1 + tabs.length) % tabs.length;
     else if (e.key === "Home") next = 0;
-    else if (e.key === "End") next = RESULT_TABS.length - 1;
+    else if (e.key === "End") next = tabs.length - 1;
     if (next === null) return;
     e.preventDefault();
-    onChange(RESULT_TABS[next].id);
-    document.getElementById(`result-tab-${RESULT_TABS[next].id}`)?.focus();
+    onChange(tabs[next].id);
+    document.getElementById(`result-tab-${tabs[next].id}`)?.focus();
   };
   return (
     <div role="tablist" aria-label="Result views" className="result-tabs" onKeyDown={onKeyDown}>
-      {RESULT_TABS.map(t => (
+      {tabs.map(t => (
         <button key={t.id} type="button" role="tab" id={`result-tab-${t.id}`}
           aria-selected={tab === t.id} aria-controls={`result-panel-${t.id}`}
           tabIndex={tab === t.id ? 0 : -1} className="result-tab" onClick={() => onChange(t.id)}>
@@ -54,6 +57,8 @@ function ResultTabs({ tab, onChange }) {
 // ─── ArtifactResult -- render one SbomCheckResponse ────────────────────
 function ArtifactResult({ result }) {
   const sbom = result.sbom && typeof result.sbom.display === "string" ? result.sbom : null;
+  const log = Array.isArray(result.generation_log) && result.generation_log.length ? result.generation_log : null;
+  const tabs = [ALL_RESULT_TABS.result, ...(sbom ? [ALL_RESULT_TABS.source] : []), ...(log ? [ALL_RESULT_TABS.log] : [])];
   const canDownload = !!(result.sbom && typeof result.sbom.text === "string");
   const [tab, setTab] = _useSR("result");
   const [expanded, setExpanded] = _useSR(() => new Set());
@@ -103,7 +108,7 @@ function ArtifactResult({ result }) {
     <ResultBody result={result} expanded={expanded} setExpanded={setExpanded} onToggle={toggle}
       onShow={sbom ? jump : null} details={!!sbom} />
   );
-  if (!sbom) {
+  if (tabs.length === 1) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {canDownload && <div><DownloadSbomButton sbom={result.sbom} /></div>}
@@ -114,12 +119,12 @@ function ArtifactResult({ result }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div className="result-header">
-        <ResultTabs tab={tab} onChange={setTab} />
+        <ResultTabs tabs={tabs} tab={tab} onChange={setTab} />
         {canDownload && <DownloadSbomButton sbom={sbom} />}
       </div>
       <div role="tabpanel" id={`result-panel-${tab}`} aria-labelledby={`result-tab-${tab}`}
         tabIndex={tab === "result" ? 0 : undefined} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        {tab === "result" ? resultView : (
+        {tab === "result" ? resultView : tab === "log" ? <GeneratorLog lines={log} /> : (
           <SbomSource sbom={sbom} target={target} onBack={origin ? back : null}
             onJump={(line) => jump({ line, end_line: line }, null)} />
         )}

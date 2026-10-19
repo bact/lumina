@@ -22,6 +22,7 @@ from pitloom.logging_config import configure_logging
 from app import generate
 from app.conformance import Notification
 from app.generate import _ensure_public_http_url
+from app.generation_log import hide_temp_dir
 from app.generators import GenerationError, generate_from_huggingface
 from app.generators.base import creation_info
 from app.generators.git import _run_pitloom, _shallow_clone
@@ -291,7 +292,7 @@ def test_failure_message_hides_the_server_temp_dir(
 def test_hide_temp_dir_leaves_urls_alone(template: str, hidden: bool) -> None:
     """Only a path is hidden, not a part of a URL that looks like the temp dir."""
     text = template.format(tmp=tempfile.gettempdir())
-    assert (generate.hide_temp_dir(text) != text) is hidden
+    assert (hide_temp_dir(text) != text) is hidden
 
 
 def test_pitloom_warnings_survive_its_logging_setup(

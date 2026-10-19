@@ -454,3 +454,22 @@ a:hover { text-decoration-color: var(--shu); }
   .summary-tiles { grid-template-columns: repeat(2, 1fr) !important; }
   .rule-details { margin-left: 0; }
 }
+
+/* Generator log (generator-log.jsx): monospace, one row per log line */
+.gen-log {
+  max-height: min(70vh, 720px); overflow: auto; padding: 10px 0;
+  background: var(--white); border: 1px solid var(--border); border-radius: var(--r-2);
+  font-family: var(--font-mono); font-size: 12.5px; line-height: 20px; color: var(--ink);
+}
+.gen-log-line { display: flex; gap: 12px; padding: 0 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.gen-log-line:hover { background: var(--paper); }
+.gen-log-time { flex: 0 0 4.5ch; text-align: right; color: var(--ink-3); user-select: none; }
+.gen-log-src { flex: 0 0 7ch; color: var(--ink-3); user-select: none; }
+.gen-log-level { flex: 0 0 7ch; color: var(--ink-3); user-select: none; }
+.gen-log-msg { flex: 1 1 auto; min-width: 0; }
+.gen-log-line--warning .gen-log-level, .gen-log-line--warning .gen-log-msg { color: var(--syntax-number); }
+.gen-log-line--error .gen-log-level, .gen-log-line--error .gen-log-msg { color: var(--shu-deep); font-weight: 500; }
+@media (max-width: 640px) {
+  .gen-log-line { flex-wrap: wrap; gap: 0 10px; }
+  .gen-log-msg { flex-basis: 100%; }
+}

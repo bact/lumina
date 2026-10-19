@@ -86,6 +86,7 @@ still shown, by its code.
 | `app-shell.jsx` | `TopBar` (logo, `LanguageSwitcher`), `SideNav` and `NAV_SECTIONS`, the side-nav items. |
 | `screen-conformance.jsx` | `IMPORT_REGULATIONS`, `DEFAULT_REGULATION`, `RULE_CLUSTERS`, the API helpers (`apiErrorMessage`, `postForResult`, `useRegulations`), `RegulationPicker`, `ScreenFrame` and the Generate & check screen (`ImportScreen`). |
 | `sbom-source.jsx` | `SbomSource` (windowed, highlighted source view), `DownloadSbomButton`, `downloadSbom`, the per-line highlight.js to React conversion. |
+| `generator-log.jsx` | `GeneratorLog`: the "Generator log" tab (`generation_log`, monospace, copy button), shown for a generated SBOM or a failed generation. |
 | `rule-evidence.jsx` | `RuleClusters` (per-rule outcomes by cluster, with the details toggles) and `RuleEvidence`. |
 | `result-view.jsx` | `ArtifactResult` (tabs, download, Show in SBOM wiring), `ResultTabs`, `RunLine`. |
 | `screen-upload.jsx` | Upload SBOM (`UploadScreen`) and Import SARIF (`SarifScreen`). |

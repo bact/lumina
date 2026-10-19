@@ -111,6 +111,23 @@ const NTIA_RESULT = {
     notifications: [{ level: "warning", message: "Mock Pitloom warning.", descriptor_id: "pitloom.log" }] },
   embedded_sbom: null,
   sbom: SBOM,
+  generation_log: [
+    { source: "lumina", level: "info", message: "Generating an SBOM for https://github.com/o/r", elapsed_ms: 0 },
+    { source: "lumina", level: "info", message: "$ git -c http.followRedirects=false clone --depth 1 -- https://github.com/o/r <tmp>", elapsed_ms: 3 },
+    { source: "git", level: "info", message: "Cloning into '<tmp>'...", elapsed_ms: 912 },
+    { source: "pitloom", level: "warning", message: "FORMAT=gguf: mock log record", elapsed_ms: 1530 },
+    { source: "lumina", level: "info", message: "Pitloom finished; reading the SBOM it wrote", elapsed_ms: 2104 },
+  ],
+};
+const GEN_FAILED_RESULT = {
+  conformance: { regulation_id: "g7ai", source: "lumina-internal", total: 0, present: 0, missing: 0, unverified: 0, gaps: [], rules: [], system_judged_by_model: null },
+  run: { tool_name: "lumina", tool_version: "", generator: "", execution_successful: false, notifications: [{
+    level: "error", descriptor_id: "git.clone-failed", message: "fatal: repository not found" }] },
+  embedded_sbom: null,
+  generation_log: [
+    { source: "lumina", level: "info", message: "Generating an SBOM for https://github.com/o/gone", elapsed_ms: 0 },
+    { source: "lumina", level: "error", message: "[git.clone-failed] fatal: repository not found", elapsed_ms: 410 },
+  ],
 };
 const BIG_RESULT = { ...NTIA_RESULT,
   conformance: { ...NTIA_RESULT.conformance, rules: NTIA_RESULT.conformance.rules.map((r, i) => (i !== 1 ? { ...r, evidence: [] }
@@ -163,9 +180,10 @@ async function mockApi(page) {
     const body = JSON.parse(r.request().postData() || "{}");
     posted.push(body);
     if (body.artifact_url.includes("refuse")) return r.fulfill({ status: 501, json: { detail: DETAIL_501 } });
-    return r.fulfill({ status: 202, json: { job_id: body.artifact_url.includes("big") ? "job-2" : "job-1" } });
+    return r.fulfill({ status: 202, json: { job_id: body.artifact_url.includes("big") ? "job-2" : body.artifact_url.includes("gone") ? "job-3" : "job-1" } });
   });
   await page.route("**/api/v1/jobs/job-1", r => r.fulfill({ json: { status: "done", result: NTIA_RESULT } }));
+  await page.route("**/api/v1/jobs/job-3", r => r.fulfill({ json: { status: "done", result: GEN_FAILED_RESULT } }));
   await page.route("**/api/v1/jobs/job-2", r => r.fulfill({ json: { status: "done", result: BIG_RESULT } }));
   await page.route("**/api/v1/sbom/check", r => {
     const raw = r.request().postData() || "";
@@ -271,7 +289,7 @@ async function lineVisible(n, needle) {
 async function evidenceAndSource(where) {
   await downloads(where, SBOM.filename, SBOM.text);
   const tabs = await page.$$eval("[role=tablist] [role=tab]", els => els.map(e => [e.textContent, e.getAttribute("aria-selected")]));
-  check(JSON.stringify(tabs) === JSON.stringify([["Result", "true"], ["SBOM source", "false"]]), `${where}: Result | SBOM source tabs ${JSON.stringify(tabs)}`);
+  check(JSON.stringify(tabs) === JSON.stringify([["Result", "true"], ["SBOM source", "false"], ["Generator log", "false"]]), `${where}: Result | SBOM source | Generator log tabs ${JSON.stringify(tabs)}`);
   const toggle = page.getByRole("button", { name: "Show more: Component version" });
   await toggle.click();
   let body = await text();
@@ -351,6 +369,31 @@ check(posted.at(-1).regulation_id === "g7ai", "Generate & check: the default req
 await shot("2-generate-result");
 await evidenceAndSource("Generate & check");
 
+// Generator log: a tab of its own, in a monospace font, lines as returned.
+await page.getByRole("tab", { name: "Generator log" }).click();
+await page.waitForSelector(".gen-log-line");
+const logLines = await page.locator(".gen-log-line").allInnerTexts();
+check(logLines.length === 5 && logLines[2].includes("git") && logLines[2].includes("Cloning into '<tmp>'...")
+  && logLines[3].includes("WARNING") && logLines[3].includes("FORMAT=gguf: mock log record"),
+  "Generate & check: the Generator log tab lists the returned lines with source and level");
+check(await page.locator(".gen-log-line", { hasText: "$ git -c http.followRedirects=false clone" }).count() === 1,
+  "Generate & check: the real clone command line is shown");
+const logFont = await page.locator(".gen-log-msg").first().evaluate(e => getComputedStyle(e).fontFamily);
+check(/mono/i.test(logFont), `Generate & check: the log is in a monospace font (${logFont})`);
+await shot("2f-generator-log");
+await page.getByRole("tab", { name: "Result" }).click();
+
+// A failed generation still shows why, in the log.
+await page.getByPlaceholder(/github/).fill("https://github.com/o/gone");
+await page.getByRole("button", { name: "Generate & check" }).last().click();
+await page.waitForSelector("text=fatal: repository not found", { timeout: 10000 }).catch(() => {});
+check(await page.getByRole("tab", { name: "Generator log" }).count() === 1
+  && await page.getByRole("tab", { name: "SBOM source" }).count() === 0,
+  "failed generation: Result and Generator log tabs, no SBOM source tab");
+await page.getByRole("tab", { name: "Generator log" }).click();
+check((await page.locator(".gen-log-line--error").innerText()).includes("[git.clone-failed]"),
+  "failed generation: the log ends with the error line");
+
 // Big source: windowed, and any line can be reached.
 await page.getByPlaceholder(/github/).fill("https://github.com/o/big");
 await page.getByRole("button", { name: "Generate & check" }).last().click();
@@ -398,6 +441,7 @@ check(body.includes("SBOM document") && body.includes("Components") && body.incl
 check(/not provided/i.test(body) && body.includes("OPTIONAL PROVIDED") && body.includes("0 of 1"),
   "Upload SBOM: an optional rule is Not provided, apart from Missing");
 await downloads("Upload SBOM", "upload.spdx3.json", SBOM.text);
+check(await page.getByRole("tab", { name: "Generator log" }).count() === 0, "Upload SBOM: no Generator log tab (nothing was generated)");
 await shot("5-upload-bsi-rules");
 await page.getByRole("radio", { name: LABELS.g7ai }).click();
 await page.getByRole("button", { name: "Check SBOM" }).click();

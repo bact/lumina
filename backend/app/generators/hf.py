@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ..generation_log import note
 from .base import GenerationError, creation_info
 
 
@@ -27,6 +28,12 @@ def generate_from_huggingface(model_source: str, output_path: str) -> None:
     # pylint: disable=import-outside-toplevel
     from pitloom.assemble import generate_model_sbom
 
+    note(
+        "lumina",
+        "info",
+        f"Pitloom: generate_model_sbom() reads the Hugging Face Hub metadata of "
+        f"{model_source} (no model files are downloaded)",
+    )
     try:
         generate_model_sbom(
             model_source,

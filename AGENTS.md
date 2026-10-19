@@ -53,6 +53,7 @@ lumina/
 │   │   ├── main.py             FastAPI endpoints
 │   │   ├── conformance.py      run_checker, CHECKER_STANDARDS, schemas
 │   │   ├── sarif_ingest.py     SARIF 2.1.0 → SbomCheckResponse
+│   │   ├── generation_log.py   Generation log: Lumina steps, git output, Pitloom records
 │   │   ├── sbom_source.py      SbomSource (download + display text), @graph line index
 │   │   ├── evidence/           Per-rule evidence: SBOM elements and lines behind each outcome
 │   │   ├── jobs.py             JobQueue interface + in-process backend
@@ -86,7 +87,8 @@ Do not change the `SbomCheckResponse` models (`ConformanceResult`, `RuleResult`,
 `FieldGap`, `CheckRun`, `Notification`) in `conformance.py` without updating
 the frontend that reads them (`ArtifactResult` in `frontend/result-view.jsx`,
 `RuleClusters` and `RuleEvidence` in `frontend/rule-evidence.jsx`,
-`SbomSource` in `frontend/sbom-source.jsx`) and the mocked responses in
+`SbomSource` in `frontend/sbom-source.jsx`, `GeneratorLog` in
+`frontend/generator-log.jsx`) and the mocked responses in
 `scripts/ui-smoke.mjs`.
 
 ### Adding a regulation
