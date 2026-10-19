@@ -188,6 +188,7 @@ function ImportScreen() {
   const [phase, setPhase] = _useSC("idle"); // idle | running | done | error
   const [result, setResult] = _useSC(null); // SbomCheckResponse
   const [errorMsg, setErrorMsg] = _useSC("");
+  const [exampleNote, setExampleNote] = _useSC(""); // spoken when an example fills the form
   const aliveRef = _useRef(true);
   _useEffect(() => () => { aliveRef.current = false; }, []);
 
@@ -245,8 +246,8 @@ function ImportScreen() {
         </Button>
       </div>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <span style={{ fontSize: 12.5, color: "var(--ink-3)" }}>Try an example:</span>
+      <div role="group" aria-labelledby="example-label" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <span id="example-label" style={{ fontSize: 12.5, color: "var(--ink-3)" }}>Try an example:</span>
         {DEMO_EXAMPLES.map(ex => (
           <Button key={ex.url} size="sm" variant="ghost" title={`${ex.url} (${ex.note})`}
             disabled={phase === "running"}
@@ -254,11 +255,16 @@ function ImportScreen() {
               setUrl(ex.url); setResult(null); setPhase("idle");
               const known = regs.regulations && regs.regulations.find(r => r.id === ex.regulation);
               if (known && known.ready) setRegId(ex.regulation);
+              setExampleNote(`Example chosen: ${ex.label}. The URL field now holds ${ex.url}` +
+                (known && known.ready ? ` and ${regulationLabel(ex.regulation)} is selected.` : "."));
             }}>
             {ex.label}
           </Button>
         ))}
       </div>
+
+      <div role="status" className="sr-only">{exampleNote}</div>
+      <ResultAnnouncer result={phase === "done" ? result : null} />
 
       {phase === "running" && (
         <div role="status" style={{ fontSize: 12.5, color: "var(--ink-3)", display: "flex", alignItems: "center", gap: 8 }}>

@@ -15,11 +15,13 @@ bounded by a timeout.
 from __future__ import annotations
 
 import os
+import shlex
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 
+from ..generation_log import note
 from .base import GenerationError, creation_info
 
 # A shallow clone is bounded, but a large repo over a slow link can still take a
@@ -47,22 +49,24 @@ def generate_from_git(repo_url: str, output_path: str) -> None:
 
 
 def _shallow_clone(repo_url: str, work_dir: str) -> None:
+    command = [
+        "git",
+        # The URL was checked once; a redirect to an internal host
+        # would skip that check, so none is followed.
+        "-c",
+        "http.followRedirects=false",
+        "clone",
+        "--depth",
+        "1",
+        f"--filter=blob:limit={CLONE_BLOB_LIMIT}",
+        "--",
+        repo_url,
+        work_dir,
+    ]
+    note("lumina", "info", f"$ {shlex.join(command)}")
     try:
-        subprocess.run(
-            [
-                "git",
-                # The URL was checked once; a redirect to an internal host
-                # would skip that check, so none is followed.
-                "-c",
-                "http.followRedirects=false",
-                "clone",
-                "--depth",
-                "1",
-                f"--filter=blob:limit={CLONE_BLOB_LIMIT}",
-                "--",
-                repo_url,
-                work_dir,
-            ],
+        done = subprocess.run(
+            command,
             check=True,
             capture_output=True,
             text=True,
@@ -71,6 +75,10 @@ def _shallow_clone(repo_url: str, work_dir: str) -> None:
             # credential prompt until the timeout.
             env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
         )
+        # On failure the output is in the GenerationError raised below.
+        for output in (done.stdout, done.stderr):
+            if output and output.strip():
+                note("git", "info", output.rstrip())
     except subprocess.TimeoutExpired as exc:
         raise GenerationError(
             "git.timeout",
@@ -87,6 +95,12 @@ def _run_pitloom(project_dir: str, output_path: str) -> None:
     from pitloom.assemble import generate_project_sbom
     from pitloom.core.config import PitloomConfig
 
+    note(
+        "lumina",
+        "info",
+        "Pitloom: generate_project_sbom() on the checkout, with the project's "
+        "own [tool.pitloom] settings ignored (untrusted checkout)",
+    )
     try:
         generate_project_sbom(
             Path(project_dir),

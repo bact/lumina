@@ -58,6 +58,7 @@ from .generators import (
     generate_from_git,
     generate_from_huggingface,
 )
+from .generation_log import GenerationLog, hide_temp_dir, note, recording
 from .sbom_source import load_sbom
 
 logger = logging.getLogger(__name__)
@@ -167,12 +168,6 @@ class _WarningCollector(logging.Handler):
             )
 
 
-def hide_temp_dir(text: str) -> str:
-    """*text* without the server's temporary directory (a path, not a URL part)."""
-    pattern = rf"(?<![\w./:-]){re.escape(tempfile.gettempdir())}"
-    return re.sub(pattern, "<tmp>", text)
-
-
 @contextlib.contextmanager
 def _collect_warnings(sink: list[Notification]) -> Iterator[None]:
     """Turn what Pitloom warns while it generates into notifications for the user.
@@ -201,27 +196,34 @@ def generate_and_check(
     fd, sbom_path = tempfile.mkstemp(prefix="lumina-sbom-", suffix=".spdx3.json")
     os.close(fd)
     warnings: list[Notification] = []
+    log = GenerationLog()
     try:
         try:
-            with _collect_warnings(warnings):
+            with _collect_warnings(warnings), recording(log):
+                note("lumina", "info", f"Generating an SBOM for {artifact_url}")
                 _generate(artifact_url, sbom_path)
+                note("lumina", "info", "Pitloom finished; reading the SBOM it wrote")
         except GenerationError as exc:
+            log.add("lumina", "error", f"[{exc.descriptor_id}] {exc.message}")
             logger.warning(
                 "Generation failed for %s: [%s] %s",
                 artifact_url,
                 exc.descriptor_id,
                 exc.message,
             )
-            return _failure_response(
+            response = _failure_response(
                 regulation_id,
                 exc.descriptor_id,
                 hide_temp_dir(exc.message),
             )
+            response.generation_log = log.finish()
+            return response
         with open(sbom_path, encoding="utf-8", errors="replace") as sbom_file:
             loaded = load_sbom(sbom_filename(artifact_url), sbom_file.read())
         response = run_checker(sbom_path, regulation_id, loaded)
         response.run.generator = f"pitloom {_pitloom_version()}"
         response.run.notifications.extend(warnings)
+        response.generation_log = log.finish()
         return response
     finally:
         if os.path.exists(sbom_path):

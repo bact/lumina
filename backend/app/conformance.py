@@ -16,6 +16,8 @@ from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, Field
 
+from .generation_log import LogLine
+
 if TYPE_CHECKING:
     from .sbom_source import LoadedSbom
 
@@ -222,6 +224,9 @@ class SbomCheckResponse(BaseModel):
     sbom: SbomSource | None = None
     """The SBOM checked (uploaded or generated), or the embedded SBOM of an
     imported SARIF log when its text is JSON."""
+    generation_log: list[LogLine] | None = None
+    """What the generator side did, in order (see :mod:`app.generation_log`);
+    ``None`` unless Lumina generated the SBOM."""
 
 
 # ── Checker ───────────────────────────────────────────────────────────────

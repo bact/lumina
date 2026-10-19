@@ -166,7 +166,7 @@ Requirement ids are the [SBOM requirements ontology][bom] ids, for example
 | - | - |
 | `GET /api/v1/regulations` | Regulations Lumina knows, with `ready` set when the checker supports them |
 | `POST /api/v1/sbom/check` | Upload an SBOM (SPDX 2 or 3; up to 10 MiB by default) and check it; the result carries the SBOM and per-rule evidence |
-| `POST /api/v1/artifact/check` | Generate an SBOM from a Git or Hugging Face URL, then check it (background job); the result carries the generated SBOM and per-rule evidence |
+| `POST /api/v1/artifact/check` | Generate an SBOM from a Git or Hugging Face URL, then check it (background job); the result carries the generated SBOM, per-rule evidence and the generator log |
 | `GET /api/v1/jobs/{job_id}` | Status and result of a background job |
 | `POST /api/v1/sarif/import` | Read a SARIF 2.1.0 log from any producer, without running a check; an embedded JSON SBOM is returned as `sbom` |
 

@@ -81,7 +81,7 @@ function RuleEvidence({ rule, onShow }) {
               {ev.element_type && <Mono style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{ev.element_type}</Mono>}
               {onShow && ev.line ? (
                 <LinkButton onClick={() => onShow({ line: ev.line, end_line: ev.end_line || ev.line }, rule)}
-                  ariaLabel={`Show ${name} in SBOM, ${lineRange(ev.line, ev.end_line)}`}>
+                  ariaLabel={`Show in SBOM: ${name}, ${lineRange(ev.line, ev.end_line)}`}>
                   Show in SBOM
                 </LinkButton>
               ) : null}

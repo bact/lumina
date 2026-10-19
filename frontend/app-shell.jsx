@@ -67,7 +67,7 @@ function LanguageSwitcher() {
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={popoverId}
-        aria-label={`${t("topbar.language")}: ${currentLocale.label} (${englishName}). ${t("topbar.changeLanguage")}`}
+        aria-label={`${shortCode}, ${t("topbar.language")}: ${currentLocale.label} (${englishName}). ${t("topbar.changeLanguage")}`}
         title={`${t("topbar.language")}: ${currentLocale.label}`}
         style={{
           display: "inline-flex", alignItems: "center", gap: 5,

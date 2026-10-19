@@ -53,6 +53,7 @@ lumina/
 │   │   ├── main.py             FastAPI endpoints
 │   │   ├── conformance.py      run_checker, CHECKER_STANDARDS, schemas
 │   │   ├── sarif_ingest.py     SARIF 2.1.0 → SbomCheckResponse
+│   │   ├── generation_log.py   Generation log: Lumina steps, git output, Pitloom records
 │   │   ├── sbom_source.py      SbomSource (download + display text), @graph line index
 │   │   ├── evidence/           Per-rule evidence: SBOM elements and lines behind each outcome
 │   │   ├── jobs.py             JobQueue interface + in-process backend
@@ -86,7 +87,8 @@ Do not change the `SbomCheckResponse` models (`ConformanceResult`, `RuleResult`,
 `FieldGap`, `CheckRun`, `Notification`) in `conformance.py` without updating
 the frontend that reads them (`ArtifactResult` in `frontend/result-view.jsx`,
 `RuleClusters` and `RuleEvidence` in `frontend/rule-evidence.jsx`,
-`SbomSource` in `frontend/sbom-source.jsx`) and the mocked responses in
+`SbomSource` in `frontend/sbom-source.jsx`, `GeneratorLog` in
+`frontend/generator-log.jsx`) and the mocked responses in
 `scripts/ui-smoke.mjs`.
 
 ### Adding a regulation
@@ -189,15 +191,55 @@ after a UI change.
 
 ## Accessibility
 
-WCAG 2.2 AA. Specifically:
+**Always keep the UI accessible.** Every frontend change (a new screen, tab,
+control, message or colour) must stay usable by keyboard alone and with a screen
+reader, with appropriate labels, readable font sizes and sufficient colour
+contrast. Treat a regression here like a failing test: fix it in the same
+change. Target: WCAG 2.2 AA. Specifically:
 
-- Every interactive element is a `<button>` or has `role="button"` /
-  `role="radio"` with `tabIndex=0` and Enter/Space handlers.
-- Every clickable row, card, or SVG node has a descriptive `aria-label`.
-- Decorative icons and dots: `aria-hidden="true"`.
-- Progress bars: `role="progressbar"` with `aria-valuemin/max/now`.
-- No colour as the sole conveyor of state (dot + text label, not dot alone).
+**Keyboard**
+- Every interactive element is a `<button>`, `<a href>` or form control, or has
+  the right `role` with `tabIndex=0` and Enter/Space handlers. Nothing is
+  reachable by mouse only; nothing traps focus.
+- Composite widgets follow the WAI-ARIA pattern (tabs: arrow keys, Home/End,
+  roving `tabIndex`; listbox: arrows, Esc closes and returns focus).
+- Keep the visible focus ring (`:focus-visible`); never remove an outline
+  without a replacement. A scrollable region that holds text has `tabIndex=0`
+  and a name, so the keyboard can scroll it.
+- Moving content (a jump to a line, a tab switch) also moves focus to where the
+  user lands.
+
+**Screen readers and labels**
+- Every control has an accessible name. When it has visible text, the name
+  contains that text (WCAG 2.5.3, label in name): `aria-label="Show in SBOM:
+  mock-pkg"`, not "Show mock-pkg in SBOM" for a visible "Show in SBOM".
+- Inputs have a `<label>` (or `aria-label`); groups of related controls have
+  `role="group"` with a name.
+- ARIA references (`aria-controls`, `aria-labelledby`) point at elements that
+  exist.
+- Changes that happen without a page load are announced: a `role="status"` live
+  region that is mounted before its text changes (a finished check, a copied
+  log, an example that filled the form); errors use `role="alert"`.
+- Decorative icons and dots: `aria-hidden="true"`. Landmarks and headings give
+  each screen a sensible outline; `lang` is set on text in another language.
+
+**Text, colour and motion**
+- Body text at least 12 px and in relative units where it can be; the page must
+  work at 200% zoom and at 390 px width without sideways page scroll (code and
+  log boxes scroll inside themselves).
+- Contrast at least 4.5:1 for text (3:1 for large text and for UI borders and
+  focus rings), in every state: hover, disabled, selected, highlighted. Use the
+  tokens in `colors-and-type.css`; a new colour gets its ratio checked.
+- No colour as the sole conveyor of state: pair it with text or a shape
+  (INFO/WARNING/ERROR written out, a dot plus a label).
 - Respect `prefers-reduced-motion`.
+- Progress bars: `role="progressbar"` with `aria-valuemin/max/now`.
+
+**Checking**: run `scripts/ui-smoke.mjs` (it asserts names, tabs and
+announcements) and scan the changed screens with axe-core (WCAG 2 A/AA and
+best-practice rules) in a browser; both must report nothing. Automated tools
+find only part of the problems: for a new widget also try the keyboard flow by
+hand, and a screen reader when one is at hand.
 
 ---
 
