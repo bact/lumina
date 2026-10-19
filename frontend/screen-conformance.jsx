@@ -53,6 +53,20 @@ const IMPORT_REGULATIONS = {
 // Preselected on the check screens when the API lists it as ready.
 const DEFAULT_REGULATION = "g7ai";
 
+// Example URLs for the Generate & check screen (the demo script, DEMO.md).
+// Each fills the URL field and picks the standard the demo uses for it; the
+// result is still whatever the server generates and checks.
+const DEMO_EXAMPLES = [
+  { label: "Model with a dataset", note: "Hugging Face", regulation: "g7ai",
+    url: "https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad" },
+  { label: "Project with a fastText model", note: "GitHub", regulation: "g7ai",
+    url: "https://github.com/bact/sentimentdemo" },
+  { label: "Project with ONNX models", note: "GitHub, about 12 s", regulation: "g7ai",
+    url: "https://github.com/PyThaiNLP/pythainlp" },
+  { label: "Plain Python project", note: "GitHub", regulation: "ntia",
+    url: "https://github.com/pallets/flask" },
+];
+
 const regulationLabel = (id) => (IMPORT_REGULATIONS[id] && IMPORT_REGULATIONS[id].label) || id;
 
 // Rule clusters per regulation (the cluster segment of the rule id), in order.
@@ -231,6 +245,21 @@ function ImportScreen() {
         </Button>
       </div>
 
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ fontSize: 12.5, color: "var(--ink-3)" }}>Try an example:</span>
+        {DEMO_EXAMPLES.map(ex => (
+          <Button key={ex.url} size="sm" variant="ghost" title={`${ex.url} (${ex.note})`}
+            disabled={phase === "running"}
+            onClick={() => {
+              setUrl(ex.url); setResult(null); setPhase("idle");
+              const known = regs.regulations && regs.regulations.find(r => r.id === ex.regulation);
+              if (known && known.ready) setRegId(ex.regulation);
+            }}>
+            {ex.label}
+          </Button>
+        ))}
+      </div>
+
       {phase === "running" && (
         <div role="status" style={{ fontSize: 12.5, color: "var(--ink-3)", display: "flex", alignItems: "center", gap: 8 }}>
           <Icon name="loader" size={14} style={{ color: "var(--ink-3)" }} />
@@ -265,7 +294,7 @@ function ScreenFrame({ eyebrow, title, intro, children }) {
 }
 
 Object.assign(window, {
-  IMPORT_REGULATIONS, RULE_CLUSTERS, DEFAULT_REGULATION, regulationLabel, apiErrorMessage, postForResult,
+  IMPORT_REGULATIONS, RULE_CLUSTERS, DEFAULT_REGULATION, DEMO_EXAMPLES, regulationLabel, apiErrorMessage, postForResult,
   useRegulations, useSelectedRegulation, RegulationPicker, ScreenFrame,
   ImportScreen,
 });

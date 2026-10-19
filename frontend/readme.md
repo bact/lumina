@@ -45,7 +45,7 @@ When the response carries the checked SBOM (`sbom`: `filename`, `format`,
   details list `rule.evidence`: element name, id and type, *Found* or
   *Absent*, and its `items` (key: value), then "and N more" for
   `evidence_more`. A rule without evidence says so.
-- **SBOM source**: `sbom.display` with line numbers and JSON highlighting
+- **SBOM source**: `sbom.display` with line numbers, indent guides and JSON highlighting (highlight.js, JSON grammar only, vendored)
   (keys, strings, numbers, literals, punctuation; `--syntax-*` tokens), done
   per line as React text nodes. The view is windowed (fixed 20 px rows; only
   the visible rows plus 40 above and below are in the DOM), so a 10 MiB SBOM
@@ -85,7 +85,7 @@ still shown, by its code.
 | `components.jsx` | `Icon`, `Logo`, `Button`, `StatusChip`, `RegTag`, `Card`, `MarginNote`, `TextField`, `Eyebrow`, `Mono`, `SummaryTile`, `ErrorCard`, `useLocale`. |
 | `app-shell.jsx` | `TopBar` (logo, `LanguageSwitcher`), `SideNav` and `NAV_SECTIONS`, the side-nav items. |
 | `screen-conformance.jsx` | `IMPORT_REGULATIONS`, `DEFAULT_REGULATION`, `RULE_CLUSTERS`, the API helpers (`apiErrorMessage`, `postForResult`, `useRegulations`), `RegulationPicker`, `ScreenFrame` and the Generate & check screen (`ImportScreen`). |
-| `sbom-source.jsx` | `SbomSource` (windowed, highlighted source view), `DownloadSbomButton`, `downloadSbom`, the per-line JSON tokenizer. |
+| `sbom-source.jsx` | `SbomSource` (windowed, highlighted source view), `DownloadSbomButton`, `downloadSbom`, the per-line highlight.js to React conversion. |
 | `rule-evidence.jsx` | `RuleClusters` (per-rule outcomes by cluster, with the details toggles) and `RuleEvidence`. |
 | `result-view.jsx` | `ArtifactResult` (tabs, download, Show in SBOM wiring), `ResultTabs`, `RunLine`. |
 | `screen-upload.jsx` | Upload SBOM (`UploadScreen`) and Import SARIF (`SarifScreen`). |

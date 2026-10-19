@@ -406,7 +406,7 @@ a:hover { text-decoration-color: var(--shu); }
 .sbom-source {
   max-height: min(70vh, 720px); overflow: auto;
   background: var(--white); border: 1px solid var(--border); border-radius: var(--r-2);
-  font-family: var(--font-mono); font-size: 12.5px; color: var(--ink);
+  font-family: var(--font-mono); font-size: 12.5px; color: var(--ink); tab-size: 2;
 }
 .sbom-rows { position: absolute; left: 0; min-width: 100%; }
 .sbom-line { display: flex; height: 20px; line-height: 20px; white-space: pre; }
@@ -425,11 +425,17 @@ a:hover { text-decoration-color: var(--shu); }
 }
 @keyframes sbom-mark-fade { from { background: var(--mark); } to { background: var(--mark-soft); } }
 
-.sbom-tok-key { color: var(--syntax-key); }
-.sbom-tok-string { color: var(--syntax-string); }
-.sbom-tok-number { color: var(--syntax-number); }
-.sbom-tok-literal { color: var(--syntax-literal); font-weight: 500; }
-.sbom-tok-punct { color: var(--syntax-punct); }
+/* highlight.js token classes (JSON grammar) */
+.sbom-code .hljs-attr { color: var(--syntax-key); }
+.sbom-code .hljs-string { color: var(--syntax-string); }
+.sbom-code .hljs-number { color: var(--syntax-number); }
+.sbom-code .hljs-literal { color: var(--syntax-literal); font-weight: 500; }
+.sbom-code .hljs-punctuation { color: var(--syntax-punct); }
+.sbom-indent {
+  display: inline-block; overflow: hidden; vertical-align: top; white-space: pre; color: transparent;
+  background-image: repeating-linear-gradient(to right, var(--border) 0, var(--border) 1px, transparent 1px, transparent 2ch);
+}
+.sbom-line:not(.sbom-line--hit):hover { background: var(--paper); }
 
 /* Narrow viewports (phones): the side nav becomes a scrolling strip above
    the screen, and the screen column loses its wide gutters. Component
