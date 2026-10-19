@@ -32,6 +32,11 @@ RUN git clone --depth 1 --branch ${LUMINA_REF} ${LUMINA_REPO} /lumina
 WORKDIR /lumina/backend
 RUN pip install --no-cache-dir -r requirements.txt
 
+# SPDX licence list for Pitloom: without it licence ids stay as written (for
+# example "apache-2.0") and every generated SBOM carries a warning saying so.
+# A failed download does not fail the build; the warning then tells the truth.
+RUN licenseid update || echo "licenseid update failed: licence ids will not be canonicalised"
+
 # supervisord drop-in
 RUN cat > /etc/supervisor/conf.d/lumina.conf << 'EOF'
 [program:api]
@@ -68,6 +73,10 @@ server {
     }
 
     location /api/ {
+        # Keep this above the API's upload cap, LUMINA_MAX_SBOM_BYTES (default
+        # 10 MiB): it limits the whole request, multipart framing included.
+        # nginx's own default, 1m, would refuse many real SBOMs.
+        client_max_body_size 11m;
         proxy_pass         http://127.0.0.1:8000/api/;
         proxy_set_header   Host $host;
         proxy_set_header   X-Real-IP $remote_addr;

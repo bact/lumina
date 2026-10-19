@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: SOURCE
 SPDX-License-Identifier: Apache-2.0
 */
-// Lumina UI Kit -- shared components
+// Lumina frontend -- shared components
 // Each component is a small, mainly-cosmetic React component.
 // All export to window for cross-script reuse.
 
@@ -94,26 +94,29 @@ function StatusChip({ status, children }) {
 }
 
 // ─── RegTag ─────────────────────────────────────────────────────────────
-// Display chip for a regulation identifier (e.g. "NTIA Min"). When onClick is
-// provided, becomes a keyboard-accessible button (or radio, via the `role` prop).
-function RegTag({ children, active, onClick, role, ariaChecked, ariaLabel }) {
-  const interactive = !!onClick;
+// Display chip for a regulation (e.g. "NTIA Minimum Elements"). When onClick
+// is provided, becomes a keyboard-accessible button (or radio, via the `role`
+// prop). A `disabled` chip keeps its role but cannot be selected.
+function RegTag({ children, active, onClick, role, ariaChecked, ariaLabel, disabled }) {
+  const interactive = !!onClick || disabled;
+  const activate = (e) => { if (!disabled && onClick) onClick(e); };
   const a11y = interactive ? {
     role: role || "button",
-    tabIndex: 0,
+    tabIndex: disabled ? -1 : 0,
+    "aria-disabled": disabled ? true : undefined,
     "aria-pressed": role ? undefined : !!active,
     "aria-checked": role === "radio" ? !!(ariaChecked ?? active) : undefined,
     "aria-label": ariaLabel,
-    onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(e); } },
+    onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); activate(e); } },
   } : {};
   return (
-    <span onClick={onClick} {...a11y} style={{
+    <span onClick={activate} {...a11y} style={{
       display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "var(--font-mono)",
       fontSize: 11, padding: "3px 8px", borderRadius: 2,
-      background: active ? "var(--ink)" : "var(--white)",
-      color: active ? "var(--paper)" : "var(--ink-2)",
-      border: "1px solid " + (active ? "var(--ink)" : "var(--border)"),
-      cursor: onClick ? "pointer" : "default",
+      background: active ? "var(--ink)" : disabled ? "var(--paper-2)" : "var(--white)",
+      color: active ? "var(--paper)" : disabled ? "var(--ink-3)" : "var(--ink-2)",
+      border: "1px " + (disabled ? "dashed " : "solid ") + (active ? "var(--ink)" : "var(--border)"),
+      cursor: disabled ? "not-allowed" : onClick ? "pointer" : "default",
     }}>{children}</span>
   );
 }
@@ -143,7 +146,7 @@ function Card({ children, variant = "default", style = {}, onClick, padding = 18
 
 // ─── MarginNote ─────────────────────────────────────────────────────────
 // Lumina's signature non-invasive guide. Renders as <aside role="note">.
-function MarginNote({ children, onLearnMore, onDismiss, title = "A note" }) {
+function MarginNote({ children, title = "A note" }) {
   const titleId = "note-" + (title.replace(/\W+/g, "-").toLowerCase());
   return (
     <aside role="note" aria-labelledby={titleId} style={{
@@ -159,12 +162,6 @@ function MarginNote({ children, onLearnMore, onDismiss, title = "A note" }) {
       <div style={{ fontSize: 13, lineHeight: 1.6, color: "var(--ink-2)" }}>
         {children}
       </div>
-      {(onLearnMore || onDismiss) && (
-        <div style={{ display: "flex", flexDirection: "row", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-          {onLearnMore && <a href="#" onClick={(e) => { e.preventDefault(); onLearnMore(); }} style={{ fontSize: 12, textDecoration: "none", color: "var(--ink)", borderBottom: "1px solid var(--ink-4)", paddingBottom: 1 }}>Learn more</a>}
-          {onDismiss && <a href="#" onClick={(e) => { e.preventDefault(); onDismiss(); }} style={{ fontSize: 12, textDecoration: "none", color: "var(--ink-3)" }}>Don't show again</a>}
-        </div>
-      )}
     </aside>
   );
 }
@@ -199,14 +196,33 @@ function TextField({ icon, placeholder, label, value, onChange, style = {}, id, 
   );
 }
 
-// ─── Eyebrow & Divider ──────────────────────────────────────────────────
-function Eyebrow({ children, style = {} }) {
-  return <div style={{ fontSize: 10.5, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--ink-3)", ...style }}>{children}</div>;
+// ─── Eyebrow ────────────────────────────────────────────────────────────
+function Eyebrow({ children, style = {}, id }) {
+  return <div id={id} style={{ fontSize: 10.5, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--ink-3)", ...style }}>{children}</div>;
 }
-function Divider({ vertical, style = {} }) {
-  return vertical
-    ? <div style={{ width: 1, alignSelf: "stretch", background: "var(--border-soft)", ...style }} />
-    : <div style={{ height: 1, background: "var(--border-soft)", ...style }} />;
+
+// ─── SummaryTile -- small labelled count card ───────────────────────────
+function SummaryTile({ label, value, accent }) {
+  return (
+    <Card padding={18}>
+      <Eyebrow>{label}</Eyebrow>
+      <div style={{ fontSize: 34, fontWeight: 500, letterSpacing: "-0.018em", lineHeight: 1, marginTop: 8, color: accent || "var(--ink)" }}>{value}</div>
+    </Card>
+  );
+}
+
+// ─── ErrorCard -- a failed request, with the server's own explanation ───
+function ErrorCard({ title = "Could not complete", children }) {
+  return (
+    <Card variant="default" padding={16} style={{ borderColor: "var(--shu)" }}>
+      <div role="alert">
+        <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--shu)", fontSize: 14, fontWeight: 500 }}>
+          <Icon name="alert-triangle" size={16} /> {title}
+        </div>
+        <div style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 8, lineHeight: 1.6, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{children}</div>
+      </div>
+    </Card>
+  );
 }
 
 // ─── Mono ───────────────────────────────────────────────────────────────
@@ -216,8 +232,7 @@ function Mono({ children, style = {} }) {
 
 // ─── useLocale ──────────────────────────────────────────────────────────
 // React hook that subscribes to window.LUMINA_I18N locale changes so any
-// component reading t() / formatNumber() / formatDate() will re-render when
-// the user switches language.
+// component reading t() re-renders when the user switches language.
 function useLocale() {
   const [, force] = React.useReducer(x => x + 1, 0);
   React.useEffect(() => window.LUMINA_I18N.subscribe(() => force()), []);
@@ -225,10 +240,7 @@ function useLocale() {
     locale: window.LUMINA_I18N.getLocale(),
     setLocale: window.LUMINA_I18N.setLocale,
     t: window.LUMINA_I18N.t,
-    formatNumber: window.LUMINA_I18N.formatNumber,
-    formatDate: window.LUMINA_I18N.formatDate,
-    formatRelativeTime: window.LUMINA_I18N.formatRelativeTime,
   };
 }
 
-Object.assign(window, { Icon, Logo, Button, StatusChip, RegTag, Card, MarginNote, TextField, Eyebrow, Divider, Mono, useLocale });
+Object.assign(window, { Icon, Logo, Button, StatusChip, RegTag, Card, MarginNote, TextField, Eyebrow, Mono, SummaryTile, ErrorCard, useLocale });

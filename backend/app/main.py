@@ -6,10 +6,11 @@
 """Lumina API -- FastAPI application."""
 
 import os
+import re
 import tempfile
 from typing import Annotated, Any, get_args
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -27,7 +28,7 @@ from .sarif_ingest import SarifIngestError, parse_sarif
 
 app = FastAPI(
     title="Lumina",
-    description="SBOM viewer and conformance checker API.",
+    description="SBOM conformance checker API.",
     version="0.1.0",
 )
 
@@ -46,6 +47,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Upload cap for POST /api/v1/sbom/check (the whole file is held in memory) and
+# for the declared size of a POST /api/v1/sarif/import body.  Multipart framing
+# and the other form fields add to an upload's request body.  The nginx configs
+# allow 11m per request, 1 MiB above the default cap.
+_FORM_OVERHEAD = 64 * 1024
+_DEFAULT_MAX_SBOM_BYTES = 10 * 1024 * 1024
+
+
+def _max_sbom_bytes() -> int:
+    """``LUMINA_MAX_SBOM_BYTES``, or 10 MiB when unset or not a positive integer."""
+    raw = os.environ.get("LUMINA_MAX_SBOM_BYTES", "")
+    return int(raw) if raw.isdigit() and int(raw) > 0 else _DEFAULT_MAX_SBOM_BYTES
+
+
+MAX_SBOM_BYTES = _max_sbom_bytes()
 
 # Stage 0-1 job backend: runs Mode-1 SBOM generation in-process (see jobs.py and
 # docs/design.md "Background job execution").  Swappable for an RQ/Taskiq backend
@@ -104,6 +121,7 @@ def list_regulations() -> dict[str, Any]:
 
 @app.post("/api/v1/sbom/check", response_model=SbomCheckResponse)
 async def check_sbom(
+    request: Request,
     file: Annotated[
         UploadFile,
         File(description="SBOM file (SPDX 2.x / 3.0, JSON/XML/YAML/tag-value)"),
@@ -115,7 +133,17 @@ async def check_sbom(
 
     A regulation that ntia-conformance-checker does not support returns 501.
     """
-    content = await file.read()
+    declared = request.headers.get("content-length", "")
+    if declared.isdigit() and int(declared) > MAX_SBOM_BYTES + _FORM_OVERHEAD:
+        raise HTTPException(
+            status_code=413, detail=f"SBOM is larger than {MAX_SBOM_BYTES} bytes."
+        )
+    content = await file.read(MAX_SBOM_BYTES + 1)
+    if len(content) > MAX_SBOM_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"SBOM is larger than {MAX_SBOM_BYTES} bytes.",
+        )
 
     with tempfile.NamedTemporaryFile(
         delete=False, suffix=_suffix(file.filename)
@@ -136,15 +164,18 @@ async def check_sbom(
 
 
 @app.post("/api/v1/sarif/import", response_model=SbomCheckResponse)
-async def import_sarif(sarif: dict[str, Any]) -> SbomCheckResponse:
+async def import_sarif(sarif: dict[str, Any], request: Request) -> SbomCheckResponse:
     """
-    Accept a SARIF 2.1.0 log produced by any conformance/static-analysis
-    tool that follows the exchange-format spec and return a ConformanceResult.
+    Read a SARIF 2.1.0 log from any producer, without running a check.
 
-    Lumina recognises ``ntia-conformance-checker`` as the producer name;
-    any other producer is reported as ``external-sarif`` so the UI can
-    flag it as a third-party source.
+    Rule ids must be of the SBOM requirements ontology form and name one
+    supported standard and edition; anything else is refused with 422 (see
+    :mod:`app.sarif_ingest`).  Lumina recognises ``ntia-conformance-checker``
+    as the producer name; any other producer is reported as ``external-sarif``.
     """
+    declared = request.headers.get("content-length", "")
+    if declared.isdigit() and int(declared) > MAX_SBOM_BYTES:
+        raise HTTPException(status_code=413, detail="SARIF log is too large.")
     try:
         return parse_sarif(sarif)
     except SarifIngestError as exc:
@@ -163,7 +194,16 @@ async def check_artifact(req: ArtifactCheckRequest) -> JobSubmission:
 
     Generation can take minutes, so this returns a ``job_id`` immediately;
     poll ``GET /api/v1/jobs/{job_id}`` for the result.
+
+    A regulation the checker does not support returns 501 at once, before any
+    clone or generation work.
     """
+    if req.regulation_id not in CHECKER_STANDARDS:
+        raise HTTPException(
+            status_code=501,
+            detail=f"Regulation '{req.regulation_id}' is not supported by "
+            "ntia-conformance-checker.",
+        )
     job_id = _jobs.enqueue(
         "generate_and_check",
         artifact_url=req.artifact_url,
@@ -183,8 +223,13 @@ async def get_job(job_id: str) -> JobStatusResponse:
     )
 
 
+_SUFFIX = re.compile(r"\.[A-Za-z0-9]{1,8}")
+
+
 def _suffix(filename: str | None) -> str:
-    if not filename:
-        return ".spdx"
-    ext = filename.rsplit(".", 1)[-1].lower()
-    return f".{ext}" if ext else ".spdx"
+    """The upload's extension for the temp file; ``.spdx`` unless a plain one."""
+    if filename:
+        ext = os.path.splitext(filename)[1]
+        if _SUFFIX.fullmatch(ext):
+            return ext.lower()
+    return ".spdx"

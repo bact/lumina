@@ -18,15 +18,18 @@ services:
     # Port 80 on the host for local health checks and direct access.
     # With Cloudflare Tunnel the tunnel connects to nginx over the compose
     # network (http://nginx:80), so you can tighten this to
-    # "127.0.0.1:8080:80" if you want to keep it off the public interface.
+    # `ports: !override ["127.0.0.1:8080:80"]` to keep it off the public
+    # interface (`!override` replaces the base list instead of adding to it).
     ports:
       - "80:80"
 
   api:
     restart: always
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
-    volumes: []   # use the baked image, not a host source mount
-    ports: []     # do not expose the API port directly on the host
+    # `!reset` (Compose 2.24+) empties the lists the base file defines; a plain
+    # `[]` would be merged with them and change nothing.
+    volumes: !reset []   # use the baked image, not a host source mount
+    ports: !reset []     # do not expose the API port directly on the host
 
   # Cloudflare named-tunnel connector.
   # Only starts when --profile tunnel is passed. TUNNEL_TOKEN must be set

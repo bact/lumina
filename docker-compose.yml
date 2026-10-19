@@ -7,7 +7,7 @@ services:
   # ── Frontend: nginx serves the static frontend and proxies /api/ ─────────
   nginx:
     build:
-      context: .                        # project root — ui-kits/ reachable in dev
+      context: .                        # project root — frontend/ and proxy/
       dockerfile: proxy/Dockerfile
       target: prod                      # override.yml switches this to dev locally
     ports:
@@ -28,4 +28,6 @@ services:
       - "8000:8000"       # exposed for direct API testing
     volumes:
       - ./backend/app:/app/app  # live-reload in dev
+    environment:
+      - HF_TOKEN          # passed through when set on the host (Hub rate limit)
     restart: unless-stopped

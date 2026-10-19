@@ -2,13 +2,16 @@
 
 ## What this project is
 
-Lumina -- web-based SBOM (Software Bill of Materials) viewer and conformance
-checker. Reads an SBOM; shows which fields each active regulation requires and
-whether they are present, missing, or unverified.
+Lumina -- web-based SBOM (Software Bill of Materials) conformance checker.
+Takes an SBOM (uploaded, or generated from a Git or Hugging Face URL) or a
+SARIF log, and shows per rule of the chosen regulation whether the SBOM has
+the property the rule asks for.
 
 Full design rationale: `docs/design.md`.
-Design source of truth: `ui-kits/lumina-app/` (dev Docker only, not in prod image).
-Production frontend: `frontend/` (canonical design tokens + assets live here).
+Frontend: `frontend/` (design tokens and assets live here too).
+
+The UI shows only real data from the backend: no sample or invented data,
+anywhere. A screen that has nothing to show from the API shows nothing.
 
 ---
 
@@ -18,7 +21,7 @@ Production frontend: `frontend/` (canonical design tokens + assets live here).
 | - | - |
 | Frontend | Static HTML/CSS/JS (React 18 + Babel in-browser, no build step) |
 | API | FastAPI (Python 3.14) |
-| Background jobs | In-process `asyncio` queue (`backend/app/jobs.py`); no broker. RQ/Taskiq swap planned at Stage 2 — see `docs/design.md` |
+| Background jobs | In-process `asyncio` queue (`backend/app/jobs.py`); no broker. An RQ/Taskiq swap is planned for Stage 2 — see `docs/design.md` |
 | SBOM generation | Pitloom (Git checkout or Hugging Face Hub URL) |
 | Dev environment | Docker Compose (`docker compose up` — auto-loads override.yml) |
 
@@ -30,26 +33,22 @@ Python minimum: **3.14**. Use `python3.14` when running outside Docker.
 
 ```text
 lumina/
-├── docker-compose.yml          Production compose (nginx target: prod)
+├── docker-compose.yml          Base compose (nginx target: prod; api with --reload)
 ├── docker-compose.override.yml Dev overrides — auto-loaded; nginx target: dev,
-│                               mounts project root at /workspace
+│                               mounts frontend/ at /workspace/frontend
 ├── .dockerignore               Keeps caches/git/docs out of Docker build context
 ├── proxy/                      Reverse-proxy service (nginx)
 │   ├── Dockerfile              Multi-stage: dev (config only) / prod (self-contained)
-│   ├── prod.conf               Prod: root /app, frontend only
-│   └── dev.conf                Dev: root /workspace/frontend, aliases for ui-kit paths
-├── ui-kits/lumina-app/         Design source of truth — dev Docker only, not in prod image
-│   ├── index.html              Entry point; ../../ paths routed by proxy/dev.conf → frontend/
-│   ├── data.js                 Authoritative field list for all four regulations
-│   └── *.jsx / *.js            Screens and components
-├── frontend/                   Frontend source — always in the Docker image
-│   ├── index.html              Implementation entry + router
-│   ├── colors-and-type.css     Design tokens — canonical copy (import this)
-│   ├── assets/                 Logo SVGs — canonical copy
-│   └── *.jsx / *.js            Screens and components
+│   ├── prod.conf               Prod: root /app (frontend baked in)
+│   └── dev.conf                Dev: root /workspace/frontend (bind mount)
+├── frontend/                   Static frontend (see frontend/readme.md)
+│   ├── index.html              Entry point + router
+│   ├── colors-and-type.css     Design tokens
+│   ├── assets/                 Logo SVGs
+│   └── *.jsx / *.js            Shell, shared components, screens
 ├── backend/
 │   ├── Dockerfile
-│   ├── requirements.txt        Pinned deps (one temporary git+SHA pin — see file)
+│   ├── requirements.txt        Pinned deps; Pitloom and the checker by Git commit
 │   ├── app/
 │   │   ├── main.py             FastAPI endpoints
 │   │   ├── conformance.py      run_checker, CHECKER_STANDARDS, schemas
@@ -57,12 +56,12 @@ lumina/
 │   │   ├── jobs.py             JobQueue interface + in-process backend
 │   │   ├── generate.py         Mode-1 job: artefact URL → SBOM → check (SSRF guard)
 │   │   └── generators/         Pitloom-backed SBOM generators (git, hf)
-│   └── tests/                  pytest suite + SARIF fixtures
+│   └── tests/                  pytest suite + SBOM and SARIF fixtures
 ├── docker/                     Alternative deployment images (see INSTALL.md)
 │   ├── compose/                Production compose override (VM deploy)
 │   ├── hfspaces/               Hugging Face Spaces single-file Dockerfile
 │   └── standalone/             Single-container image (Cloud Run)
-├── scripts/                    OCI VM launch + cloud-init helpers
+├── scripts/                    OCI VM launch + cloud-init helpers; ui-smoke.mjs
 ├── docs/
 │   └── design.md               Architecture and design decisions
 └── INSTALL.md                  Free public-deployment guide (3 options)
@@ -74,31 +73,38 @@ lumina/
 
 Lumina does no conformance checking itself: `ntia-conformance-checker` runs
 every check and `run_checker` in `backend/app/conformance.py` parses its SARIF.
-Support for NTIA, G7 AI SBOM and BSI comes from the checker; BSI reports a
-verdict (a `sbom.verdict` notification) but no per-rule gaps. MOF is not supported (HTTP 501).
+NTIA, G7 AI SBOM, CISA 2026, FSCT 2024 and BSI come from the checker, all
+with per-rule results. MOF is not supported (HTTP 501).
 
 **CHECKER_STANDARDS** in `backend/app/conformance.py` maps a Lumina regulation
 id to the checker's standard id; add a regulation there once the checker
 supports it.
 
-Do not change `ConformanceResult` or `FieldGap` fields without updating both
-the Pydantic models in `conformance.py` and the fixture schemas in
-`ui-kits/lumina-app/data.js` and `frontend/data.js` (both consume the same shape).
+Do not change the `SbomCheckResponse` models (`ConformanceResult`, `RuleResult`,
+`FieldGap`, `CheckRun`, `Notification`) in `conformance.py` without updating
+the frontend that reads them (`ArtifactResult` in
+`frontend/screen-conformance.jsx`) and the mocked responses in
+`scripts/ui-smoke.mjs`.
 
 ### Adding a regulation
 
 The long-term goal is to cover EU CRA, EO 14028, FDA PMP, ISO/IEC 5230, and
-more. Their ids are reserved in `plannedRegulations` in `data.js` (both
-copies). The UI must only ever show regulations that are actually supported —
-never render a planned entry. To promote one:
+more. The frontend lists exactly what `GET /api/v1/regulations` returns, so a
+regulation appears in the UI only once the backend knows it. To add one:
 
-1. Move its entry from `plannedRegulations` into `regulations` in
-   `ui-kits/lumina-app/data.js` and give it a `fields` list (screens are
-   data-driven and pick it up automatically); mirror to `frontend/data.js`.
-2. Extend the `RegulationId` Literal and `CHECKER_STANDARDS` in
-   `backend/app/conformance.py`.
-3. `GET /api/v1/regulations` then reports it with the correct `ready` flag —
-   no other backend change needed.
+1. Extend the `RegulationId` Literal and `CHECKER_STANDARDS` in
+   `backend/app/conformance.py`. `GET /api/v1/regulations` then lists it with
+   `ready: true`; an id in `RegulationId` but not in `CHECKER_STANDARDS` is
+   listed with `ready: false` and cannot be picked in the UI.
+2. Add its edition-keyed spec code (the `SPEC` + `YEAR` segment of its rule
+   ids, ontology form `BOM-[SPEC][YEAR]-...`) to `_SPEC_TO_REGULATION`, and the
+   checker's standard id to `_STANDARD_TO_REGULATION`, in
+   `backend/app/sarif_ingest.py`; both must name the exact edition.
+3. In `frontend/screen-conformance.jsx`, give it a label, a one-line
+   description of what the check covers and a source link in
+   `IMPORT_REGULATIONS`, and name its rule clusters (the cluster segment of
+   its rule ids) in `RULE_CLUSTERS`. Without them the UI still works but shows
+   the bare id and cluster codes.
 
 ---
 
@@ -125,8 +131,8 @@ never render a planned entry. To promote one:
 
 - Type-annotate all function signatures and class attributes.
 - Use `from __future__ import annotations` for forward references.
-- Prefer `abc.ABC` + `@abc.abstractmethod` for the checker protocol; keep
-  implementations in separate classes (not branches inside one class).
+- Keep each implementation of an interface (such as `JobQueue` in `jobs.py`)
+  in its own class, not as branches inside one class.
 - Do not use `hasattr` guards in production code -- confirm the
   `ntia-conformance-checker` API shape first, then write direct attribute
   access.
@@ -140,12 +146,39 @@ never render a planned entry. To promote one:
   component styles.
 - Washi paper palette: `--paper` (#F6F3EC) background, sumi-ink text, single
   shu-red accent (`--shu` #C8392A). No large coloured backgrounds.
-- Icon set: Lucide via CDN (1.5px stroke). Do not substitute other icon sets
+- Icon set: Lucide, vendored in `frontend/vendor/` (1.5px stroke). Do not substitute other icon sets
   without updating the `Icon` component in `components.jsx`.
-- `ui-kits/lumina-app/` is the visual source of truth (design template).
-  When implementing or updating `frontend/`, match the ui-kit pixel-for-pixel
-  before deviating. Changes to ui-kit must be reviewed before promotion to
-  `frontend/`.
+- Show only what the API returns. Labels, descriptions and links for
+  regulation ids live in one table (`IMPORT_REGULATIONS`); never hard-code a
+  list of regulations, rules or results.
+- Show a failed request's `detail` text (`apiErrorMessage` in
+  `screen-conformance.jsx`); never replace it with a generic message.
+- Only the app shell is translated (`i18n.js`). Offer a locale in the picker
+  only when it has a catalogue with every shell key.
+
+### UI smoke test
+
+`scripts/ui-smoke.mjs` serves `frontend/`, mocks every `/api/` route, visits
+every side-nav screen in headless Chromium and fails on a page or console
+error, on an old sample-data string, when the regulation chips differ from the
+mocked `GET /api/v1/regulations`, when a refused request's `detail` is not
+shown, or when the per-rule BSI result lacks its DOC and COMP clusters and counts. It needs Node 18+ and
+a `node_modules` directory (outside the repository; never commit it) with
+`playwright-core`. The page's scripts are vendored in `frontend/vendor/` (see
+its README), so the test uses no network and fails on a request to any other
+host except fonts:
+
+```shell
+npm install --prefix /some/dir playwright-core
+LUMINA_SMOKE_NODE_MODULES=/some/dir/node_modules \
+LUMINA_SMOKE_CHROMIUM=/path/to/chromium \
+node scripts/ui-smoke.mjs /tmp/lumina-shots
+```
+
+`LUMINA_SMOKE_CHROMIUM` can be left unset when playwright-core finds its own
+browser. It prints one line per check, exits non-zero on a failure, and writes
+a full-page screenshot of every state to the given directory: look at them
+after a UI change.
 
 ---
 
@@ -175,4 +208,7 @@ WCAG 2.2 AA. Specifically:
 - Artefact-URL fetching (`POST /api/v1/artifact/check`) has an SSRF guard in
   `backend/app/generate.py`: http/https only, public addresses only. Set
   `LUMINA_ALLOW_PRIVATE_URLS=1` only in development.
-- Validate SBOM files through `spdx-tools` before passing to any checker.
+- Lumina does not parse SBOM files itself: the checker reads them (SPDX 2
+  through `spdx-tools`, SPDX 3 through its own reader) and reports a file it
+  cannot read as an `spdx.parsing-error` notification. A file whose SPDX
+  version cannot be determined is refused with HTTP 422.

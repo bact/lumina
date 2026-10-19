@@ -7,7 +7,7 @@
 # opens. The A1 free shape is heavily oversubscribed in most regions; this loop
 # keeps trying every availability domain until a slot frees up.
 #
-# Prerequisites (see INSTALL.md "Automate retries with OCI CLI"):
+# Prerequisites (see INSTALL.md "Out of capacity? Automate retries with the OCI CLI"):
 #   1. OCI CLI installed and configured (`oci setup config`).
 #   2. An SSH key at ~/.ssh/id_ed25519.pub.
 #   3. cloud-init.sh next to this script (installs Docker at first boot).
@@ -15,7 +15,8 @@
 # Configuration (your OCIDs) is kept OUT of this script -- it lives in a local,
 # gitignored `oci-launch.env` next to this file. Set it up once:
 #   cp scripts/oci-launch.env.example scripts/oci-launch.env
-#   # then fill in COMP / SUBNET / IMAGE / ADS (see INSTALL.md step 3)
+#   # then fill in COMP / SUBNET / IMAGE / ADS (the commands that print them
+#   # are in that INSTALL.md section, step 2)
 # Then run:
 #   ./scripts/oci-launch.sh
 #

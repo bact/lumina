@@ -10,15 +10,18 @@ python-multipart==0.0.32  # required by FastAPI for Form / File uploads
 
 # SBOM generation (Mode 1: artefact-URL input)
 # Generates SPDX 3 JSON-LD from a Git checkout or a Hugging Face Hub model.
-# (Stage 0-1 runs generation in-process; no task-queue broker is needed yet --
-# see docs/design.md "Background job execution".)
-pitloom>=0.20.1
+# Pinned by commit, like the checker: the released Pitloom (0.20.2) predates
+# the fixes the G7, CISA and FSCT results depend on. The extras are the readers
+# for the tier-1 model formats and for Hub models; without one, a model file in a
+# cloned repository is read without its format reader.
+pitloom[fasttext,gguf,huggingface_hub,numpy,onnx,safetensors] @ git+https://github.com/bact/pitloom.git@6cad3ab870cb4d75ba141bc6aab9df42799f5802
 
-# SBOM parsing
+# SPDX 2 support of the checker (it requires spdx-tools>=0.8.5); pinned exactly
+# here for reproducible builds. Lumina itself does not import it.
 spdx-tools==0.8.5
 
 # Conformance checking
-ntia-conformance-checker @ git+https://github.com/bact/ntia-conformance-checker.git@24b5ce5755f806a77e715b7f1be66f664e514b54
+ntia-conformance-checker @ git+https://github.com/bact/ntia-conformance-checker.git@82a63b9ec872e2273315cfe7d4627456e4d07cc1
 
 # Data validation
 pydantic==2.14.1

@@ -10,18 +10,19 @@ requirements ontology (``https://bact.github.io/bom/``):
 
     BOM-[SPEC][YEAR]-[CATEGORY]-[NNN][.M]
 
-* ``SPEC`` + ``YEAR`` name the standard (``NTIA2021``, ``G7AI2026``); ``SPEC``
-  drives ``ConformanceResult.regulation_id`` when
-  ``run.properties.complianceStandard`` is absent.
+* ``SPEC`` + ``YEAR`` name the standard (``NTIA2021``, ``G7AI2026``); the two
+  together drive ``ConformanceResult.regulation_id`` when
+  ``run.properties.complianceStandard`` is absent. An edition Lumina does not
+  support is refused with :class:`SarifIngestError`, never read as another.
 * ``CATEGORY`` is a short category code (``DF``, ``META``, ``COMP``, ...); it is
   kept in the rule lookup table, not interpreted.
 * ``NNN`` is a 3-digit sequence number; ``.M`` marks a sub-element of rule ``NNN``.
 
-The ``SBOM-[SPEC]-[CATEGORY]-[NNN]`` and ``[SPEC]-[CATEGORY]-[NN]`` forms are
-also read (see :func:`_spec_of`).
+Only this form is read; ids in any other shape name no standard.
 
-``run.properties.ruleOutcomes``, when present, sets the counts: decided
-(present or missing) top-level rules only.
+``run.properties.ruleOutcomes``, when present, sets the counts: every decided
+(present or missing) rule counts, sub-rules included. A log without it says
+only what is missing, so only the missing count is set.
 
 The producer is identified by ``run.tool.driver.name``;
 ``ntia-conformance-checker`` is recognised explicitly and anything else is
@@ -34,8 +35,7 @@ rule's ``properties.slug`` (spec prefix stripped) and finally to the rule id.
 
 from __future__ import annotations
 
-import re
-from typing import Any, get_args
+from typing import Any, NamedTuple, get_args
 
 from .conformance import (
     CheckerSource,
@@ -46,20 +46,20 @@ from .conformance import (
     Notification,
     NotificationLevel,
     RegulationId,
+    RuleOutcome,
+    RuleResult,
     SbomCheckResponse,
 )
 
-# Map uppercase spec code (the SPEC segment of a rule id, i.e. the spec id
-# uppercased) -> Lumina regulation id.  Extend when new RegulationId literals
-# or specs are added.
+# Map the SPEC segment of a rule id, uppercased and whole (``CISA2026`` keeps
+# its year: another edition is another document) -> Lumina regulation id.
+# Extend when a new edition or RegulationId literal is supported.
 _SPEC_TO_REGULATION: dict[str, RegulationId] = {
-    "NTIA": "ntia",
-    "FSCT": "ntia",  # FSCT (CISA Framing...) is a superset of NTIA.
-    "FSCT3": "ntia",  # FSCT 3rd edition; superset of NTIA, no separate UI yet.
-    "CISA": "ntia",  # CISA 2025 SBOM Minimum Elements -- placeholder.
-    "BSI": "bsi",
-    "G7AI": "g7ai",
-    "MOF": "mof",
+    "NTIA2021": "ntia",
+    "BSI2025": "bsi",
+    "G7AI2026": "g7ai",
+    "CISA2026": "cisa2026",
+    "FSCT2024": "fsct2024",
 }
 
 # Map ntia-conformance-checker ``complianceStandard`` (the spec id) to a
@@ -67,12 +67,10 @@ _SPEC_TO_REGULATION: dict[str, RegulationId] = {
 # heterogeneous rule sets.
 _STANDARD_TO_REGULATION: dict[str, RegulationId] = {
     "ntia": "ntia",
-    "fsct3": "ntia",
-    "fsct3-min": "ntia",  # legacy spec id (pre-rename)
     "bsi": "bsi",
-    "g7-ai": "g7ai",
     "g7ai": "g7ai",
-    "mof": "mof",
+    "cisa2026": "cisa2026",
+    "fsct3": "fsct2024",  # the checker's id for FSCT 2024
 }
 
 # Map producer tool names to CheckerSource literals.
@@ -91,39 +89,34 @@ def _require(condition: bool, message: str) -> None:
 
 
 def _spec_of(rule_id: str) -> str:
-    """Return the SPEC segment of a rule id, uppercased.
+    """Return the SPEC+YEAR segment of a rule id, uppercased.
 
-    ``BOM-G7AI2026-MDL-001`` -> ``G7AI``; also ``SBOM-[SPEC]-...`` and ``[SPEC]-...``.
+    ``BOM-G7AI2026-MDL-001`` -> ``G7AI2026``. An id of any other shape gives
+    ``""``.
     """
-    parts = [p for p in rule_id.split("-") if p]
-    if not parts:
-        return ""
-    if parts[0].upper() == "BOM" and len(parts) > 1:
-        return re.sub(r"\d{4}$", "", parts[1]).upper()
-    if parts[0].upper() == "SBOM" and len(parts) > 1:
+    parts = rule_id.split("-")
+    if len(parts) > 1 and parts[0].upper() == "BOM":
         return parts[1].upper()
-    return parts[0].upper()
+    return ""
 
 
-def _logical_location(result: dict[str, Any]) -> tuple[str, str]:
-    """Return ``(component_id, kind)`` for a result.
+def _component_id(result: dict[str, Any]) -> str:
+    """Return the component a result is about.
 
-    Falls back to ``("document", "module")`` if the result has no
-    logicalLocations or the location's kind is ``"module"`` (our convention
-    for doc-level findings).
+    ``"document"`` if the result has no logicalLocations or the location's
+    kind is ``"module"`` (the convention for document-level findings).
     """
     locations = result.get("locations") or []
     if not locations:
-        return ("document", "module")
+        return "document"
     logical = locations[0].get("logicalLocations") or []
     if not logical:
-        return ("document", "module")
+        return "document"
     loc = logical[0]
     if loc.get("kind") == "module" or loc.get("name") == "document":
-        return ("document", "module")
+        return "document"
     # Prefer SPDX-style fully-qualified id; fall back to name.
-    comp_id = loc.get("fullyQualifiedName") or loc.get("name") or "document"
-    return (str(comp_id), str(loc.get("kind") or "package"))
+    return str(loc.get("fullyQualifiedName") or loc.get("name") or "document")
 
 
 def _build_rule_index(driver: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -155,7 +148,7 @@ def _field_key_from_rule(rule: dict[str, Any] | None, rule_id: str) -> str:
     if isinstance(slug, str) and slug:
         head, sep, tail = slug.partition("-")
         # Strip a known spec prefix if present, else keep the slug verbatim.
-        if sep and head.upper() in _SPEC_TO_REGULATION:
+        if sep and head.lower() in _STANDARD_TO_REGULATION:
             return tail.replace("-", "_")
         return slug.replace("-", "_")
 
@@ -219,44 +212,68 @@ def _embedded_sbom(run: dict[str, Any]) -> EmbeddedSbom | None:
     )
 
 
-def _infer_regulation_id(
-    standard_hint: str, rule_index: dict[str, dict[str, Any]]
-) -> RegulationId:
+def _all_rule_ids(run: dict[str, Any], rule_index: dict[str, Any]) -> list[str]:
+    """Every rule id the run names: its catalogue, its results and its outcomes."""
+    ids = set(rule_index)
+    for result in run.get("results") or []:
+        ids.add(str(result.get("ruleId") or ""))
+    outcomes = (run.get("properties") or {}).get("ruleOutcomes")
+    if isinstance(outcomes, dict):
+        ids.update(str(rule_id) for rule_id in outcomes)
+    return sorted(ids - {""})
+
+
+def _infer_regulation_id(standard_hint: str, rule_ids: list[str]) -> RegulationId:
     """Pick a ``RegulationId`` from the SARIF log.
 
-    Preference order:
-
-    1. ``run.properties.complianceStandard`` matching a known standard id.
-    2. The SPEC prefix of the first rule whose prefix is recognised.
-    3. ``"ntia"`` if that's a valid ``RegulationId``, else the first literal.
+    1. ``run.properties.complianceStandard``, when present, must name a known
+       standard, and every rule id must be of that standard and edition.
+    2. With no hint, every rule id must be of one supported standard and
+       edition.
+    A standard Lumina does not support (for example another edition of CISA),
+    or a log that mixes standards, is refused, never read as another.
     """
-    if standard_hint in _STANDARD_TO_REGULATION:
-        return _STANDARD_TO_REGULATION[standard_hint]
-
-    for rule_id in rule_index:
-        spec_code = _spec_of(rule_id)
-        if spec_code in _SPEC_TO_REGULATION:
-            return _SPEC_TO_REGULATION[spec_code]
-
-    valid_regs = get_args(RegulationId)
-    return "ntia" if "ntia" in valid_regs else valid_regs[0]
+    specs = {rule_id: _spec_of(rule_id) for rule_id in rule_ids}
+    if standard_hint:
+        if standard_hint not in _STANDARD_TO_REGULATION:
+            raise SarifIngestError(
+                f"Unsupported standard: complianceStandard {standard_hint!r}"
+            )
+        regulation = _STANDARD_TO_REGULATION[standard_hint]
+        for rule_id, spec_code in specs.items():
+            if _SPEC_TO_REGULATION.get(spec_code) != regulation:
+                raise SarifIngestError(
+                    f"Unsupported standard: complianceStandard {standard_hint!r} "
+                    f"contradicts rule id {rule_id!r}"
+                )
+        return regulation
+    found = {_SPEC_TO_REGULATION.get(code) for code in specs.values()}
+    if len(found) == 1 and None not in found:
+        return next(iter(found))  # type: ignore[arg-type]
+    codes = sorted({code or "?" for code in specs.values()})
+    raise SarifIngestError(
+        f"Unsupported standard: no single supported standard in rule id spec(s) "
+        f"{codes or 'none'}"
+    )
 
 
 def _build_gaps(
-    results: list[dict[str, Any]], rule_index: dict[str, dict[str, Any]]
+    results: list[dict[str, Any]],
+    rule_index: dict[str, dict[str, Any]],
+    optional: frozenset[str],
 ) -> list[FieldGap]:
-    """Convert SARIF ``run.results`` entries into Lumina field gaps."""
+    """Convert SARIF ``run.results`` entries into Lumina field gaps; a rule
+    the standard only permits is no gap."""
     gaps: list[FieldGap] = []
     for result in results:
         rule_id = str(result.get("ruleId") or "")
-        if not rule_id:
+        if not rule_id or rule_id in optional:
             continue
         rule_descriptor = rule_index.get(rule_id)
-        component_id, _kind = _logical_location(result)
         message = (result.get("message") or {}).get("text") or rule_id
         gaps.append(
             FieldGap(
-                component_id=component_id,
+                component_id=_component_id(result),
                 field_key=_field_key_from_rule(rule_descriptor, rule_id),
                 level="missing",
                 note=str(message),
@@ -265,42 +282,122 @@ def _build_gaps(
     return gaps
 
 
-def _count_outcomes(outcomes: dict[str, Any]) -> tuple[int, int, int]:
-    """Return ``(total, present, missing)`` from ``run.properties.ruleOutcomes``.
+class _Counts(NamedTuple):
+    """Rule counts of a run; ``optional_*`` are the permission rules."""
 
-    Only decided (present or missing) top-level rules count; a sub-rule (dotted
-    id) is reported by its parent.
+    total: int
+    present: int
+    missing: int
+    optional_present: int = 0
+    optional_missing: int = 0
+
+
+def _optional_rule_ids(rule_index: dict[str, dict[str, Any]]) -> frozenset[str]:
+    """Ids of the rules the standard only permits (provision ``permission``)."""
+    return frozenset(
+        rule_id
+        for rule_id, rule in rule_index.items()
+        if (rule.get("properties") or {}).get("provision") == "permission"
+    )
+
+
+def _count_outcomes(outcomes: dict[str, Any], optional: frozenset[str]) -> _Counts:
+    """Return the counts from ``run.properties.ruleOutcomes``.
+
+    Every decided rule (present or missing) counts, sub-rules included, as in
+    the checker's own report and the cluster lists: a sub-rule can be decided
+    differently from its parent, so neither stands for the other. Rules in
+    *optional* are counted apart, not in the first three.
     """
-    decided = [
-        outcome
-        for rule_id, outcome in outcomes.items()
-        if "." not in rule_id and outcome in ("present", "missing")
-    ]
-    missing = decided.count("missing")
-    return len(decided), len(decided) - missing, missing
+    decided = {k: o for k, o in outcomes.items() if o in ("present", "missing")}
+    required = [o for k, o in decided.items() if k not in optional]
+    extra = [o for k, o in decided.items() if k in optional]
+    missing = required.count("missing")
+    optional_missing = extra.count("missing")
+    return _Counts(
+        len(required),
+        len(required) - missing,
+        missing,
+        len(extra) - optional_missing,
+        optional_missing,
+    )
 
 
-def _count_totals(
-    results: list[dict[str, Any]], rule_index: dict[str, dict[str, Any]]
-) -> tuple[int, int, int]:
-    """Return ``(total, present, missing)`` counts for a SARIF run.
+def _count_findings(results: list[dict[str, Any]], optional: frozenset[str]) -> _Counts:
+    """Return the counts for a run without ``ruleOutcomes``.
 
-    ``total`` = number of *active* rules in the driver catalogue; ``missing``
-    = number of unique rule ids that appeared in results; ``present`` =
-    ``total - missing``.  Catalogue-only rules (rules whose
-    ``properties.status != "active"``) are excluded so the counts reflect
-    what the checker actually verified.
+    Such a log says only what is missing: the rules that were present are not
+    known, so neither they nor the total are counted. A rule in *optional* is
+    counted in ``optional_missing``, not in ``missing``.
     """
-    active_rules = [
-        rid
-        for rid, rule in rule_index.items()
-        if str(((rule.get("properties") or {}).get("status")) or "active") == "active"
-    ]
-    total = len(active_rules) or len(rule_index)
-    missing_rule_ids = {str(r.get("ruleId")) for r in results if r.get("ruleId")}
-    missing = len(missing_rule_ids)
-    present = max(total - missing, 0)
-    return total, present, missing
+    ids = {str(r.get("ruleId")) for r in results if r.get("ruleId")}
+    return _Counts(0, 0, len(ids - optional), 0, len(ids & optional))
+
+
+def _judged_by_model(properties: dict[str, Any]) -> str | None:
+    """Return ``run.properties.systemJudgedByModel`` when it is a non-empty string."""
+    value = properties.get("systemJudgedByModel")
+    return value if isinstance(value, str) and value else None
+
+
+def _cluster_of(rule_id: str) -> str:
+    """Return the cluster code of ``BOM-G7AI2026-MDL-006.1`` -> ``MDL``."""
+    parts = rule_id.split("-")
+    return parts[2].upper() if len(parts) > 3 else ""
+
+
+_ACRONYMS = {"sbom": "SBOM", "ai": "AI", "url": "URL", "id": "ID"}
+
+
+def _rule_title(rule: dict[str, Any]) -> str:
+    """Name the element a rule checks, not its failure message.
+
+    The checker's short description is a failure message
+    (``"Model properties is missing."``); the element is what precedes
+    ``" is missing."``. A rule without one falls back to its slug
+    (``g7ai-sbom-data-format-version-missing`` -> ``SBOM data format version``).
+    """
+    short = str((rule.get("shortDescription") or {}).get("text") or "").strip()
+    for suffix in (" is missing.", " are missing."):
+        if short.endswith(suffix):
+            return short[: -len(suffix)]
+    slug = str((rule.get("properties") or {}).get("slug") or "")
+    parts = slug.split("-")[1:]
+    if parts and parts[-1] == "missing":
+        parts = parts[:-1]
+    if parts:
+        text = " ".join(_ACRONYMS.get(part, part) for part in parts)
+        return text[0].upper() + text[1:]
+    return short
+
+
+def _build_rule_results(
+    outcomes: Any, rule_index: dict[str, dict[str, Any]]
+) -> list[RuleResult]:
+    """List the outcome of every catalogue rule named in ``ruleOutcomes``.
+
+    Outcomes without a rule descriptor and values outside the known outcome
+    vocabulary are skipped, not guessed.
+    """
+    if not isinstance(outcomes, dict):
+        return []
+    known: tuple[RuleOutcome, ...] = get_args(RuleOutcome)
+    rules: list[RuleResult] = []
+    for rule_id, rule in rule_index.items():
+        outcome = next((k for k in known if k == outcomes.get(rule_id)), None)
+        if outcome is None:
+            continue
+        props = rule.get("properties") or {}
+        rules.append(
+            RuleResult(
+                rule_id=rule_id,
+                cluster=_cluster_of(rule_id),
+                title=_rule_title(rule),
+                provision=str(props.get("provision") or ""),
+                outcome=outcome,
+            )
+        )
+    return rules
 
 
 def _build_conformance_result(
@@ -314,23 +411,32 @@ def _build_conformance_result(
 
     properties = run.get("properties") or {}
     standard_hint = str(properties.get("complianceStandard") or "")
-    regulation_id = _infer_regulation_id(standard_hint, rule_index)
+    regulation_id = _infer_regulation_id(standard_hint, _all_rule_ids(run, rule_index))
 
     results = run.get("results") or []
     outcomes = properties.get("ruleOutcomes")
-    total, present, missing = (
-        _count_outcomes(outcomes)
+    if not _notifications_from_invocations(run)[1]:
+        # The checker could not read the SBOM: its per-rule "missing" results
+        # are not findings, so none is reported.
+        return ConformanceResult.nothing_checked(regulation_id, source)
+    optional = _optional_rule_ids(rule_index)
+    counts = (
+        _count_outcomes(outcomes, optional)
         if isinstance(outcomes, dict)
-        else _count_totals(results, rule_index)
+        else _count_findings(results, optional)
     )
     return ConformanceResult(
         regulation_id=regulation_id,
         source=source,
-        total=total,
-        present=present,
-        missing=missing,
+        total=counts.total,
+        present=counts.present,
+        missing=counts.missing,
         unverified=0,
-        gaps=_build_gaps(results, rule_index),
+        optional_present=counts.optional_present,
+        optional_missing=counts.optional_missing,
+        gaps=_build_gaps(results, rule_index, optional),
+        rules=_build_rule_results(outcomes, rule_index),
+        system_judged_by_model=_judged_by_model(properties),
     )
 
 
@@ -338,19 +444,13 @@ def _build_check_run(run: dict[str, Any], driver: dict[str, Any]) -> CheckRun:
     """Build the ``CheckRun`` portion of a parsed SARIF run."""
     notifications, execution_successful = _notifications_from_invocations(run)
     properties = run.get("properties") or {}
-    if properties.get("ruleResults") is False and "conformant" in properties:
-        # No per-rule results (e.g. BSI): the verdict is all the log says.
-        conformant = bool(properties["conformant"])
+    if "ruleOutcomes" not in properties and run.get("results"):
         notifications.append(
             Notification(
-                level="note" if conformant else "error",
-                message=(
-                    "The SBOM conforms to the standard."
-                    if conformant
-                    else "The SBOM does not conform to the standard. "
-                    "The checker gives no per-requirement detail."
-                ),
-                descriptor_id="sbom.verdict",
+                level="warning",
+                message="The SARIF log has no rule outcomes: only what is "
+                "missing is known, so the present rules are not counted.",
+                descriptor_id="sarif.no-rule-outcomes",
             )
         )
     return CheckRun(
@@ -362,7 +462,21 @@ def _build_check_run(run: dict[str, Any], driver: dict[str, Any]) -> CheckRun:
 
 
 def parse_sarif(sarif: dict[str, Any]) -> SbomCheckResponse:
-    """Parse a SARIF 2.1.0 log dict into a Lumina :class:`SbomCheckResponse`."""
+    """Parse a SARIF 2.1.0 log dict into a Lumina :class:`SbomCheckResponse`.
+
+    Raises:
+        SarifIngestError: the log is not usable SARIF 2.1.0, is malformed
+            (a field of the wrong type) or names an unsupported standard.
+    """
+    try:
+        return _parse(sarif)
+    except SarifIngestError:
+        raise
+    except (AttributeError, TypeError, KeyError, ValueError) as exc:
+        raise SarifIngestError(f"Malformed SARIF log ({type(exc).__name__})") from exc
+
+
+def _parse(sarif: dict[str, Any]) -> SbomCheckResponse:
     _require(isinstance(sarif, dict), "SARIF log must be a JSON object")
     _require(
         sarif.get("version") == "2.1.0",
@@ -376,8 +490,18 @@ def parse_sarif(sarif: dict[str, Any]) -> SbomCheckResponse:
     driver = (run.get("tool") or {}).get("driver") or {}
     rule_index = _build_rule_index(driver)
 
+    check_run = _build_check_run(run, driver)
+    if len(runs) > 1:
+        check_run.notifications.append(
+            Notification(
+                level="warning",
+                message=f"The SARIF log has {len(runs)} runs: only the first "
+                "is shown.",
+                descriptor_id="sarif.extra-runs-ignored",
+            )
+        )
     return SbomCheckResponse(
         conformance=_build_conformance_result(run, driver, rule_index),
-        run=_build_check_run(run, driver),
+        run=check_run,
         embedded_sbom=_embedded_sbom(run),
     )

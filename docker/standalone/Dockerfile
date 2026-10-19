@@ -21,6 +21,11 @@ RUN apt-get update \
 WORKDIR /app/backend
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# SPDX licence list for Pitloom: without it licence ids stay as written (for
+# example "apache-2.0") and every generated SBOM carries a warning saying so.
+# A failed download does not fail the build; the warning then tells the truth.
+RUN licenseid update || echo "licenseid update failed: licence ids will not be canonicalised"
 COPY backend/app/ ./app/
 
 # Frontend static files

@@ -25,13 +25,13 @@ def generate_from_huggingface(model_source: str, output_path: str) -> None:
     """
     # Imported lazily; see app.generators.base.
     # pylint: disable=import-outside-toplevel
-    from pitloom.assemble import generate_huggingface_sbom
+    from pitloom.assemble import generate_model_sbom
 
     try:
-        generate_huggingface_sbom(
-            model_source=model_source,
+        generate_model_sbom(
+            model_source,
             output_path=Path(output_path),
-            creation_info=creation_info(),
+            creation_metadata=creation_info(),
         )
-    except Exception as exc:  # noqa: BLE001 - normalised to GenerationError
+    except Exception as exc:
         raise GenerationError("pitloom.generation-failed", str(exc)) from exc

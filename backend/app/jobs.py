@@ -35,8 +35,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 
 logger = logging.getLogger(__name__)
 
@@ -97,13 +98,8 @@ class InProcessJobQueue(JobQueue):
     accepted trade at this stage (the user simply resubmits).
     """
 
-    def __init__(
-        self,
-        registry: dict[str, JobFn] | None = None,
-        concurrency: int = 1,
-        max_finished_jobs: int = 1000,
-    ) -> None:
-        super().__init__(registry=registry or {})
+    def __init__(self, concurrency: int = 1, max_finished_jobs: int = 1000) -> None:
+        super().__init__()
         self._jobs: dict[str, JobRecord] = {}
         self._semaphore = asyncio.Semaphore(concurrency)
         # Keep at most this many finished records; oldest are evicted first so
@@ -155,7 +151,8 @@ class InProcessJobQueue(JobQueue):
                 # run it off the event loop.
                 record.result = await asyncio.to_thread(fn, **kwargs)
                 record.status = "done"
-            except Exception as exc:  # noqa: BLE001, pylint: disable=broad-exception-caught
+            # pylint: disable-next=broad-exception-caught
+            except Exception as exc:
                 # Job runner boundary: any failure must be captured and
                 # reported via JobRecord.error, so we deliberately catch all.
                 logger.exception("Job %s (%s) failed", job_id, job_name)

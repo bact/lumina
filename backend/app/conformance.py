@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 
 # ── Output schema ─────────────────────────────────────────────────────────
 
-RegulationId = Literal["ntia", "bsi", "g7ai", "mof"]
+RegulationId = Literal["ntia", "bsi", "g7ai", "cisa2026", "fsct2024", "mof"]
 FieldLevel = Literal["missing", "unverified"]
 CheckerSource = Literal[
     "ntia-conformance-checker",
@@ -37,6 +37,23 @@ class FieldGap(BaseModel):
     note: str
 
 
+RuleOutcome = Literal["present", "missing", "not-applicable", "out-of-scope"]
+
+
+class RuleResult(BaseModel):
+    """The checker's outcome for one rule of the standard.
+
+    ``out-of-scope`` rules are catalogue-only: the checker lists them but
+    cannot check them, so they never count as missing.
+    """
+
+    rule_id: str
+    cluster: str
+    title: str
+    provision: str
+    outcome: RuleOutcome
+
+
 class ConformanceResult(BaseModel):
     """What the checker found: conformance gaps and counts."""
 
@@ -46,7 +63,32 @@ class ConformanceResult(BaseModel):
     present: int
     missing: int
     unverified: int
+    optional_present: int = 0
+    optional_missing: int = 0
+    """Rules of the standard that only permit a property (BSI "optional"):
+    decided like the others but kept out of ``total``, ``present`` and
+    ``missing``, since lacking them is not a gap."""
     gaps: list[FieldGap]
+    rules: list[RuleResult] = Field(default_factory=list)
+    """Per-rule outcomes, when the producer reports them."""
+    system_judged_by_model: str | None = None
+    """Name of the AI model standing in for the system, when the checker
+    judged the System-level rules by the model."""
+
+    @classmethod
+    def nothing_checked(
+        cls, regulation_id: RegulationId, source: CheckerSource
+    ) -> ConformanceResult:
+        """A result with no counts and no findings: nothing was checked."""
+        return cls(
+            regulation_id=regulation_id,
+            source=source,
+            total=0,
+            present=0,
+            missing=0,
+            unverified=0,
+            gaps=[],
+        )
 
 
 class Notification(BaseModel):
@@ -72,6 +114,9 @@ class CheckRun(BaseModel):
 
     tool_name: str
     tool_version: str = ""
+    generator: str = ""
+    """What made the SBOM when Lumina generated it (``"pitloom 0.20.2"``); empty
+    for an uploaded SBOM or an imported SARIF log."""
     execution_successful: bool = True
     notifications: list[Notification] = Field(default_factory=list)
 
@@ -81,9 +126,10 @@ class EmbeddedSbom(BaseModel):
 
     Mirrors SARIF ``artifact.contents`` (§3.24.7).  Exactly one of ``text``
     or ``binary_base64`` is set, matching the SARIF spec's mutual exclusion.
-    Lumina populates this when ``ntia-conformance-checker --embed-sbom`` is
-    used so the frontend can render the SBOM alongside conformance findings
-    from a single round-trip.
+    Set on ``POST /api/v1/sarif/import`` when the producer embedded the SBOM
+    (``output_sarif(embed_sbom=True)``, the checker CLI's ``sarif-sbom``
+    output), so a client can show it alongside the findings from one
+    round-trip; the web UI does not yet.
     """
 
     uri: str
@@ -121,6 +167,8 @@ CHECKER_STANDARDS: dict[RegulationId, str] = {
     "ntia": "ntia",
     "bsi": "bsi",
     "g7ai": "g7ai",
+    "cisa2026": "cisa2026",
+    "fsct2024": "fsct3",  # the checker's id for FSCT 2024
 }
 
 

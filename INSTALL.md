@@ -2,13 +2,15 @@
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
-SPDX-License-Identifier: Apache-2.0
+SPDX-License-Identifier: CC0-1.0
 ---
 
 # Deploying Lumina
 
 Lumina runs as a Docker container (or two). Pick the option that fits your
 situation, then follow its section end-to-end.
+
+> Setting up a demo on a new machine? Follow [DEMO.md](DEMO.md).
 
 ## Deployment options
 
@@ -40,8 +42,8 @@ cd lumina
 docker compose up --build
 ```
 
-The first build is slow: it installs the conformance checker from a Git branch
-and Pitloom, and pulls base images. When it settles, open **<http://localhost>**.
+The first build is slow: it installs the conformance checker and Pitloom from
+pinned Git commits, and pulls base images. When it settles, open **<http://localhost>**.
 
 Smoke-test in another terminal:
 
@@ -51,7 +53,7 @@ curl -s http://localhost/api/v1/regulations  # lists regulations + readiness
 ```
 
 Test the **generate-and-check** flow end-to-end (paste a small Git or HF repo
-URL in the Import screen, or use the API directly):
+URL in the *Generate & check* screen, or use the API directly):
 
 ```bash
 # Submit a job — returns {"job_id": "..."}
@@ -217,7 +219,9 @@ cd lumina
 ### Step 4 — Start Lumina
 
 The base `docker-compose.yml` is dev-oriented. Apply the production override
-from [`docker/compose/docker-compose.prod.yml`](docker/compose/docker-compose.prod.yml):
+from [`docker/compose/docker-compose.prod.yml`](docker/compose/docker-compose.prod.yml)
+(it uses `!reset`, so Docker Compose 2.24 or later is required; `!override`
+needs 2.24.4 or later):
 
 ```bash
 docker compose \
@@ -373,10 +377,11 @@ git commit --allow-empty -m "Rebuild"
 git push
 ```
 
-To pin a specific Lumina version, set `LUMINA_REF` in the Dockerfile:
+To pin a specific Lumina version, set `LUMINA_REF` in the Dockerfile to a
+branch or tag (a commit SHA does not work with a shallow clone):
 
 ```dockerfile
-ARG LUMINA_REF=v0.2.0   # tag or commit SHA
+ARG LUMINA_REF=v0.2.0   # branch or tag
 ```
 
 ---
@@ -441,9 +446,12 @@ reads it at start.
    ```bash
    # Run from the Lumina repo root
    gcloud builds submit . \
-       --dockerfile docker/standalone/Dockerfile \
-       --tag ${REGION}-docker.pkg.dev/${PROJECT}/lumina/app:latest
+       --config docker/standalone/cloudbuild.yaml \
+       --substitutions _IMAGE=${REGION}-docker.pkg.dev/${PROJECT}/lumina/app:latest
    ```
+
+   This path has not been tested by the maintainers: no Docker daemon or
+   Google Cloud project was available when it was written.
 
 5. **Deploy:**
 
@@ -475,8 +483,8 @@ reads it at start.
 
 ```bash
 gcloud builds submit . \
-    --dockerfile docker/standalone/Dockerfile \
-    --tag ${REGION}-docker.pkg.dev/${PROJECT}/lumina/app:latest
+    --config docker/standalone/cloudbuild.yaml \
+    --substitutions _IMAGE=${REGION}-docker.pkg.dev/${PROJECT}/lumina/app:latest
 
 gcloud run deploy lumina \
     --image ${REGION}-docker.pkg.dev/${PROJECT}/lumina/app:latest \
@@ -505,8 +513,8 @@ When load grows and the in-process queue is no longer enough, the upgrade path i
 
 1. Add a `worker` service and a local `redis:alpine` container (or Upstash
    serverless Redis) to the compose stack.
-2. Swap `InProcessJobQueue` for an `RQJobQueue` or `TaskiqJobQueue` by
-   changing a single env var (`JOB_BACKEND`).
+2. Add an `RQJobQueue` or `TaskiqJobQueue` next to `InProcessJobQueue` in
+   `backend/app/jobs.py` and use it where the app creates its queue.
 3. Nothing else changes — the HTTP contract, the frontend polling loop, the
    generators, and the conformance pipeline are all untouched.
 
@@ -532,15 +540,18 @@ These apply to all options once the deployment is working.
    No rebuild needed — restart the container. (Default without the variable
    is `*`.)
 
-2. **Limit upload size.** Large SBOMs can exhaust memory. For Option A, add
-   to `proxy/prod.conf` inside `server { … }`:
+2. **Limit upload size.** The API refuses an SBOM upload larger than
+   `LUMINA_MAX_SBOM_BYTES` (default 10 MiB) with HTTP 413; it holds the whole
+   file in memory. Every nginx config (`proxy/prod.conf`, `proxy/dev.conf`,
+   `docker/standalone/nginx.conf.template`, `docker/hfspaces/Dockerfile`) sets
+   `client_max_body_size 11m;` for `/api/`: 1 MiB above the API's cap, for the
+   multipart framing. The API alone cannot stop an upload from being spooled
+   to disk first, so keep the proxy limit. Raise or lower both together, for
+   example:
 
    ```nginx
-   client_max_body_size 25m;
+   client_max_body_size 26m;  # and LUMINA_MAX_SBOM_BYTES=26214400 (25 MiB)
    ```
-
-   For Options B and C, add the same line to the nginx config template in
-   `docker/hfspaces/Dockerfile` or `docker/standalone/nginx.conf.template`.
 
 3. **Cap resources** (Option A). Per service in the prod compose override:
 
@@ -551,8 +562,10 @@ These apply to all options once the deployment is working.
    ```
 
 4. **Keep the port off the public interface** (Option A). With Cloudflare
-   Tunnel you don't need `80:80` on the host — set nginx `ports` to
-   `127.0.0.1:8080:80` in `docker/compose/docker-compose.prod.yml`, and keep
+   Tunnel you don't need `80:80` on the host — set nginx
+   `ports: !override ["127.0.0.1:8080:80"]` in
+   `docker/compose/docker-compose.prod.yml` (`!override` replaces the base
+   list; a plain list would add to it), and keep
    the OCI security list closed.
 
 5. **Set a budget alert** (Option C). Cloud Run billing must be enabled even for
@@ -584,7 +597,7 @@ These apply to all options once the deployment is working.
 | **OCI** Tunnel up but 502 from the public URL | Tunnel service mapping must point to `nginx:80`, not `localhost` or `api`. |
 | **OCI** Quick tunnel can't reach nginx | Compose network name is `<folder>_default`. Confirm with `docker network ls` and pass `--network` accordingly. |
 | **All** `curl /api/health` fails | Check container logs: `docker compose logs api` (Option A) or the platform's log viewer (B/C). Usually a Python dep error or the API still starting. |
-| **All** Build fails — dep install error | The `ntia-conformance-checker` is installed from the `sarif-output-cli` Git branch. If GitHub is unreachable during build, retry. |
+| **All** Build fails — dep install error | `ntia-conformance-checker` and Pitloom are installed from pinned Git commits (`backend/requirements.txt`). If GitHub is unreachable during build, retry. |
 | **All** Site loads but API calls fail in browser | The browser is hitting the API host directly, bypassing nginx. Use the public hostname (tunnel URL / HF Space URL / Cloud Run URL), not the raw IP or API port. |
 | **HF Spaces** Space stuck in "Building" | Check the **Logs** tab in the Space page. Common cause: pip install timeout on a slow dep — retry the build by pushing an empty commit. |
 | **HF Spaces** 503 on first request | Space is waking from sleep. Wait 30–60 s and retry. |

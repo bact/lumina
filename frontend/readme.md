@@ -5,108 +5,102 @@ SPDX-FileType: DOCUMENTATION
 SPDX-License-Identifier: CC0-1.0
 -->
 
-# Lumina Frontend
+# Lumina frontend
 
-Static web frontend for the Lumina SBOM viewer and conformance checker.
-Eight screens, four ways to read the same SBOM, built on `colors-and-type.css`.
-Served by nginx; no build step required.
+Static web frontend for the Lumina SBOM conformance checker: React 18 and
+Babel run in the browser, so there is no build step. nginx serves it and
+proxies `/api/` to the backend; every screen needs that API.
 
-## Structure
-
-| File | What's in it |
-|---|---|
-| `index.html` | App entry + router. Loads all modules. Sets `lang`, `viewport`, skip-link, focus styles, `prefers-reduced-motion`. |
-| `colors-and-type.css` | Design tokens -- CSS variables for colours, typography, spacing, motion. |
-| `assets/` | Logo SVGs. |
-| `nginx.conf` | nginx config -- serves frontend, proxies `/api/` to FastAPI. |
-| `data.js` | One ghost-mesh SBOM in SPDX 3.0-ish shape -- components (software + AI), dependency edges, regulations with field-level requirements, "Where to look" hints, license metadata, known vulnerabilities. **Authoritative field list for all four regulations.** |
-| `i18n.js` | i18n / l10n module -- `t()`, `tNodes()`, `formatNumber()`, `formatDate()`, `formatRelativeTime()`, locale catalogue (14 languages), and the `useLocale()` hook (exported from `components.jsx`). |
-| `components.jsx` | `Icon`, `Logo`, `Button`, `StatusChip`, `RegTag`, `Card`, `MarginNote`, `TextField`, `Eyebrow`, `Divider`, `Mono`, `useLocale` -- all with built-in keyboard / aria support where they're interactive. |
-| `app-shell.jsx` | `TopBar` (`<header>`, project switcher with `aria-haspopup` / ESC, `LanguageSwitcher`), `SideNav` (`<nav aria-label="Primary">`, real `<button>` items, grouped Views / Conformance / Security / Source / Workspace). |
-| `view-primitives.jsx` | Shared bits used across the viewer screens: `FieldStatusDot`, `KindTag`, `SeverityChip`, `FixChip`, `Legend`, `RegStrip` (radio group), `RegSummaryLine` (progressbar), `SummaryTile`. |
-| `screen-overview.jsx` | Overview / dashboard screen |
-| `screen-inventory.jsx` | Inventory table (`<caption>`, `scope="col"`, keyboard rows) + Component detail (drill-in) |
-| `screen-conformance.jsx` | Conformance -- radio-group regulation picker, big % `progressbar`, per-field cards, "Where to look" hints -- plus Import flow |
-| `screen-raw.jsx` | Raw SBOM viewer -- keyboard-focusable line gutter, per-line conformance dots |
-| `screen-graph.jsx` | Dependency graph -- focusable SVG nodes with descriptive aria-labels |
-| `screen-vulnerabilities.jsx` | CVE / GHSA list grouped by component |
+The UI shows only what the API returns. The regulation list comes from
+`GET /api/v1/regulations`, every result is an `SbomCheckResponse`, and a
+refused request shows the server's own error `detail`.
 
 ## Screens
 
-1. **Overview** -- KPI tiles, open-findings preview, connected-loom panel.
-2. **Inventory** -- Searchable, filterable table of all components.
-3. **Raw** -- The SBOM as it really is. Line-by-line SPDX 3.0 JSON-LD; the gutter shows which fields the active regulation checks and whether each is present, missing, or unverified.
-4. **Graph** -- Dependency tree under the root component. Nodes are colored by their conformance against the active regulation; AI elements are marked M (model) or D (dataset); components with known CVEs get a shu-red `!`.
-5. **Conformance** -- Pick a regulation, see a big % summary, then a per-field card list of what's missing and where that information usually lives ("Where to look" pulled from `data.findHints`).
-6. **Vulnerabilities** -- Known CVE / GHSA records grouped by component, with severity, fix availability, and disclosure timeline.
-7. **Component detail** -- Drill-in from any view. Findings, declared fields, provenance trail, signature margin note.
-8. **Import** -- Drop-to-upload zone with parsing → done states. CI / Pitloom connection cards.
+| Screen | API | What it does |
+| - | - | - |
+| **Generate & check** (default) | `POST /api/v1/artifact/check`, then `GET /api/v1/jobs/{job_id}` | Paste a Git repository or Hugging Face Hub URL; the server generates an SPDX 3 SBOM with Pitloom and checks it. Polls the job every 2.5 s. |
+| **Upload SBOM** | `POST /api/v1/sbom/check` (multipart `file` + `regulation`) | Check an SBOM file you have. |
+| **Import SARIF** | `POST /api/v1/sarif/import` (the SARIF JSON as the body) | Read a SARIF 2.1.0 log from a file or pasted text; nothing is re-checked. |
+| **About** | `GET /api/v1/regulations` | Dependencies, licence, and the regulations the API lists with what each check covers. |
 
-## Regulations covered
+The three check screens render the result with the same `ArtifactResult`
+view: counts, per-rule outcomes grouped by cluster, gaps and run notifications.
+It shows no counts, and says why, when the SBOM could not be checked
+(`execution_successful` is false) and when no rule applies
+(`sbom.nothing-applies`). The
+"judged by model" note appears only for G7 AI, and the *Unverified* tile only
+when that count is above 0.
 
-The fixture data ships field-level definitions for four regulations / standards:
+## Regulations
 
-| Regulation | Fields | Scope | Backend checker (now) |
-|---|---|---|---|
-| **NTIA Minimum Elements** (2021-07) | 7 | Software | `ntia-conformance-checker` |
-| **BSI TR-03183** Part 2 v2.1.0 | 11 | Software | `ntia-conformance-checker` (verdict only) |
-| **G7 AI SBOM** Minimum Elements (2026-05) | 11 | AI (models + datasets) | `ntia-conformance-checker` (partial) |
-| **MOF** (Model Openness Framework) v1.0 | 11 | AI models | not supported |
+The regulation chips list exactly what `GET /api/v1/regulations` returns, in
+its order. A regulation with `ready: false` is shown but cannot be selected.
+Labels, a one-line description of what each check covers, and a source link
+come from one table, `IMPORT_REGULATIONS` in `screen-conformance.jsx`; an id
+missing from it is shown by its id. `RULE_CLUSTERS` in the same file names and
+orders the rule clusters of each regulation; a cluster missing from it is
+still shown, by its code.
 
-`ntia-conformance-checker` runs every check; the backend `run_checker`
-parses its SARIF into the `ConformanceResult` schema the API returns and the UI
-consumes. See `docs/design.md` for the full architecture.
+## Files
 
-Client-side conformance (fixture data in `data.js`) is demo data; the backend
-result comes from `ntia-conformance-checker`.
-
-Switching the active regulation re-runs every view's annotations against that
-regulation's field list. The G7 AI scope automatically narrows the in-scope
-components to AI elements.
-
-## Interactions implemented
-
-- Side-nav switching between screens
-- Project switcher dropdown in the top bar
-- Inventory search + filter chips
-- Click any row / line / node → opens component detail
-- Single-select regulation chip strip on Conformance / Raw / Graph
-- "Where to look" hint panel appears next to missing-field lists
-- Drag-and-drop or click-to-pick in the import flow → parsing simulation → done state
-- Margin notes with `Learn more` / `Don't show again` actions (no-op)
+| File | What's in it |
+| - | - |
+| `index.html` | Entry point and router (`SCREENS`). Loads the modules in order; skip link, focus styles, `prefers-reduced-motion`. |
+| `colors-and-type.css` | Design tokens: CSS variables for colours, typography, spacing, motion. |
+| `assets/` | Logo SVGs. |
+| `i18n.js` | `window.LUMINA_I18N`: locales, catalogues, `t()`. |
+| `components.jsx` | `Icon`, `Logo`, `Button`, `StatusChip`, `RegTag`, `Card`, `MarginNote`, `TextField`, `Eyebrow`, `Mono`, `SummaryTile`, `ErrorCard`, `useLocale`. |
+| `app-shell.jsx` | `TopBar` (logo, `LanguageSwitcher`), `SideNav` and `NAV_SECTIONS`, the side-nav items. |
+| `screen-conformance.jsx` | `IMPORT_REGULATIONS`, `RULE_CLUSTERS`, the API helpers (`apiErrorMessage`, `postForResult`, `useRegulations`), `RegulationPicker`, the Generate & check screen (`ImportScreen`), `RuleClusters` and `ArtifactResult`. |
+| `screen-upload.jsx` | Upload SBOM (`UploadScreen`) and Import SARIF (`SarifScreen`). |
+| `screen-about.jsx` | About (`AboutScreen`). |
 
 ## Internationalization
 
-The app ships the **plumbing** for full localization; English is the only fully translated catalogue, with German and Japanese sampled to prove the wiring.
-
-- `i18n.js` is a tiny singleton (`window.LUMINA_I18N`) exposing `t(key, vars)`, `tNodes(key, vars)` (for interpolating React nodes), and `formatNumber / formatDate / formatRelativeTime` (powered by `Intl.*`).
-- Supported locales (picker order): English, Deutsch, Français, Español, Italiano, Português, Svenska, 日本語, 한국어, 繁體中文, 简体中文, ไทย, Bahasa Indonesia, Tiếng Việt.
-- The `LanguageSwitcher` in the top bar is a native `<select>` with `aria-label="Language"` so OS-level locale tooling works.
-- `setLocale(code)` updates `document.documentElement.lang` so screen readers switch language mid-session.
-- Missing keys fall back to English. Numbers and dates localize even when the surrounding UI text doesn't.
-- React components use `const { t, formatNumber } = useLocale();` to re-render automatically when the user switches language.
+Only the app shell is translated: the skip link, the language picker, the
+side navigation and the main landmark's label. Screen content is English. The
+picker offers only locales that have a catalogue (English, Deutsch, 日本語);
+each catalogue has every shell key, and `t()` falls back to English for a key
+a catalogue lacks. `setLocale()` updates `<html lang>` and the choice is kept
+in `localStorage` when the browser allows it.
 
 ## Accessibility
 
-Built against WCAG 2.2 AA. Specifically:
+Built against WCAG 2.2 AA:
 
-- **Landmarks** -- `<header>`, `<nav aria-label="Primary">`, `<main id="main-content">`. A `Skip to main content` link appears as the first focusable element.
-- **Keyboard** -- every interactive element is a `<button>` or carries `role="button"` / `role="radio"` with `tabIndex=0` and Enter/Space handlers. The project switcher closes on ESC and restores focus to the trigger.
-- **Screen reader labels** -- every clickable card / row / SVG node has a descriptive `aria-label`; decorative dots and icons carry `aria-hidden="true"`; em-dashes for missing values are read as "not declared".
-- **Picker semantics** -- Conformance / Raw / Graph regulation picker is a `radiogroup` with `role="radio"` + `aria-checked` per option.
-- **Progress** -- the big % bar and per-field bars expose `role="progressbar"` with `aria-valuemin/max/now`.
-- **Focus indicator** -- a 2px ink outline plus shu glow appears on `:focus-visible` for every focusable element.
-- **Contrast** -- `--ink-3` darkened to `#605C53` to clear 4.5:1 against `--paper` for all body / tertiary text. `--ink-4` and `--ink-5` are reserved for decorative / placeholder use.
-- **Motion** -- global `@media (prefers-reduced-motion: reduce)` disables transitions and animations.
-- **Labels** -- `TextField` accepts a `label` prop (rendered visually-hidden) and falls back to `aria-label` from `placeholder`.
+- **Landmarks:** `<header>`, `<nav aria-label="Primary navigation">`,
+  `<main id="main-content">` labelled with the screen name. A *Skip to main
+  content* link is the first focusable element.
+- **Keyboard:** every interactive element is a `<button>` or carries
+  `role="button"` / `role="radio"` with Enter/Space handlers. The language
+  popover closes on Esc and returns focus to its button.
+- **Regulation picker:** a `radiogroup`; an unsupported regulation is a radio
+  with `aria-disabled="true"`, out of the tab order.
+- **Errors and progress:** an error card has `role="alert"`; the working
+  message has `role="status"`.
+- **Decorative icons and dots:** `aria-hidden="true"`; status is always text
+  plus colour, never colour alone.
+- **Focus indicator:** a 2px ink outline plus shu glow on `:focus-visible`.
+- **Motion:** `@media (prefers-reduced-motion: reduce)` disables transitions
+  and animations.
 
 ## Icons
 
-[Lucide](https://lucide.dev/) via CDN at 1.5px stroke. To swap to a different icon set, replace the `<script src="https://unpkg.com/lucide@latest…">` tag in `index.html` and update the `Icon` component in `components.jsx`.
+[Lucide](https://lucide.dev/) at a 1.5px stroke, vendored in `vendor/` with
+React and Babel (no CDN; the page works offline apart from web fonts). To use
+a different icon set, replace the Lucide `<script>` in `index.html` and update
+the `Icon` component in `components.jsx`.
 
-## Not yet implemented
+## Smoke test
 
-- Authentication / SSO flows
-- Settings, billing, team management
-- Mobile / small-viewport layouts (desktop-first; mobile rules not yet defined)
-- Notifications, real-time CI status, webhook configuration
+`scripts/ui-smoke.mjs` loads this frontend in headless Chromium against a
+mocked API and checks every screen; see `AGENTS.md` for how to run it.
+
+## Not implemented
+
+- Viewing the SBOM itself (components, dependency graph, raw document). An
+  imported SARIF log's `embedded_sbom` is returned by the API but not shown.
+- An SBOM URL or SARIF URL as input (the API takes files and bodies only).
+- Authentication.
+- Small-viewport layouts (the layout is desktop-first).

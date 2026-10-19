@@ -13,12 +13,13 @@ from typing import Any
 
 import pytest
 
-from app.sarif_ingest import SarifIngestError, parse_sarif
+from app.sarif_ingest import SarifIngestError, _rule_title, parse_sarif
 
 _FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures", "sarif")
 
 
 def _load(name: str) -> dict[str, Any]:
+    """The SARIF fixture *name* as a dict."""
     with open(os.path.join(_FIXTURES, name), encoding="utf-8") as f:
         result: dict[str, Any] = json.load(f)
         return result
@@ -146,6 +147,7 @@ def test_embedded_sbom_binary_round_trip() -> None:
 
 
 def test_ontology_rule_ids_identify_the_standard() -> None:
+    """Ontology rule ids identify the standard."""
     log = _load("ntia_ontology_ids.sarif.json")
     del log["runs"][0]["properties"]["complianceStandard"]  # fall back to the id
     conf = parse_sarif(log).conformance
@@ -155,10 +157,10 @@ def test_ontology_rule_ids_identify_the_standard() -> None:
 
 
 def test_counts_follow_rule_outcomes() -> None:
-    """Decided top-level rules only: sub-rules and not-applicable rules are out."""
+    """Every decided rule counts, sub-rules included; not-applicable ones do not."""
     conf = parse_sarif(_load("g7ai_missing_model_info.sarif.json")).conformance
     assert conf.regulation_id == "g7ai"
-    assert (conf.total, conf.present, conf.missing) == (39, 36, 3)
+    assert (conf.total, conf.present, conf.missing) == (56, 50, 6)
     assert {g.field_key for g in conf.gaps} == {
         "model_hash_algorithm_missing",
         "model_hash_value_missing",
@@ -167,6 +169,7 @@ def test_counts_follow_rule_outcomes() -> None:
 
 
 def test_nothing_applies_is_all_not_applicable() -> None:
+    """Nothing applies is all not applicable."""
     log = _load("g7ai_missing_model_info.sarif.json")
     run = log["runs"][0]
     run["results"] = []
@@ -175,3 +178,349 @@ def test_nothing_applies_is_all_not_applicable() -> None:
     }
     conf = parse_sarif(log).conformance
     assert (conf.total, conf.present, conf.missing) == (0, 0, 0)
+
+
+def _rule_log() -> dict[str, Any]:
+    """A G7 AI log with rule outcomes and a model standing in for the system."""
+    log = _load("g7ai_missing_model_info.sarif.json")
+    run = log["runs"][0]
+    run["properties"]["systemJudgedByModel"] = "m"
+    return log
+
+
+def test_rule_results_carry_cluster_title_and_outcome() -> None:
+    """Rule results carry cluster title and outcome."""
+    conf = parse_sarif(_rule_log()).conformance
+    by_id = {r.rule_id: r for r in conf.rules}
+    outcomes = _rule_log()["runs"][0]["properties"]["ruleOutcomes"]
+    assert conf.rules and set(by_id) <= set(outcomes)
+    for rule in conf.rules:
+        assert rule.outcome == outcomes[rule.rule_id]
+        assert rule.cluster == rule.rule_id.split("-")[2]
+    assert {r.outcome for r in conf.rules} >= {"present", "missing"}
+    assert all(r.title and not r.title.endswith("missing.") for r in conf.rules)
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [("m", "m"), (None, None), ("", None), (3, None), (["m"], None)],
+)
+def test_system_judged_by_model_only_when_a_name(
+    value: object, expected: str | None
+) -> None:
+    """System judged by model only when a name."""
+    log = _rule_log()
+    log["runs"][0]["properties"]["systemJudgedByModel"] = value
+    assert parse_sarif(log).conformance.system_judged_by_model == expected
+
+
+@pytest.mark.parametrize("outcomes", [None, "x", ["present"], {}])
+def test_no_usable_rule_outcomes_gives_no_rules(outcomes: object) -> None:
+    """No usable rule outcomes gives no rules."""
+    log = _rule_log()
+    log["runs"][0]["properties"]["ruleOutcomes"] = outcomes
+    assert parse_sarif(log).conformance.rules == []
+
+
+def test_unknown_outcome_value_is_skipped_not_guessed() -> None:
+    """Unknown outcome value is skipped not guessed."""
+    log = _rule_log()
+    props = log["runs"][0]["properties"]["ruleOutcomes"]
+    victim = next(iter(props))
+    props[victim] = "maybe"
+    assert victim not in {r.rule_id for r in parse_sarif(log).conformance.rules}
+
+
+@pytest.mark.parametrize(
+    ("rule", "title"),
+    [
+        (
+            {"properties": {"slug": "g7ai-sbom-data-format-version-missing"}},
+            "SBOM data format version",
+        ),
+        ({"properties": {"slug": "g7ai-model-name"}}, "Model name"),
+        ({"properties": {"slug": "g7ai-ai-model-url-missing"}}, "AI model URL"),
+        (
+            {
+                "properties": {"slug": "g7ai-missing"},
+                "shortDescription": {"text": "T."},
+            },
+            "T.",
+        ),
+        ({"shortDescription": {"text": "No slug."}}, "No slug."),
+        ({}, ""),
+    ],
+)
+def test_rule_title_names_the_element_not_the_failure(
+    rule: dict[str, Any], title: str
+) -> None:
+    """Rule title names the element not the failure."""
+    assert _rule_title(rule) == title
+
+
+def _log_of_rule(rule_id: str, standard: str | None) -> dict[str, Any]:
+    """A log whose only rule is *rule_id*, with an optional standard hint."""
+    log = _rule_log()
+    run = log["runs"][0]
+    run["properties"].pop("complianceStandard")
+    if standard:
+        run["properties"]["complianceStandard"] = standard
+    run["tool"]["driver"]["rules"] = [{"id": rule_id}]
+    run["results"] = []
+    run["properties"]["ruleOutcomes"] = {rule_id: "present"}
+    return log
+
+
+def test_the_checkers_fsct3_id_is_fsct_2024() -> None:
+    """The standard name the checker uses for FSCT 2024 is mapped, not NTIA."""
+    log = _log_of_rule("BOM-FSCT2024-COMP-001", "fsct3")
+    assert parse_sarif(log).conformance.regulation_id == "fsct2024"
+
+
+@pytest.mark.parametrize(
+    ("rule_id", "regulation"),
+    [
+        ("BOM-CISA2026-META-001", "cisa2026"),
+        ("BOM-FSCT2024-COMP-001", "fsct2024"),
+        ("BOM-NTIA2021-DF-001", "ntia"),
+        ("BOM-BSI2025-DOC-001", "bsi"),
+    ],
+)
+def test_rule_id_names_the_standard_with_its_edition(
+    rule_id: str, regulation: str
+) -> None:
+    """The edition is part of the id: only a supported edition is recognised."""
+    log = _log_of_rule(rule_id, None)
+    assert parse_sarif(log).conformance.regulation_id == regulation
+
+
+@pytest.mark.parametrize(
+    ("rule_id", "standard"),
+    [
+        ("BOM-CISA2025-META-001", None),  # the 2025 draft is not CISA 2026
+        ("BOM-G7AI2027-MD-001", None),
+        ("BOM-CISA2025-META-001", "cisa2025"),
+        ("BOM-UNKNOWN-1", None),
+        # No older year-less forms.
+        ("SBOM-NTIA-DF-001", None),
+        ("NTIA-DF-01", None),
+        ("BOM-FSCT2023-COMP-001", None),
+        # A hint naming an unknown standard is not overridden by the rule ids.
+        ("BOM-CISA2026-META-001", "cisa2025"),
+        # A known hint does not override a rule id of another standard or edition.
+        ("BOM-CISA2025-META-001", "cisa2026"),
+        ("BOM-NTIA2021-DF-001", "fsct3"),
+        ("BOM-NTIA2021-DF-001", "cisa2026"),
+    ],
+)
+def test_unsupported_standard_is_reported_not_guessed(
+    rule_id: str, standard: str | None
+) -> None:
+    """No fallback to another regulation: the log is refused, naming the spec."""
+    with pytest.raises(SarifIngestError, match="Unsupported standard"):
+        parse_sarif(_log_of_rule(rule_id, standard))
+
+
+def _mutate(path: list[Any], value: Any) -> dict[str, Any]:
+    """The test log with the field at *path* (keys and indexes) set to *value*."""
+    log = _rule_log()
+    node: Any = log
+    for key in path[:-1]:
+        node = node[key]
+    node[path[-1]] = value
+    return log
+
+
+@pytest.mark.parametrize(
+    ("path", "value"),
+    [
+        (["runs"], "x"),
+        (["runs"], {"a": 1}),
+        (["runs", 0, "tool", "driver"], "x"),
+        (["runs", 0, "tool", "driver", "rules"], {"a": 1}),
+        (["runs", 0, "tool", "driver", "rules"], ["x"]),
+        (["runs", 0, "properties"], [1]),
+        (["runs", 0, "results"], {"a": 1}),
+        (["runs", 0, "results"], [1]),
+        (["runs", 0, "invocations"], "x"),
+        (["runs", 0, "artifacts"], "x"),
+    ],
+)
+def test_wrongly_typed_sarif_is_refused_not_a_crash(
+    path: list[Any], value: Any
+) -> None:
+    """A field of the wrong type is a 422-class error, never an unhandled one."""
+    with pytest.raises(SarifIngestError):
+        parse_sarif(_mutate(path, value))
+
+
+def _result(rule_id: str) -> dict[str, Any]:
+    """A SARIF result for *rule_id*."""
+    return {"ruleId": rule_id, "message": {"text": "x"}}
+
+
+def test_results_and_outcomes_must_agree_with_the_standard() -> None:
+    """Foreign rule ids in results or ruleOutcomes are refused, not counted."""
+    log = _log_of_rule("BOM-NTIA2021-DF-001", "ntia")
+    log["runs"][0]["results"] = [_result("BOM-CISA2025-META-001")]
+    with pytest.raises(SarifIngestError, match="contradicts"):
+        parse_sarif(log)
+    log = _log_of_rule("BOM-NTIA2021-DF-001", "ntia")
+    log["runs"][0]["properties"]["ruleOutcomes"] = {"BOM-CISA2026-META-001": "present"}
+    with pytest.raises(SarifIngestError, match="contradicts"):
+        parse_sarif(log)
+
+
+def test_a_log_mixing_standards_is_refused_without_a_hint() -> None:
+    """A log mixing standards is refused without a hint."""
+    log = _log_of_rule("BOM-NTIA2021-DF-001", None)
+    log["runs"][0]["tool"]["driver"]["rules"].append({"id": "BOM-CISA2025-META-001"})
+    with pytest.raises(SarifIngestError, match="no single supported standard"):
+        parse_sarif(log)
+
+
+def test_mof_is_not_a_standard_a_sarif_log_can_claim() -> None:
+    """Mof is not a standard a sarif log can claim."""
+    with pytest.raises(SarifIngestError, match="Unsupported standard"):
+        parse_sarif(_log_of_rule("BOM-NTIA2021-DF-001", "mof"))
+
+
+def test_counts_include_sub_rules() -> None:
+    """A sub-rule is decided on its own: it is not folded into its parent."""
+    log = _load("g7ai_missing_model_info.sarif.json")
+    outcomes = log["runs"][0]["properties"]["ruleOutcomes"]
+    decided = [o for o in outcomes.values() if o in ("present", "missing")]
+    assert any("." in r for r in outcomes)
+    assert parse_sarif(log).conformance.total == len(decided)
+
+
+def test_an_unreadable_sbom_reports_no_findings() -> None:
+    """The checker's all-missing result for an SBOM it could not read is not shown."""
+    log = _load("g7ai_missing_model_info.sarif.json")
+    log["runs"][0]["invocations"] = [{"executionSuccessful": False}]
+    conf = parse_sarif(log).conformance
+    assert (conf.total, conf.present, conf.missing, conf.gaps, conf.rules) == (
+        0,
+        0,
+        0,
+        [],
+        [],
+    )
+
+
+def test_a_log_without_rule_outcomes_does_not_invent_present_rules() -> None:
+    """Only what is missing is known, so nothing is counted as present."""
+    log = _load("g7ai_missing_model_info.sarif.json")
+    del log["runs"][0]["properties"]["ruleOutcomes"]
+    response = parse_sarif(log)
+    assert (response.conformance.total, response.conformance.present) == (0, 0)
+    assert response.conformance.missing == 3
+    assert "sarif.no-rule-outcomes" in {
+        n.descriptor_id for n in response.run.notifications
+    }
+
+
+@pytest.mark.parametrize(
+    ("short", "title"),
+    [
+        ("Model properties is missing.", "Model properties"),
+        (
+            "System input/output properties is missing.",
+            "System input/output properties",
+        ),
+        ("Component names are missing.", "Component names"),
+    ],
+)
+def test_title_is_the_checkers_own_wording(short: str, title: str) -> None:
+    """The element name is the checker's description, not an abbreviated slug."""
+    assert (
+        _rule_title(
+            {
+                "shortDescription": {"text": short},
+                "properties": {"slug": "g7ai-model-prop-missing"},
+            }
+        )
+        == title
+    )
+
+
+@pytest.mark.parametrize("extra_runs, shown", [(0, False), (1, True)])
+def test_extra_runs_are_reported_not_dropped_silently(
+    extra_runs: int, shown: bool
+) -> None:
+    """Only the first run is shown; a log with more says so."""
+    log = _load("conformant.sarif.json")
+    log["runs"] = log["runs"] * (1 + extra_runs)
+    ids = [n.descriptor_id for n in parse_sarif(log).run.notifications]
+    assert ("sarif.extra-runs-ignored" in ids) is shown
+
+
+def _log_with_permission(optional_outcome: str, req_outcome: str) -> dict[str, Any]:
+    """A BSI log with one required and one permission rule (both with results
+    when missing)."""
+    rules = [
+        {"id": "BOM-BSI2025-COMP-001", "properties": {"provision": "requirement"}},
+        {"id": "BOM-BSI2025-COMP-017", "properties": {"provision": "permission"}},
+    ]
+    outcomes = {
+        "BOM-BSI2025-COMP-001": req_outcome,
+        "BOM-BSI2025-COMP-017": optional_outcome,
+    }
+    results = [
+        {"ruleId": k, "message": {"text": "missing"}}
+        for k, v in outcomes.items()
+        if v == "missing"
+    ]
+    return {
+        "version": "2.1.0",
+        "runs": [
+            {
+                "tool": {
+                    "driver": {"name": "ntia-conformance-checker", "rules": rules}
+                },
+                "properties": {"complianceStandard": "bsi", "ruleOutcomes": outcomes},
+                "results": results,
+            }
+        ],
+    }
+
+
+@pytest.mark.parametrize(
+    ("optional", "required", "counts"),
+    [
+        ("missing", "present", (1, 1, 0, 0, 1)),
+        ("present", "missing", (1, 0, 1, 1, 0)),
+        ("missing", "missing", (1, 0, 1, 0, 1)),
+    ],
+)
+def test_a_permission_is_counted_apart_and_is_no_gap(
+    optional: str, required: str, counts: tuple[int, int, int, int, int]
+) -> None:
+    """Lacking an optional (permission) rule is neither Missing nor a gap."""
+    conf = parse_sarif(_log_with_permission(optional, required)).conformance
+    assert (
+        conf.total,
+        conf.present,
+        conf.missing,
+        conf.optional_present,
+        conf.optional_missing,
+    ) == counts
+    assert len(conf.gaps) == (1 if required == "missing" else 0)
+
+
+def test_permission_results_without_outcomes_are_counted_apart() -> None:
+    """A log with results but no ``ruleOutcomes`` keeps a permission apart too."""
+    log = _log_with_permission("missing", "missing")
+    del log["runs"][0]["properties"]["ruleOutcomes"]
+    conf = parse_sarif(log).conformance
+    assert (conf.total, conf.missing, conf.optional_missing) == (0, 1, 1)
+    assert len(conf.gaps) == 1
+
+
+def test_a_rule_without_a_provision_is_required() -> None:
+    """No ``provision`` on a rule: it is not taken for a permission."""
+    log = _log_with_permission("missing", "present")
+    for rule in log["runs"][0]["tool"]["driver"]["rules"]:
+        del rule["properties"]["provision"]
+    conf = parse_sarif(log).conformance
+    assert (conf.total, conf.missing, conf.optional_missing) == (2, 1, 0)

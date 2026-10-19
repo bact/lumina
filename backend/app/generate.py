@@ -18,7 +18,10 @@ Flow:
    any other URL host is treated as a Git repo (shallow clone, then Pitloom).
 2. Pitloom writes an SPDX 3 JSON-LD file.
 3. The file is checked by the same :func:`run_checker` as an uploaded
-   SBOM (the checker detects the SPDX version itself).
+   SBOM, which detects the SPDX version from the file.
+4. What Pitloom logs at WARNING or above while it generates is added to the
+   result as ``pitloom.log`` notifications, and ``CheckRun.generator`` names
+   the Pitloom version.
 
 A generation failure is returned as a *degraded* response (zeroed conformance,
 ``execution_successful=False``, one ``error`` notification) rather than raised, so
@@ -28,11 +31,16 @@ propagate and the queue marks the job ``error``.
 
 from __future__ import annotations
 
+import contextlib
+import importlib.metadata
 import ipaddress
 import logging
 import os
+import re
 import socket
 import tempfile
+import threading
+from collections.abc import Iterator
 from urllib.parse import urlparse
 
 from .conformance import (
@@ -55,6 +63,33 @@ _HF_HOSTS = {"huggingface.co", "www.huggingface.co"}
 
 _ALLOWED_SCHEMES = {"http", "https"}
 
+# Longer URLs are refused before they are parsed, logged or echoed back.
+MAX_URL_LENGTH = 2048
+
+_NAT64 = ipaddress.ip_network("64:ff9b::/96")
+_IPV4_COMPATIBLE = ipaddress.ip_network("::/96")
+
+
+def _is_public_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    """Whether *ip* is a unicast address that reaches the public internet.
+
+    An IPv6 address that embeds an IPv4 one (mapped, 6to4, Teredo, NAT64 and
+    the deprecated IPv4-compatible form) is public only if that IPv4 address is.
+    """
+    if not ip.is_global or ip.is_multicast:
+        return False
+    if isinstance(ip, ipaddress.IPv6Address):
+        if ip.is_site_local:
+            return False
+        embedded = ip.ipv4_mapped or ip.sixtofour
+        if ip.teredo:
+            embedded = ip.teredo[1]
+        if ip in _NAT64 or ip in _IPV4_COMPATIBLE:
+            embedded = ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)
+        if embedded is not None:
+            return _is_public_ip(embedded)
+    return True
+
 
 def _ensure_public_http_url(artifact_url: str) -> None:
     """Reject URLs that could reach internal services (SSRF guard).
@@ -69,14 +104,21 @@ def _ensure_public_http_url(artifact_url: str) -> None:
     rebinding between validation and clone.  Acceptable at this stage --
     network-level egress policy is the real control for a hardened deploy.
     """
-    parsed = urlparse(artifact_url)
+    if len(artifact_url) > MAX_URL_LENGTH:
+        raise GenerationError(
+            "lumina.url-too-long", f"URL is longer than {MAX_URL_LENGTH} characters."
+        )
+    try:
+        parsed = urlparse(artifact_url)
+        host = parsed.hostname
+    except ValueError as exc:
+        raise GenerationError("lumina.url-invalid", f"Invalid URL: {exc}") from exc
     if parsed.scheme.lower() not in _ALLOWED_SCHEMES:
         raise GenerationError(
             "lumina.url-scheme-blocked",
             f"URL scheme {parsed.scheme!r} is not allowed; "
             f"use http or https: {artifact_url!r}",
         )
-    host = parsed.hostname
     if not host:
         raise GenerationError(
             "pitloom.url-unsupported",
@@ -87,19 +129,66 @@ def _ensure_public_http_url(artifact_url: str) -> None:
         return
     try:
         infos = socket.getaddrinfo(host, None)
-    except socket.gaierror as exc:
+    except (socket.gaierror, UnicodeError) as exc:
         raise GenerationError(
             "lumina.url-unresolvable",
             f"Could not resolve host {host!r}: {exc}",
         ) from exc
     for info in infos:
         ip = ipaddress.ip_address(info[4][0])
-        if not ip.is_global:
+        if not _is_public_ip(ip):
             raise GenerationError(
                 "lumina.url-private-address",
                 f"Host {host!r} resolves to a non-public address ({ip}); "
                 "refusing to fetch it.",
             )
+
+
+class _WarningCollector(logging.Handler):
+    """Collect the WARNING-and-above records Pitloom logs on one thread."""
+
+    def __init__(self, sink: list[Notification]) -> None:
+        super().__init__(level=logging.WARNING)
+        self._sink = sink
+        self._thread = threading.get_ident()
+
+    def emit(self, record: logging.LogRecord) -> None:
+        """Keep the record as a notification, unless it is from another thread."""
+        if record.thread == self._thread and record.name.split(".")[0] == "pitloom":
+            self._sink.append(
+                Notification(
+                    level="error" if record.levelno >= logging.ERROR else "warning",
+                    message=hide_temp_dir(record.getMessage()),
+                    descriptor_id="pitloom.log",
+                )
+            )
+
+
+def hide_temp_dir(text: str) -> str:
+    """*text* without the server's temporary directory (a path, not a URL part)."""
+    pattern = rf"(?<![\w./:-]){re.escape(tempfile.gettempdir())}"
+    return re.sub(pattern, "<tmp>", text)
+
+
+@contextlib.contextmanager
+def _collect_warnings(sink: list[Notification]) -> Iterator[None]:
+    """Turn what Pitloom warns while it generates into notifications for the user.
+
+    The handler sits on the root logger: Pitloom's ``configure_logging()``
+    replaces the handlers of the ``pitloom`` logger itself, which would drop
+    one added there, and its records still propagate to the root.
+    """
+    handler = _WarningCollector(sink)
+    root_logger = logging.getLogger()
+    root_logger.addHandler(handler)
+    try:
+        yield
+    finally:
+        root_logger.removeHandler(handler)
+
+
+def _pitloom_version() -> str:
+    return importlib.metadata.version("pitloom")
 
 
 def generate_and_check(
@@ -108,9 +197,11 @@ def generate_and_check(
     """Generate an SBOM for *artifact_url* and check it against *regulation_id*."""
     fd, sbom_path = tempfile.mkstemp(prefix="lumina-sbom-", suffix=".spdx3.json")
     os.close(fd)
+    warnings: list[Notification] = []
     try:
         try:
-            _generate(artifact_url, sbom_path)
+            with _collect_warnings(warnings):
+                _generate(artifact_url, sbom_path)
         except GenerationError as exc:
             logger.warning(
                 "Generation failed for %s: [%s] %s",
@@ -118,8 +209,15 @@ def generate_and_check(
                 exc.descriptor_id,
                 exc.message,
             )
-            return _failure_response(regulation_id, exc.descriptor_id, exc.message)
-        return run_checker(sbom_path, regulation_id)
+            return _failure_response(
+                regulation_id,
+                exc.descriptor_id,
+                hide_temp_dir(exc.message),
+            )
+        response = run_checker(sbom_path, regulation_id)
+        response.run.generator = f"pitloom {_pitloom_version()}"
+        response.run.notifications.extend(warnings)
+        return response
     finally:
         if os.path.exists(sbom_path):
             os.unlink(sbom_path)
@@ -142,17 +240,9 @@ def _failure_response(
 ) -> SbomCheckResponse:
     """A degraded response carrying the generation failure as a notification."""
     return SbomCheckResponse(
-        conformance=ConformanceResult(
-            regulation_id=regulation_id,
-            # Lumina itself produced this (empty) result -- the external
-            # checker never ran, so don't claim it as the source.
-            source="lumina-internal",
-            total=0,
-            present=0,
-            missing=0,
-            unverified=0,
-            gaps=[],
-        ),
+        # Lumina itself produced this (empty) result -- the external checker
+        # never ran, so don't claim it as the source.
+        conformance=ConformanceResult.nothing_checked(regulation_id, "lumina-internal"),
         run=CheckRun(
             tool_name="lumina",
             execution_successful=False,
