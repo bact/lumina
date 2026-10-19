@@ -214,7 +214,9 @@ change. Target: WCAG 2.2 AA. Specifically:
   the right `role` with `tabIndex=0` and Enter/Space handlers. Nothing is
   reachable by mouse only; nothing traps focus.
 - Composite widgets follow the WAI-ARIA pattern (tabs: arrow keys, Home/End,
-  roving `tabIndex`; listbox: arrows, Esc closes and returns focus).
+  roving `tabIndex`; listbox: arrows, Esc closes and returns focus). Where
+  choosing is expensive (the standard picker re-checks the SBOM), arrows move
+  focus only and Enter/Space choose; say so in a screen-reader description.
 - Keep the visible focus ring (`:focus-visible`); never remove an outline
   without a replacement. A scrollable region that holds text has `tabIndex=0`
   and a name, so the keyboard can scroll it.

@@ -292,6 +292,27 @@ async function chipsMatchApi(where) {
   await page.getByRole("radio", { name: /Model Openness Framework/ }).click({ force: true });
   const after = await page.$$eval('[role=radio][aria-checked="true"]', els => els.map(e => e.textContent));
   check(after[0] === LABELS.g7ai, `${where}: an unsupported standard cannot be selected`);
+
+  // Keyboard: one tab stop (the chosen chip); arrows, Home and End move focus
+  // between the usable chips without choosing; the unsupported chip is skipped.
+  const group = '[role=radiogroup][aria-label="Minimum elements standard"]';
+  const stops = await page.$$eval(`${group} [role=radio]`, els => els.filter(e => e.tabIndex === 0).map(e => e.textContent));
+  check(stops.length === 1 && stops[0] === LABELS.g7ai, `${where}: the standard chips have one tab stop, the chosen one`);
+  const focused = () => page.evaluate(() => document.activeElement.textContent);
+  const chosen = () => page.$$eval('[role=radio][aria-checked="true"]', els => els.map(e => e.textContent).join("|"));
+  await page.focus(`${group} [role=radio][aria-checked="true"]`);
+  const trail = [];
+  for (const key of ["ArrowRight", "ArrowLeft", "ArrowLeft", "End", "ArrowRight", "Home", "ArrowDown", "ArrowDown", "ArrowUp"]) {
+    await page.keyboard.press(key);
+    trail.push(await focused());
+  }
+  const want = ["CISA 2026", "G7 SBOM", "BSI", "FSCT 2024", "NTIA", "NTIA", "BSI", "G7 SBOM", "BSI"];
+  check(trail.every((t, i) => t.startsWith(want[i])), `${where}: arrow keys, Home and End move focus (${JSON.stringify(trail)})`);
+  check(await chosen() === LABELS.g7ai, `${where}: moving focus with the keys does not choose a standard`);
+  check(await page.getByRole("radiogroup", { name: "Minimum elements standard" }).getAttribute("aria-describedby") === "standard-hint"
+    && (await page.locator("#standard-hint").innerText()).includes("arrow keys"), `${where}: the keys are described to screen readers`);
+  await page.keyboard.press("ArrowRight"); // back on G7 SBOM for AI
+  await page.focus("body");
 }
 
 // The Download SBOM button saves `sbom.text` under `sbom.filename`.

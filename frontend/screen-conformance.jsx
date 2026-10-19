@@ -191,17 +191,39 @@ function useSelectedStandard(standards) {
 function StandardPicker({ state, value, onChange, disabled }) {
   if (state.error) return <ErrorCard title="Could not load the list of minimum elements standards">{state.error}</ErrorCard>;
   if (!state.standards) return <div style={{ fontSize: 12.5, color: "var(--ink-3)" }}>Loading minimum elements standards…</div>;
+  // One tab stop: the chosen standard, else the first usable one. The arrow
+  // keys, Home and End then move focus between the usable chips; Enter or Space
+  // chooses. Choosing is manual (not "arrow chooses") because it can start a new
+  // check of the SBOM on screen.
+  const usable = state.standards.filter(r => r.ready).map(r => r.id);
+  const stopId = usable.includes(value) ? value : usable[0];
+  const moveFocus = (e) => {
+    const radios = [...e.currentTarget.querySelectorAll("[role=radio]:not([aria-disabled=true])")];
+    const i = radios.indexOf(document.activeElement);
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    let next = null;
+    if (i >= 0 && step) next = (i + step + radios.length) % radios.length;
+    else if (i >= 0 && e.key === "Home") next = 0;
+    else if (i >= 0 && e.key === "End") next = radios.length - 1;
+    if (next === null) return;
+    e.preventDefault();
+    radios[next].focus();
+  };
   return (
-    <div role="radiogroup" aria-label="Minimum elements standard" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+    <>
+    <span id="standard-hint" className="sr-only">Use the arrow keys to move between standards, and Enter or Space to choose one.</span>
+    <div role="radiogroup" aria-label="Minimum elements standard" aria-describedby="standard-hint" onKeyDown={moveFocus}
+      style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
       {state.standards.map(r => (
         <StandardTag key={r.id} role="radio" ariaChecked={value === r.id} active={value === r.id}
-          disabled={!r.ready}
+          disabled={!r.ready} tabStop={r.id === stopId}
           ariaLabel={r.ready ? standardLabel(r.id) : `${standardLabel(r.id)} (not supported)`}
           onClick={() => { if (!disabled) onChange(r.id); }}>
           {standardLabel(r.id)}{r.ready ? null : " (not supported)"}
         </StandardTag>
       ))}
     </div>
+    </>
   );
 }
 
