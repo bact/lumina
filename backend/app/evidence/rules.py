@@ -50,6 +50,9 @@ class EvidencePass:  # pylint: disable=too-few-public-methods
         self._reader = SbomReader(GraphIndex(document, tick))
         self._results: dict[str, CheckerRuleResult] = {}
         self._kinds: dict[str, list[str]] = {}
+        self.scopes: dict[str, tuple[str, str]] = {}
+        """``(applies_to, combine)`` of every decided rule, by rule id; filled
+        by :meth:`run`."""
 
     def run(self) -> dict[str, tuple[list[Evidence], int]]:
         """``(evidence, how many more)`` of every decided rule, by rule id."""
@@ -60,7 +63,16 @@ class EvidencePass:  # pylint: disable=too-few-public-methods
             result = self._results.get(self._spec.rule_id(rule))
             if result is not None and result.outcome in _DECIDED:
                 out[result.rule_id] = self._rule(rule, result)
+                self.scopes[result.rule_id] = self._scope(rule)
         return out
+
+    def _scope(self, rule: SpecRule) -> tuple[str, str]:
+        """The kind of element *rule* judges and how it combines them."""
+        kinds = {
+            str(found[1].get("kind", "")) for _, found in self._parts(rule)
+        }
+        kinds.discard("")
+        return (next(iter(kinds)) if len(kinds) == 1 else "", rule.aggregation)
 
     def _parts(self, rule: SpecRule) -> list[tuple[SpecRule, Carrier]]:
         """The probed rules behind *rule*: itself, or a roll-up's sub-rules."""

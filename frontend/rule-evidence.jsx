@@ -45,10 +45,89 @@ const ruleRowId = r => "rule-" + r.rule_id;
 const ruleToggleId = r => "rule-toggle-" + r.rule_id;
 const ruleDetailsId = r => "rule-details-" + r.rule_id;
 
+// One element behind a rule: does it have the property the rule asks for?
+// Deliberately not "Present" / "Missing": those words are the rule's verdict,
+// which depends on every judged element (see ruleExplanation).
 const EVIDENCE_CHIP = {
-  found: { status: "present", label: "Found" },
-  absent: { status: "missing", label: "Absent" },
+  found: { status: "present", label: "Has it" },
+  absent: { status: "missing", label: "Lacks it" },
 };
+
+// What each kind of element the checker judges is (ntia-conformance-checker,
+// "Kinds of component"); `one` and `many` name it in a sentence.
+const ELEMENT_KINDS = {
+  system: { one: "root package", many: "root packages", scope: "the system: each root package the SBOM describes" },
+  ai_model: { one: "AI model", many: "AI models", scope: "each AI model package" },
+  dataset: { one: "dataset", many: "datasets", scope: "each dataset package" },
+  component: { one: "component", many: "components", scope: "each component" },
+};
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+// The value(s) a rule's elements carry, for the default view of a row: the
+// `items` of every "found" evidence entry, as the API returned them (a preview
+// of at most 160 characters; the details show each in full with its line).
+// An element reference "Name (https://...#Id)" is shortened to its name here.
+// When the rule judged more than one element, each value is prefixed by its
+// element's name, so a Missing rule over two root packages says which one has
+// what (and a lone value is never mistaken for the whole rule's answer).
+const shortValue = v => {
+  const m = /^(.*\S) \((?:[a-z][a-z0-9+.-]*:\/\/|_:)[^\s)]*\)$/i.exec(v);
+  return m ? m[1] : v;
+};
+const MAX_ROW_VALUES = 3;
+
+function ruleValues(rule) {
+  const all = Array.isArray(rule.evidence) ? rule.evidence : [];
+  const ev = all.filter(e => e.status === "found" && Array.isArray(e.items) && e.items.length > 0);
+  const several = all.length > 1; // judged on several elements, found or not
+  const seen = new Set();
+  const out = [];
+  for (const e of ev) {
+    for (const it of e.items) {
+      const value = shortValue(String(it.value));
+      const text = several ? `${e.element_name || e.element_type || "element"}: ${value}` : value;
+      if (!seen.has(text)) { seen.add(text); out.push(text); }
+    }
+  }
+  return { values: out.slice(0, MAX_ROW_VALUES), more: Math.max(0, out.length - MAX_ROW_VALUES) };
+}
+
+// How many of the judged elements lack the property, when the rule judges
+// each element on its own and every one is listed; else null.
+function elementCounts(rule) {
+  const ev = Array.isArray(rule.evidence) ? rule.evidence : [];
+  if (rule.combine || !ELEMENT_KINDS[rule.applies_to] || rule.evidence_more || ev.length === 0) return null;
+  const lacks = ev.filter(e => e.status === "absent").length;
+  return { total: ev.length, lacks, has: ev.length - lacks };
+}
+
+// Plain-language reason for a rule's verdict, from what the API returned
+// (outcome, the kind of element it judges, how it combines, the evidence).
+// Null when there is nothing to add (a document-level rule).
+function ruleExplanation(rule) {
+  if (rule.combine === "any-of") {
+    return "A composite element: it is Present when at least one of its sub-elements is. The entries below come from the sub-elements; one that lacks the property does not make the rule Missing while another has it.";
+  }
+  if (rule.combine === "all-of") return "A composite element: it is Present only when all of its sub-elements are.";
+  if (rule.combine === "self-only") return "Judged on its own evidence; its sub-elements do not change its outcome.";
+  const kind = ELEMENT_KINDS[rule.applies_to];
+  if (!kind) return null;
+  const c = elementCounts(rule);
+  if (!c) return `Judged on ${kind.scope}. It is Present only when every one of them has the property.`;
+  const judged = `Judged on ${kind.scope}: ${plural(c.total, kind.one, kind.many)}.`;
+  if (c.lacks === 0) return `${judged} Every one has the property, so the rule is Present.`;
+  if (c.has === 0) return `${judged} ${c.total === 1 ? "It lacks" : "None has"} the property, so the rule is Missing.`;
+  return `${judged} ${c.has} ${c.has === 1 ? "has" : "have"} the property and ${c.lacks} ${c.lacks === 1 ? "lacks" : "lack"} it. A rule is Present only when every judged element has the property, so one that lacks it makes the rule Missing.`;
+}
+
+// Short hint under a rule's title, visible without opening the details:
+// "1 of 2 root packages lacks it" -- only when some, not all, lack it.
+function ruleHint(rule) {
+  const c = elementCounts(rule);
+  if (!c || c.lacks === 0 || c.has === 0) return "";
+  const kind = ELEMENT_KINDS[rule.applies_to];
+  return `${c.lacks} of ${plural(c.total, kind.one, kind.many)} ${c.lacks === 1 ? "lacks" : "lack"} it`;
+}
 
 const lineRange = (from, to) => (to && to > from ? `lines ${from}–${to}` : `line ${from}`);
 
@@ -64,11 +143,18 @@ function LinkButton({ children, onClick, ariaLabel }) {
 function RuleEvidence({ rule, onShow }) {
   const evidence = Array.isArray(rule.evidence) ? rule.evidence : [];
   const more = rule.evidence_more || 0;
+  const explanation = ruleExplanation(rule);
   if (evidence.length === 0 && more === 0) {
-    return <div className="rule-details-empty">No evidence available for this rule</div>;
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {explanation && <p className="rule-details-note">{explanation}</p>}
+        <div className="rule-details-empty">No evidence available for this rule</div>
+      </div>
+    );
   }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {explanation && <p className="rule-details-note">{explanation}</p>}
       {evidence.map((ev, i) => {
         const chip = EVIDENCE_CHIP[ev.status] || { status: "neutral", label: ev.status };
         const name = ev.element_name || ev.element_id || "(unnamed element)";
@@ -118,14 +204,22 @@ function RuleEvidence({ rule, onShow }) {
 // ─── RuleRow -- one rule, with its details toggle ──────────────────────
 function RuleRow({ rule, last, details, expanded, onToggle, onShow }) {
   const chip = ruleChip(rule);
+  const { values, more } = ruleValues(rule);
   return (
     <div id={ruleRowId(rule)} className="rule-row" style={{ borderBottom: last ? "none" : "1px solid var(--border)" }}>
       <div className="rule-row-main">
         <div style={{ flex: "0 0 112px", paddingTop: 1 }}><StatusChip status={chip.status}>{chip.label}</StatusChip></div>
         <div style={{ minWidth: 0, flex: "1 1 180px" }}>
           <div style={{ fontSize: 13, color: "var(--ink)" }}>{rule.title}</div>
+          {values.length > 0 && (
+            <ul className="rule-values" aria-label={`Values in the SBOM for ${rule.title}`}>
+              {values.map(v => <li key={v}>{v}</li>)}
+              {more > 0 && <li className="rule-values-more">and {more} more in the details</li>}
+            </ul>
+          )}
           <div style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 2 }}>
             <Mono>{rule.rule_id.split("-").slice(2).join("-")}</Mono>{rule.provision ? <> · {rule.provision}</> : null}
+            {ruleHint(rule) ? <> · {ruleHint(rule)}</> : null}
           </div>
         </div>
         {details && (

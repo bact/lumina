@@ -77,9 +77,11 @@ def add_evidence(
             raise EvidenceTimeout(f"took longer than {budget:g} s")
 
     try:
-        found = EvidencePass(checker, document, tick).run()
+        run = EvidencePass(checker, document, tick)
+        found = run.run()
     except Exception as exc:  # pylint: disable=broad-exception-caught
         logger.warning("Evidence skipped: %s: %s", type(exc).__name__, exc)
         return
     for rule in response.conformance.rules:
         rule.evidence, rule.evidence_more = found.get(rule.rule_id, ([], 0))
+        rule.applies_to, rule.combine = run.scopes.get(rule.rule_id, ("", ""))

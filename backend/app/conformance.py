@@ -101,6 +101,14 @@ class RuleResult(BaseModel):
     for an SPDX 3 JSON SBOM checked by Lumina."""
     evidence_more: int = 0
     """How many more evidence entries were left out."""
+    applies_to: str = ""
+    """The checker's kind of element the rule judges (``system``, ``ai_model``,
+    ``dataset``, ``component``); empty for a document-level rule, or when the
+    rule's sub-checks judge several kinds.  Set with the evidence."""
+    combine: str = ""
+    """How the rule combines its elements or sub-checks: empty (every judged
+    element must have the property), ``any-of`` or ``all-of`` (a composite
+    rule over its sub-rules), or ``self-only``.  Set with the evidence."""
 
 
 class ConformanceResult(BaseModel):

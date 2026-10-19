@@ -84,9 +84,14 @@ const PKG_BLOCK = blockOf(SBOM.display, '"spdxId": "https://example.org/mock/pkg
 const VERSION_LINE = lineOf(SBOM.display, '"software_packageVersion"');
 const PKG_EVIDENCE = { element_id: "https://example.org/mock/pkg", element_type: "software_Package", element_name: "mock-pkg", ...PKG_BLOCK };
 const NTIA_EVIDENCE = {
-  "Component supplier": { evidence: [{ ...PKG_EVIDENCE, status: "absent", items: [] }], evidence_more: 3 },
+  "Component supplier": { evidence: [{ ...PKG_EVIDENCE, status: "absent", items: [] }], evidence_more: 3, applies_to: "component" },
   "Component version": { evidence: [{ ...PKG_EVIDENCE, status: "found",
-    items: [{ key: "software_packageVersion", value: "1.0", line: VERSION_LINE }] }], evidence_more: 0 },
+    items: [{ key: "software_packageVersion", value: "1.0", line: VERSION_LINE }] }], evidence_more: 0, applies_to: "component" },
+  // One judged element has the property and one lacks it: the rule is Missing.
+  "Component identifier": { evidence: [{ ...PKG_EVIDENCE, status: "absent", items: [] },
+    { ...PKG_EVIDENCE, element_name: "mock-model", element_type: "ai_AIPackage", status: "found",
+      items: [{ key: "software_packageUrl", value: "pkg:generic/mock", line: VERSION_LINE }] }], evidence_more: 0, applies_to: "system" },
+  "Dependency relationships": { evidence: [], evidence_more: 0, applies_to: "system", combine: "any-of" },
 };
 // 50,000 lines: line n (2..49,999) is `  "key<n>": "value <n>",`.
 const BIG_LINES = 50000;
@@ -102,7 +107,7 @@ const NTIA_RESULT = {
     rules: ["Component supplier", "Component name", "Component version", "Component identifier",
       "Dependency relationships", "SBOM author", "SBOM timestamp"].map((title, i) => ({
       rule_id: `BOM-NTIA2021-DF-00${i + 1}`, cluster: "DF", title, provision: "requirement",
-      outcome: i === 0 ? "missing" : "present",
+      outcome: i === 0 || title === "Component identifier" ? "missing" : "present",
       ...(NTIA_EVIDENCE[title] || { evidence: [], evidence_more: 0 }),
     })),
     system_judged_by_model: null,
@@ -302,17 +307,31 @@ async function evidenceAndSource(where) {
   await downloads(where, SBOM.filename, SBOM.text);
   const tabs = await page.$$eval("[role=tablist] [role=tab]", els => els.map(e => [e.textContent, e.getAttribute("aria-selected")]));
   check(JSON.stringify(tabs) === JSON.stringify([["Result", "true"], ["SBOM source", "false"], ["Generator log", "false"]]), `${where}: Result | SBOM source | Generator log tabs ${JSON.stringify(tabs)}`);
+  // The default view already shows the value an element carries, before any click.
+  const rowValues = async (title) => page.locator(".rule-row", { hasText: title }).first().locator(".rule-values li").allInnerTexts();
+  check(JSON.stringify(await rowValues("Component version")) === JSON.stringify(["1.0"]),
+    `${where}: the row shows the version value without opening the details`);
+  check(JSON.stringify(await rowValues("Component identifier")) === JSON.stringify(["mock-model: pkg:generic/mock"]),
+    `${where}: a Missing rule with two elements shows the value of the one that has it, with its name`);
+  check((await rowValues("Component supplier")).length === 0, `${where}: a rule with nothing found shows no value`);
+  check(await page.locator(".rule-values").first().getAttribute("aria-label") !== null, `${where}: the values list has an accessible name`);
   const toggle = page.getByRole("button", { name: "Show more: Component version" });
   await toggle.click();
   let body = await text();
   check(await page.getByRole("button", { name: "Show less: Component version" }).getAttribute("aria-expanded") === "true"
-      && body.includes("software_packageVersion") && body.includes("mock-pkg") && body.includes("software_Package") && body.includes("Found"),
+      && body.includes("software_packageVersion") && body.includes("mock-pkg") && body.includes("software_Package") && body.includes("Has it"),
     `${where}: Show more shows the rule's evidence`);
   await page.getByRole("button", { name: "Expand all" }).click();
   body = await text();
   const states = await page.$$eval("button[aria-controls^=rule-details-]", els => els.map(e => e.getAttribute("aria-expanded")));
   check(states.length === 7 && states.every(s => s === "true") && body.includes("No evidence available for this rule")
-      && body.includes("and 3 more") && body.includes("Absent"), `${where}: Expand all opens every rule, empty ones say so`);
+      && body.includes("and 3 more") && body.includes("Lacks it"), `${where}: Expand all opens every rule, empty ones say so`);
+  // A Missing rule whose elements split: the row says so, and the details say why.
+  check(body.includes("1 of 2 root packages lacks it"), `${where}: the rule row says how many elements lack the property`);
+  check(body.includes("Judged on the system: each root package the SBOM describes: 2 root packages. 1 has the property and 1 lacks it. A rule is Present only when every judged element has the property, so one that lacks it makes the rule Missing."),
+    `${where}: the details explain why the rule is Missing`);
+  check(body.includes("A composite element: it is Present when at least one of its sub-elements is."), `${where}: an any-of rule says how it combines`);
+  check(!/Found|Absent/.test(await page.locator(".evidence").allInnerTexts().then(t => t.join(" "))), `${where}: element labels are not the rule verdict words`);
   await shot("2b-generate-expanded");
   await page.getByRole("button", { name: "Collapse all" }).click();
   check((await page.$$eval("button[aria-controls^=rule-details-]", els => els.map(e => e.getAttribute("aria-expanded")))).every(s => s === "false"),

@@ -286,3 +286,21 @@ def test_evidence_is_skipped_past_its_time_budget(
         response = _check(DEMO, "g7ai")
     assert all(not r.evidence for r in response.conformance.rules)
     assert "EvidenceTimeout" in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("rule_id", "applies_to", "combine"),
+    [
+        ("BOM-G7AI2026-SLP-001", "system", ""),
+        ("BOM-G7AI2026-SLP-008", "system", "any-of"),
+        ("BOM-G7AI2026-MDL-003", "ai_model", ""),
+        ("BOM-G7AI2026-MDL-012", "ai_model", "self-only"),
+        ("BOM-G7AI2026-MD-009", "", ""),
+    ],
+)
+def test_rules_say_what_they_judge_and_how(
+    g7_demo: dict[str, RuleResult], rule_id: str, applies_to: str, combine: str
+) -> None:
+    """A rule names the kind of element it judges and how it combines them, so
+    the UI can explain a Missing rule that lists an element that has the property."""
+    assert (g7_demo[rule_id].applies_to, g7_demo[rule_id].combine) == (applies_to, combine)
