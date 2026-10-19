@@ -6,7 +6,7 @@
       "tool": {
         "driver": {
           "name": "ntia-conformance-checker",
-          "version": "0.1.dev1141+gdc3babc77",
+          "version": "0.1.dev1141+g82a63b9ec",
           "informationUri": "https://github.com/spdx/ntia-conformance-checker",
           "rules": [
             {
