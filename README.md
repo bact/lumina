@@ -9,7 +9,7 @@ SPDX-License-Identifier: CC0-1.0
 
 A web-based Software Bill of Materials (SBOM) conformance checker.
 
-Lumina checks an SBOM against a regulation's minimum elements and shows, rule
+Lumina checks an SBOM against a minimum elements standard and shows, rule
 by rule, whether the SBOM has the property each rule asks for -- so the answer
 to *"are we conformant?"* stops being a folder of PDFs. Bring an SBOM file, a
 SARIF log from a checker, or a Git or Hugging Face URL for Lumina to generate
@@ -148,7 +148,7 @@ requirements the SBOM has a property for, and which it lacks (`present` means th
 property exists, not that its value is right). The checker detects SPDX
 2 or 3 from the file.
 
-| Regulation | Checker standard | Result |
+| Minimum elements standard | Checker standard | Result |
 | - | - | - |
 | NTIA Minimum Elements (2021) | `ntia` | per-requirement gaps |
 | G7 SBOM for AI Minimum Elements (2026) | `g7ai` | per-requirement gaps; partial coverage, SPDX 3 only |
@@ -177,7 +177,7 @@ generated file for download and a pretty-printed copy with line numbers; for an
 imported SARIF log, the embedded SBOM when it is JSON). For an SPDX 3 JSON
 SBOM each rule also carries `evidence`: the elements that have, or lack, what
 the rule asks for, with their lines in the SBOM. A refused request (413 too large, 422 unreadable or unsupported, 501
-unsupported regulation) carries the reason in `detail`.
+unsupported standard) carries the reason in `detail`.
 
 ### Adding a regulation
 

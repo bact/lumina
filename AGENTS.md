@@ -93,6 +93,9 @@ the frontend that reads them (`ArtifactResult` in `frontend/result-view.jsx`,
 
 ### Adding a regulation
 
+(Code and API identifiers say *regulation*; everything the user reads says
+*minimum elements standard*. Keep that split.)
+
 The long-term goal is to cover EU CRA, EO 14028, FDA PMP, ISO/IEC 5230, and
 more. The frontend lists exactly what `GET /api/v1/regulations` returns, so a
 regulation appears in the UI only once the backend knows it. To add one:

@@ -8,7 +8,7 @@ SPDX-License-Identifier: CC0-1.0
 # Lumina design
 
 Lumina is a web-based software bill of materials (SBOM) conformance checker.
-For a chosen regulation it shows, rule by rule, whether the SBOM has the
+For a chosen minimum elements standard it shows, rule by rule, whether the SBOM has the
 property each rule asks for. "Present" means the property exists, not that its
 value is right. The web UI shows only what the API returns; it has no sample
 or fixture data.
@@ -46,8 +46,13 @@ one per input mode plus About:
 | *Import SARIF* | [Mode 3](#mode-3--sarif-import) | `POST /api/v1/sarif/import` |
 | *About* | — | `GET /api/v1/regulations` |
 
-The regulation picker lists exactly what `GET /api/v1/regulations` returns; a
-regulation with `ready: false` is shown but cannot be picked. One result view
+The standard picker lists exactly what `GET /api/v1/regulations` returns (the API
+and its identifiers keep the name *regulation*; the UI says *minimum elements
+standard*); an entry with `ready: false` is shown but cannot be picked. With a
+finished result in hand, picking another standard checks the same SBOM again
+from the `sbom.text` the first response returned, through `POST /sbom/check`:
+nothing is cloned, generated or uploaded again, and the generator, its log and
+its warnings stay with the new result. One result view
 renders every `SbomCheckResponse`; it shows no counts when the SBOM could not
 be checked or when no rule applies (`sbom.nothing-applies`). A refused request shows the server's `detail`.
 
@@ -185,7 +190,7 @@ and no gap is reported.
 | Id | From | Meaning |
 | :- | :--- | :------ |
 | `spdx.parsing-error`, `spdx.validation-message`, `spdx.floating-component`, `spdx.unknown-pointer` | checker | The SBOM could not be read, failed validation, or has elements not connected to its root or pointers to missing elements |
-| `sbom.nothing-applies` | checker | No rule of the regulation applies to this SBOM |
+| `sbom.nothing-applies` | checker | No rule of the standard applies to this SBOM |
 | `sarif.no-rule-outcomes` | Lumina | The log has no `ruleOutcomes`; only missing rules are counted |
 | `pitloom.log` | Lumina, Mode 1 | A WARNING-or-above record Pitloom logged while generating |
 | `pitloom.generation-failed`, `pitloom.url-unsupported` | Lumina, Mode 1 | Pitloom failed, or the URL has no host |

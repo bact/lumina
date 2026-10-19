@@ -171,7 +171,7 @@ function ResultBody({ result, expanded, setExpanded, onToggle, onShow, details }
       {ok && nothingApplies && (
         <Card variant="default" padding={16}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--ink-2)", fontSize: 14, fontWeight: 500 }}>
-            <Icon name="info" size={16} /> Nothing was checked: no rule of this regulation applies to this SBOM
+            <Icon name="info" size={16} /> Nothing was checked: no rule of this standard applies to this SBOM
           </div>
         </Card>
       )}

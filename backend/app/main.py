@@ -206,8 +206,8 @@ async def check_artifact(req: ArtifactCheckRequest) -> JobSubmission:
     if req.regulation_id not in CHECKER_STANDARDS:
         raise HTTPException(
             status_code=501,
-            detail=f"Regulation '{req.regulation_id}' is not supported by "
-            "ntia-conformance-checker.",
+            detail=f"Minimum elements standard '{req.regulation_id}' is not "
+            "supported by ntia-conformance-checker.",
         )
     job_id = _jobs.enqueue(
         "generate_and_check",

@@ -262,7 +262,8 @@ def run_checker(
     standard = CHECKER_STANDARDS.get(regulation_id)
     if standard is None:
         raise NotImplementedError(
-            f"Regulation '{regulation_id}' is not supported by ntia-conformance-checker."
+            f"Minimum elements standard '{regulation_id}' is not supported by "
+            "ntia-conformance-checker."
         )
     # Imported here to keep app start-up light and to avoid a cycle with sarif_ingest.
     # pylint: disable=import-outside-toplevel,cyclic-import

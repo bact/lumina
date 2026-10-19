@@ -40,8 +40,8 @@ function AboutScreen() {
         </h1>
         <p style={{ margin: "12px 0 0", fontSize: 15, color: "var(--ink-2)", lineHeight: 1.6, maxWidth: 640 }}>
           Lumina checks a Software Bill of Materials (SBOM) against a
-          regulation's minimum elements and shows, rule by rule, which of them
-          the SBOM has a property for. Bring an SBOM, a SARIF log from a
+          minimum elements standard and shows, rule by rule, which of its
+          elements the SBOM has a property for. Bring an SBOM, a SARIF log from a
           checker, or a Git or Hugging Face URL to generate one from.
         </p>
       </div>
@@ -96,7 +96,7 @@ function AboutScreen() {
 
       {/* ── Regulations, as the API lists them ──────────────────────────── */}
       <section aria-labelledby="about-specs-h">
-        <Eyebrow id="about-specs-h">Regulations</Eyebrow>
+        <Eyebrow id="about-specs-h">Minimum elements standards</Eyebrow>
         <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--ink-3)", lineHeight: 1.55 }}>
           Each check reports, per rule, whether the SBOM has the property the
           rule asks for. Present means the property exists, not that its value
@@ -104,10 +104,10 @@ function AboutScreen() {
           from the file.
         </p>
         {regs.error
-          ? <div style={{ marginTop: 8 }}><ErrorCard title="Could not load the regulation list">{regs.error}</ErrorCard></div>
+          ? <div style={{ marginTop: 8 }}><ErrorCard title="Could not load the list of minimum elements standards">{regs.error}</ErrorCard></div>
           : (
             <Card padding={0} style={{ marginTop: 8 }}>
-              {!regs.regulations && <div style={{ padding: "14px 20px", fontSize: 12.5, color: "var(--ink-3)" }}>Loading regulations…</div>}
+              {!regs.regulations && <div style={{ padding: "14px 20px", fontSize: 12.5, color: "var(--ink-3)" }}>Loading minimum elements standards…</div>}
               {(regs.regulations || []).map((r, i, all) => (
                 <SpecRow key={r.id} reg={r} isLast={i === all.length - 1} />
               ))}
@@ -144,7 +144,7 @@ function AboutScreen() {
 
       <MarginNote title="A note --">
         Lumina is research software developed in the open. Field mappings and
-        regulation citations track public guidance documents but are not legal
+        standard citations track public guidance documents but are not legal
         advice -- verify against the canonical source before relying on a
         conformance result.
       </MarginNote>

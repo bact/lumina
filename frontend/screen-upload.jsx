@@ -89,8 +89,18 @@ function UploadScreen() {
 
   return (
     <ScreenFrame eyebrow="Upload SBOM" title="Check an SBOM file"
-      intro="Choose an SPDX 2 or SPDX 3 SBOM file and a regulation. The server checks it with ntia-conformance-checker; the file is deleted after the check.">
-      <RegulationPicker state={regs} value={regId} onChange={(id) => { if (!running) { setRegId(id); check.reset(); } }} disabled={running} />
+      intro="Choose an SPDX 2 or SPDX 3 SBOM file and a minimum elements standard. The server checks it with ntia-conformance-checker; the file is deleted after the check. You can switch the standard afterwards without uploading again.">
+      <RegulationPicker state={regs} value={regId} disabled={running}
+        onChange={(id) => {
+          if (running || id === regId) return;
+          setRegId(id);
+          // A finished result is checked again against the new standard from its
+          // own SBOM text; the file is not uploaded again.
+          if (check.phase === "done" && canRecheck(check.result)) {
+            const previous = check.result;
+            check.start(() => recheckSbom(previous, id));
+          } else check.reset();
+        }} />
       <FilePicker id="sbom-file" label="Choose SBOM file" file={file} disabled={running}
         onChange={(f) => { setFile(f); check.reset(); }} />
       <div>
@@ -123,7 +133,7 @@ function SarifScreen() {
 
   return (
     <ScreenFrame eyebrow="Import SARIF" title="Read a SARIF conformance log"
-      intro="Choose or paste a SARIF 2.1.0 log made by a conformance checker. Nothing is re-checked: Lumina reads the log's results. The regulation is taken from the log's rule ids.">
+      intro="Choose or paste a SARIF 2.1.0 log made by a conformance checker. Nothing is re-checked: Lumina reads the log's results. The standard is taken from the log's rule ids.">
       <FilePicker id="sarif-file" label="Choose SARIF file" accept=".sarif,.json,application/json" file={file} disabled={running}
         onChange={(f) => { setFile(f); check.reset(); }} />
       <div>

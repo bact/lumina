@@ -7,7 +7,7 @@
 // /api/ route, visits every side-nav screen in headless Chromium and asserts:
 //   - no page errors and no console errors;
 //   - none of the old sample-data strings appear;
-//   - the regulation chips equal the mocked GET /api/v1/regulations response
+//   - the standard chips equal the mocked GET /api/v1/regulations response
 //     (same ids, same order, ready=false not selectable);
 //   - refused requests (413, 422, 501) show the server's `detail` text;
 //   - a per-rule BSI result shows its DOC and COMP clusters with their counts;
@@ -129,6 +129,17 @@ const GEN_FAILED_RESULT = {
     { source: "lumina", level: "error", message: "[git.clone-failed] fatal: repository not found", elapsed_ms: 410 },
   ],
 };
+// The same SBOM checked against another standard (what POST /sbom/check returns
+// for a re-check): no generator, no log -- the page must carry those over.
+const RECHECK_RESULT = {
+  conformance: { regulation_id: "cisa2026", source: "ntia-conformance-checker", total: 1, present: 1, missing: 0, unverified: 0, gaps: [],
+    rules: [{ rule_id: "BOM-CISA2026-META-001", cluster: "META", title: "Recheck mock rule", provision: "requirement", outcome: "present", evidence: [], evidence_more: 0 }],
+    system_judged_by_model: null },
+  run: { ...TOOL, generator: "", execution_successful: true, notifications: [] },
+  embedded_sbom: null,
+  sbom: SBOM,
+};
+const rechecks = [];
 const BIG_RESULT = { ...NTIA_RESULT,
   conformance: { ...NTIA_RESULT.conformance, rules: NTIA_RESULT.conformance.rules.map((r, i) => (i !== 1 ? { ...r, evidence: [] }
     : { ...r, evidence: [{ status: "found", element_id: "document", element_type: "SpdxDocument", element_name: null,
@@ -172,7 +183,7 @@ const SARIF_RESULT = {
 };
 const DETAIL_413 = "SBOM is larger than 10485760 bytes.";
 const DETAIL_422 = "Unsupported standard: no single supported standard in rule id spec(s) ['CISA2025']";
-const DETAIL_501 = "Regulation 'cisa2026' is not supported by ntia-conformance-checker.";
+const DETAIL_501 = "Minimum elements standard 'cisa2026' is not supported by ntia-conformance-checker.";
 
 async function mockApi(page) {
   await page.route("**/api/v1/regulations", r => r.fulfill({ json: { regulations: REGULATIONS } }));
@@ -187,6 +198,7 @@ async function mockApi(page) {
   await page.route("**/api/v1/jobs/job-2", r => r.fulfill({ json: { status: "done", result: BIG_RESULT } }));
   await page.route("**/api/v1/sbom/check", r => {
     const raw = r.request().postData() || "";
+    if (/name="regulation"\r\n\r\ncisa2026/.test(raw)) { rechecks.push(raw); return r.fulfill({ json: RECHECK_RESULT }); }
     if (/name="regulation"\r\n\r\nbsi/.test(raw)) return r.fulfill({ json: BSI_RESULT });
     if (/name="regulation"\r\n\r\ng7ai/.test(raw)) return r.fulfill({ json: UNREADABLE_RESULT });
     return r.fulfill({ status: 413, json: { detail: DETAIL_413 } });
@@ -251,12 +263,12 @@ async function noSampleData(where) {
 }
 
 async function chipsMatchApi(where) {
-  await page.waitForSelector('[role=radiogroup][aria-label="Regulation"] [role=radio]');
-  const chips = await page.$$eval('[role=radiogroup][aria-label="Regulation"] [role=radio]',
+  await page.waitForSelector('[role=radiogroup][aria-label="Minimum elements standard"] [role=radio]');
+  const chips = await page.$$eval('[role=radiogroup][aria-label="Minimum elements standard"] [role=radio]',
     els => els.map(e => ({ text: e.textContent, disabled: e.getAttribute("aria-disabled") === "true" })));
   const expected = REGULATIONS.map(r => ({ label: LABELS[r.id] || r.id, disabled: !r.ready }));
   check(chips.length === expected.length && chips.every((c, i) => c.text.startsWith(expected[i].label) && c.disabled === expected[i].disabled),
-    `${where}: regulation chips equal the API list ${JSON.stringify(chips.map(c => c.text))}`);
+    `${where}: standard chips equal the API list ${JSON.stringify(chips.map(c => c.text))}`);
   const checked = await page.$$eval('[role=radio][aria-checked="true"]', els => els.map(e => e.textContent));
   check(checked.length === 1 && checked[0] === LABELS.g7ai, `${where}: G7 SBOM for AI is preselected`);
   await page.getByRole("radio", { name: /Model Openness Framework/ }).click({ force: true });
@@ -392,6 +404,24 @@ check(/mono/i.test(logFont), `Generate & check: the log is in a monospace font (
 await shot("2f-generator-log");
 await page.getByRole("tab", { name: "Result" }).click();
 
+// Switching the standard checks the same SBOM again: nothing is generated again,
+// the SBOM text is what goes to the server, and what the generator did stays.
+const artifactPosts = posted.length;
+await page.getByRole("radio", { name: LABELS.cisa2026 }).click();
+await page.waitForSelector("text=Recheck mock rule", { timeout: 10000 }).catch(() => {});
+check(posted.length === artifactPosts && rechecks.length === 1, "switch standard: no new generation job, one re-check request");
+check(rechecks.length === 1 && rechecks[0].includes('filename="r.spdx3.json"') && rechecks[0].includes("mock-pkg"),
+  "switch standard: the re-check sends the SBOM text under its own file name");
+body = await text();
+check(body.includes("Recheck mock rule") && body.includes("pitloom 0.0.0-mock") && body.includes("Mock Pitloom warning."),
+  "switch standard: the new result shows, with the generator and its warning carried over");
+check(await page.getByRole("tab", { name: "Generator log" }).count() === 1
+  && await page.getByRole("radio", { name: LABELS.cisa2026 }).getAttribute("aria-checked") === "true",
+  "switch standard: the Generator log tab stays and the chosen standard is selected");
+check((await page.locator("[role=status].sr-only").allInnerTexts()).some(t => /^Check finished: 1 present and 0 missing of 1 rules checked\.$/.test(t)),
+  "switch standard: the new result is announced");
+await shot("2g-switched-standard");
+
 // A failed generation still shows why, in the log.
 await page.getByPlaceholder(/github/).fill("https://github.com/o/gone");
 await page.getByRole("button", { name: "Generate & check" }).last().click();
@@ -452,6 +482,12 @@ check(/not provided/i.test(body) && body.includes("OPTIONAL PROVIDED") && body.i
 await downloads("Upload SBOM", "upload.spdx3.json", SBOM.text);
 check(await page.getByRole("tab", { name: "Generator log" }).count() === 0, "Upload SBOM: no Generator log tab (nothing was generated)");
 await shot("5-upload-bsi-rules");
+// Switching the standard on the Upload page checks the shown SBOM again without a new upload.
+rechecks.length = 0;
+await page.getByRole("radio", { name: LABELS.cisa2026 }).click();
+await page.waitForSelector("text=Recheck mock rule", { timeout: 10000 }).catch(() => {});
+check(rechecks.length === 1 && rechecks[0].includes('filename="upload.spdx3.json"') && (await text()).includes("Recheck mock rule"),
+  "Upload SBOM: switching the standard re-checks the same SBOM from its text");
 await page.getByRole("radio", { name: LABELS.g7ai }).click();
 await page.getByRole("button", { name: "Check SBOM" }).click();
 await page.waitForSelector("text=could not be checked", { timeout: 5000 }).catch(() => {});

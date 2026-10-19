@@ -99,6 +99,32 @@ const RULE_CLUSTERS = {
   ],
 };
 
+// ─── Switching the standard of a finished result ───────────────────────
+// A result that carries its SBOM (`sbom.text`, the original bytes) can be
+// checked against another minimum elements standard from that text: the user
+// does not generate, download or upload anything again. What the first run
+// did to *generate* the SBOM (generator, its log and warnings) stays with the
+// new result; the SBOM itself is not regenerated.
+const canRecheck = (result) => !!(result && result.sbom && typeof result.sbom.text === "string");
+
+async function recheckSbom(previous, regulationId) {
+  const sbom = previous.sbom;
+  const form = new FormData();
+  form.append("file", new Blob([sbom.text], { type: "application/octet-stream" }), sbom.filename || "sbom.json");
+  form.append("regulation", regulationId);
+  const next = await postForResult("/api/v1/sbom/check", { body: form });
+  const run = previous.run || {};
+  if (run.generator) {
+    next.run.generator = run.generator;
+    next.run.notifications = [
+      ...(run.notifications || []).filter(n => n.descriptor_id === "pitloom.log"),
+      ...(next.run.notifications || []),
+    ];
+  }
+  if (previous.generation_log) next.generation_log = previous.generation_log;
+  return next;
+}
+
 // ─── API helpers ───────────────────────────────────────────────────────
 // The explanation a failed response carries: FastAPI's `detail` (a string,
 // or a list of validation errors), else the body text, else the status text.
@@ -138,7 +164,7 @@ function useRegulations() {
         const response = await fetch("/api/v1/regulations");
         if (!response.ok) throw new Error(await apiErrorMessage(response));
         const body = await response.json();
-        if (!body || !Array.isArray(body.regulations)) throw new Error("The regulation list is malformed.");
+        if (!body || !Array.isArray(body.regulations)) throw new Error("The list of minimum elements standards is malformed.");
         if (alive) setState({ regulations: body.regulations, error: "" });
       } catch (err) {
         if (alive) setState({ regulations: null, error: String(err.message || err) });
@@ -160,10 +186,10 @@ function useSelectedRegulation(regulations) {
 
 // ─── RegulationPicker -- radio chips for the regulations the API lists ──
 function RegulationPicker({ state, value, onChange, disabled }) {
-  if (state.error) return <ErrorCard title="Could not load the regulation list">{state.error}</ErrorCard>;
-  if (!state.regulations) return <div style={{ fontSize: 12.5, color: "var(--ink-3)" }}>Loading regulations…</div>;
+  if (state.error) return <ErrorCard title="Could not load the list of minimum elements standards">{state.error}</ErrorCard>;
+  if (!state.regulations) return <div style={{ fontSize: 12.5, color: "var(--ink-3)" }}>Loading minimum elements standards…</div>;
   return (
-    <div role="radiogroup" aria-label="Regulation" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+    <div role="radiogroup" aria-label="Minimum elements standard" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
       {state.regulations.map(r => (
         <RegTag key={r.id} role="radio" ariaChecked={value === r.id} active={value === r.id}
           disabled={!r.ready}
@@ -188,6 +214,7 @@ function ImportScreen() {
   const [phase, setPhase] = _useSC("idle"); // idle | running | done | error
   const [result, setResult] = _useSC(null); // SbomCheckResponse
   const [errorMsg, setErrorMsg] = _useSC("");
+  const [rechecking, setRechecking] = _useSC(false); // the running phase is a re-check
   const [exampleNote, setExampleNote] = _useSC(""); // spoken when an example fills the form
   const aliveRef = _useRef(true);
   _useEffect(() => () => { aliveRef.current = false; }, []);
@@ -222,11 +249,29 @@ function ImportScreen() {
     }
   }
 
-  const pick = (id) => { if (phase !== "running") { setRegId(id); setResult(null); setPhase("idle"); } };
+  // With a finished result in hand, picking another standard checks the same
+  // SBOM again (nothing is cloned or generated again); else it just selects.
+  async function pick(id) {
+    if (phase === "running" || id === regId) return;
+    setRegId(id);
+    if (!(phase === "done" && canRecheck(result))) { setResult(null); setPhase("idle"); return; }
+    const previous = result;
+    setPhase("running"); setResult(null); setErrorMsg(""); setRechecking(true);
+    try {
+      const next = await recheckSbom(previous, id);
+      if (!aliveRef.current) return;
+      setResult(next); setPhase("done");
+    } catch (err) {
+      if (!aliveRef.current) return;
+      setErrorMsg(String(err.message || err)); setPhase("error");
+    } finally {
+      if (aliveRef.current) setRechecking(false);
+    }
+  }
 
   return (
     <ScreenFrame eyebrow="Generate & check" title="Check a repository or model"
-      intro="Paste a Git repository URL or a Hugging Face Hub model URL. Lumina generates an SBOM for it (server-side, with Pitloom) and checks it against the regulation you pick.">
+      intro="Paste a Git repository URL or a Hugging Face Hub model URL. Lumina generates an SBOM for it (server-side, with Pitloom) and checks it against the minimum elements standard you pick. You can switch the standard afterwards without generating again.">
       <RegulationPicker state={regs} value={regId} onChange={pick} disabled={phase === "running"} />
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -269,7 +314,9 @@ function ImportScreen() {
       {phase === "running" && (
         <div role="status" style={{ fontSize: 12.5, color: "var(--ink-3)", display: "flex", alignItems: "center", gap: 8 }}>
           <Icon name="loader" size={14} style={{ color: "var(--ink-3)" }} />
-          Cloning &amp; generating the SBOM, then checking conformance. A large repository can take a couple of minutes.
+          {rechecking
+            ? "Checking the same SBOM against the other standard. Nothing is generated again."
+            : "Cloning & generating the SBOM, then checking conformance. A large repository can take a couple of minutes."}
         </div>
       )}
 
@@ -300,7 +347,7 @@ function ScreenFrame({ eyebrow, title, intro, children }) {
 }
 
 Object.assign(window, {
-  IMPORT_REGULATIONS, RULE_CLUSTERS, DEFAULT_REGULATION, DEMO_EXAMPLES, regulationLabel, apiErrorMessage, postForResult,
+  IMPORT_REGULATIONS, RULE_CLUSTERS, DEFAULT_REGULATION, DEMO_EXAMPLES, regulationLabel, apiErrorMessage, postForResult, canRecheck, recheckSbom,
   useRegulations, useSelectedRegulation, RegulationPicker, ScreenFrame,
   ImportScreen,
 });

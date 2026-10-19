@@ -62,10 +62,14 @@ When the response carries the checked SBOM (`sbom`: `filename`, `format`,
 A response without `sbom` (older servers, a SARIF log with no JSON SBOM)
 shows the result alone: no tabs, no download, no rule toggles.
 
-## Regulations
+## Minimum elements standards
 
-The regulation chips list exactly what `GET /api/v1/regulations` returns, in
-its order. A regulation with `ready: false` is shown but cannot be selected.
+(The API and the code say *regulation*; the UI says *minimum elements standard*.)
+The standard chips list exactly what `GET /api/v1/regulations` returns, in
+its order. An entry with `ready: false` is shown but cannot be selected. Picking another
+standard while a result with `sbom.text` is shown checks that SBOM again
+(`recheckSbom`, `POST /api/v1/sbom/check`) with no new generation or upload, and
+keeps the generator, its log and warnings of the first run.
 *G7 SBOM for AI* (`DEFAULT_REGULATION`, `g7ai`) is preselected when the API
 lists it as ready; otherwise the first ready one is.
 Labels, a one-line description of what each check covers, and a source link
@@ -111,7 +115,7 @@ Built against WCAG 2.2 AA:
 - **Keyboard:** every interactive element is a `<button>` or carries
   `role="button"` / `role="radio"` with Enter/Space handlers. The language
   popover closes on Esc and returns focus to its button.
-- **Regulation picker:** a `radiogroup`; an unsupported regulation is a radio
+- **Standard picker:** a `radiogroup` named "Minimum elements standard"; an unsupported one is a radio
   with `aria-disabled="true"`, out of the tab order.
 - **Errors and progress:** an error card has `role="alert"`; the working
   message has `role="status"`.
