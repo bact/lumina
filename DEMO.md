@@ -31,7 +31,6 @@ Google Fonts; offline the page falls back to system fonts.
 ```shell
 git clone https://github.com/bact/lumina.git
 cd lumina
-git checkout ccr-d8bf2b7e-n7m69y     # only while the work is not merged to main
 docker compose up --build
 ```
 
