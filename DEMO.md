@@ -67,22 +67,27 @@ made from it for the G7 SBOM for AI standard.
    of its rules were not checked.
 3. **Import SARIF.** Choose `demo/phi-tiny-random.g7ai.sarif.json`. This is what
    the checker writes; Lumina shows the same result without running a check.
-4. **Generate & check, a model with a dataset** (needs internet). Paste
+The *Generate & check* page has four "Try an example" buttons for steps 4 to 7:
+each fills the URL and picks the standard named below.
+
+4. **Generate & check, a model with a dataset** (needs internet). Click
+   *Model with a dataset* or paste
    `https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad`,
    pick *G7 SBOM for AI*. Lumina generates the SBOM with Pitloom from the Hub
    metadata (no weights are downloaded) and checks it. Point out: the model's
    Apache-2.0 licence, the dataset `squad` with its own licence (CC-BY-SA-4.0,
    read from the dataset's card) and the `trainedOn` link between them.
-5. **A project that ships a fastText model.** Paste
+5. **A project that ships a fastText model.** Click *Project with a fastText
+   model* or paste
    `https://github.com/bact/sentimentdemo`, pick *G7 SBOM for AI*. Pitloom finds
    the model file and hashes it (SHA-256 and SHA-512). Its name is just
    "model": the file name is all the file states, and the SBOM says so.
-6. **A project that ships ONNX models.** Paste
+6. **A project that ships ONNX models.** Click *Project with ONNX models* or paste
    `https://github.com/PyThaiNLP/pythainlp`, pick *G7 SBOM for AI*. Slowest
    step (about 12 seconds). Three ONNX models carry a version and a parameter
    count read from the files; five CRFsuite models carry less, because that
    format states less. The SBOM records what each file states and nothing more.
-7. **A plain Python project.** Paste `https://github.com/pallets/flask`, pick
+7. **A plain Python project.** Click *Plain Python project* or paste `https://github.com/pallets/flask`, pick
    *NTIA*, then *BSI TR-03183-2*. BSI shows optional elements apart from
    *Missing* ("Not provided"): lacking them is not a gap.
 8. **Errors are shown, not hidden.** Upload a text file, or one over 10 MiB

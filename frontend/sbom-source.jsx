@@ -12,7 +12,7 @@ SPDX-License-Identifier: Apache-2.0
 // windowed: every line has the same height, and only the lines in (and just
 // around) the visible part of the scroll box are in the DOM. Any line can be
 // reached by scrolling or by `target` (a line range to scroll to and mark).
-// Highlighting runs per line and renders React text nodes, never HTML.
+// Highlighting (highlight.js) runs per line and renders React elements, never HTML.
 
 const { useState: _useSS, useRef: _useRefS, useEffect: _useEffS, useMemo: _useMemoS, useLayoutEffect: _useLayoutS } = React;
 
@@ -67,36 +67,63 @@ function DownloadSbomButton({ sbom, size = "md", label = "Download SBOM" }) {
 }
 
 // ─── JSON highlighting, one line at a time ─────────────────────────────
-// `display` is pretty-printed JSON, so every token sits on one line. A line
-// that is not JSON still renders: what the pattern does not know stays plain.
-const SBOM_TOKEN_RE = /("(?:[^"\\]|\\.)*"?)|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|\b(true|false|null)\b|([{}[\],:])|(\s+)|([^"\s{}[\],:]+)/g;
+// `display` is pretty-printed JSON, so every token sits on one line and each
+// line is highlighted on its own with highlight.js (vendor/highlight-*.js,
+// JSON grammar only). Its HTML output (spans with `hljs-*` classes around
+// escaped text) is turned into React elements here, so no HTML is ever
+// inserted into the page. A line highlight.js cannot handle stays plain.
+const HLJS_ENTITIES = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#x27;": "'" };
+const HLJS_PIECE_RE = /<span class="([\w -]+)">|<\/span>|[^<]+/g;
+const _hlCache = new Map();
 
-function tokenizeJsonLine(line) {
-  const tokens = [];
-  SBOM_TOKEN_RE.lastIndex = 0;
+function hljsToNodes(html) {
+  const root = [];
+  const stack = [{ cls: null, kids: root }];
   let m;
-  while ((m = SBOM_TOKEN_RE.exec(line)) !== null) {
-    if (m[1] !== undefined) {
-      const isKey = /^\s*:/.test(line.slice(SBOM_TOKEN_RE.lastIndex));
-      tokens.push({ kind: isKey ? "key" : "string", text: m[1] });
-    } else if (m[2] !== undefined) tokens.push({ kind: "number", text: m[2] });
-    else if (m[3] !== undefined) tokens.push({ kind: "literal", text: m[3] });
-    else if (m[4] !== undefined) tokens.push({ kind: "punct", text: m[4] });
-    else tokens.push({ kind: null, text: m[0] });
+  HLJS_PIECE_RE.lastIndex = 0;
+  while ((m = HLJS_PIECE_RE.exec(html)) !== null) {
+    const piece = m[0];
+    if (m[1] !== undefined) stack.push({ cls: m[1], kids: [] });
+    else if (piece === "</span>") {
+      if (stack.length > 1) {
+        const done = stack.pop();
+        const top = stack[stack.length - 1].kids;
+        top.push(<span key={top.length} className={done.cls}>{done.kids}</span>);
+      }
+    } else {
+      const kids = stack[stack.length - 1].kids;
+      kids.push(piece.replace(/&(?:amp|lt|gt|quot|#x27);/g, (e) => HLJS_ENTITIES[e]));
+    }
   }
-  return tokens;
+  return root;
+}
+
+// Highlighted nodes for one line, or null to render it as plain text.
+function highlightJsonLine(line) {
+  if (!window.hljs) return null;
+  let nodes = _hlCache.get(line);
+  if (nodes === undefined) {
+    try {
+      nodes = hljsToNodes(window.hljs.highlight(line, { language: "json", ignoreIllegals: true }).value);
+    } catch (err) {
+      nodes = null;
+    }
+    if (_hlCache.size > 5000) _hlCache.clear();
+    _hlCache.set(line, nodes);
+  }
+  return nodes;
 }
 
 function SourceLine({ text, highlight }) {
   const cut = text.length > SBOM_MAX_LINE_CHARS;
   const shown = cut ? text.slice(0, SBOM_MAX_LINE_CHARS) : text;
+  // Leading spaces become an indent-guide span (a faint line every 2 columns).
+  const indent = /^ */.exec(shown)[0].length;
+  const rest = shown.slice(indent);
   return (
     <>
-      {highlight
-        ? tokenizeJsonLine(shown).map((tok, i) => (tok.kind
-          ? <span key={i} className={"sbom-tok-" + tok.kind}>{tok.text}</span>
-          : tok.text))
-        : shown}
+      {indent > 0 && <span className="sbom-indent" style={{ width: `${indent}ch` }}>{" ".repeat(indent)}</span>}
+      {(highlight && highlightJsonLine(rest)) || rest}
       {cut && <span className="sbom-cut"> … {(text.length - SBOM_MAX_LINE_CHARS).toLocaleString("en")} more characters on this line (copy or download for all)</span>}
     </>
   );
@@ -223,4 +250,4 @@ function SbomSource({ sbom, target, onJump, onBack, backLabel }) {
   );
 }
 
-Object.assign(window, { SbomSource, DownloadSbomButton, downloadSbom, tokenizeJsonLine, isJsonSbom });
+Object.assign(window, { SbomSource, DownloadSbomButton, downloadSbom, highlightJsonLine, isJsonSbom });

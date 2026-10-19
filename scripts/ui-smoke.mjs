@@ -296,8 +296,8 @@ async function evidenceAndSource(where) {
     `${where}: the element block (lines ${PKG_BLOCK.line}-${PKG_BLOCK.end_line}) is shown and marked`);
   check(await page.evaluate(() => document.activeElement && document.activeElement.classList.contains("sbom-source")), `${where}: focus moves to the source`);
   check(await page.evaluate(() => location.hash) === `#sbom-L${PKG_BLOCK.line}-L${PKG_BLOCK.end_line}`, `${where}: the URL hash names the block`);
-  check(await page.locator(".sbom-tok-string", { hasText: '"mock-pkg"' }).count() === 1 && await page.locator(".sbom-tok-key", { hasText: '"name"' }).count() > 0
-      && await page.locator(".sbom-tok-number", { hasText: "1024" }).count() === 1, `${where}: the source is syntax-highlighted`);
+  check(await page.locator(".hljs-string", { hasText: '"mock-pkg"' }).count() === 1 && await page.locator(".hljs-attr", { hasText: '"name"' }).count() > 0
+      && await page.locator(".hljs-number", { hasText: "1024" }).count() === 1, `${where}: the source is syntax-highlighted`);
   check((await text()).includes(`${SBOM.line_count} lines`) && (await text()).includes(SBOM.filename), `${where}: the toolbar names the file and its line count`);
   await shot("2c-generate-source");
   await page.getByRole("button", { name: "Back to result" }).click();
@@ -328,6 +328,15 @@ check((await page.getAttribute("main", "aria-label")) === "Generate & check scre
 await chipsMatchApi("Generate & check");
 await noSampleData("Generate & check");
 await shot("1-generate");
+// The example buttons fill the URL and pick the demo's standard.
+await page.getByRole("button", { name: "Plain Python project" }).click();
+check(await page.getByPlaceholder(/github/).inputValue() === "https://github.com/pallets/flask"
+  && await page.getByRole("radio", { name: "NTIA Minimum Elements" }).getAttribute("aria-checked") === "true",
+  "Generate & check: an example fills the URL and picks its standard");
+await page.getByRole("button", { name: "Model with a dataset" }).click();
+check((await page.getByPlaceholder(/github/).inputValue()).startsWith("https://huggingface.co/distilbert/")
+  && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
+  "Generate & check: the model example fills the URL and picks G7 SBOM for AI");
 await page.getByPlaceholder(/github/).fill("https://github.com/o/refuse");
 await page.getByRole("button", { name: "Generate & check" }).last().click();
 await page.waitForSelector(`text=${DETAIL_501}`, { timeout: 5000 }).catch(() => {});
