@@ -11,8 +11,8 @@ Static web frontend for the Lumina SBOM conformance checker: React 18 and
 Babel run in the browser, so there is no build step. nginx serves it and
 proxies `/api/` to the backend; every screen needs that API.
 
-The UI shows only what the API returns. The regulation list comes from
-`GET /api/v1/regulations`, every result is an `SbomCheckResponse`, and a
+The UI shows only what the API returns. The standard list comes from
+`GET /api/v1/standards`, every result is an `SbomCheckResponse`, and a
 refused request shows the server's own error `detail`.
 
 ## Screens
@@ -20,9 +20,9 @@ refused request shows the server's own error `detail`.
 | Screen | API | What it does |
 | - | - | - |
 | **Generate & check** (default) | `POST /api/v1/artifact/check`, then `GET /api/v1/jobs/{job_id}` | Paste a Git repository or Hugging Face Hub URL; the server generates an SPDX 3 SBOM with Pitloom and checks it. Polls the job every 2.5 s. |
-| **Upload SBOM** | `POST /api/v1/sbom/check` (multipart `file` + `regulation`) | Check an SBOM file you have. |
+| **Upload SBOM** | `POST /api/v1/sbom/check` (multipart `file` + `standard`) | Check an SBOM file you have. |
 | **Import SARIF** | `POST /api/v1/sarif/import` (the SARIF JSON as the body) | Read a SARIF 2.1.0 log from a file or pasted text; nothing is re-checked. |
-| **About** | `GET /api/v1/regulations` | Dependencies, licence, and the regulations the API lists with what each check covers. |
+| **About** | `GET /api/v1/standards` | Dependencies, licence, and the standards the API lists with what each check covers. |
 
 The three check screens render the result with the same `ArtifactResult`
 view: counts, per-rule outcomes grouped by cluster, gaps and run notifications.
@@ -64,18 +64,18 @@ shows the result alone: no tabs, no download, no rule toggles.
 
 ## Minimum elements standards
 
-(The API and the code say *regulation*; the UI says *minimum elements standard*.)
-The standard chips list exactly what `GET /api/v1/regulations` returns, in
+(*Standard* means a minimum elements standard; the UI spells that out.)
+The standard chips list exactly what `GET /api/v1/standards` returns, in
 its order. An entry with `ready: false` is shown but cannot be selected. Picking another
 standard while a result with `sbom.text` is shown checks that SBOM again
 (`recheckSbom`, `POST /api/v1/sbom/check`) with no new generation or upload, and
 keeps the generator, its log and warnings of the first run.
-*G7 SBOM for AI* (`DEFAULT_REGULATION`, `g7ai`) is preselected when the API
+*G7 SBOM for AI* (`DEFAULT_STANDARD`, `g7ai`) is preselected when the API
 lists it as ready; otherwise the first ready one is.
 Labels, a one-line description of what each check covers, and a source link
-come from one table, `IMPORT_REGULATIONS` in `screen-conformance.jsx`; an id
+come from one table, `STANDARD_INFO` in `screen-conformance.jsx`; an id
 missing from it is shown by its id. `RULE_CLUSTERS` in the same file names and
-orders the rule clusters of each regulation; a cluster missing from it is
+orders the rule clusters of each standard; a cluster missing from it is
 still shown, by its code.
 
 ## Files
@@ -88,7 +88,7 @@ still shown, by its code.
 | `i18n.js` | `window.LUMINA_I18N`: locales, catalogues, `t()`. |
 | `components.jsx` | `Icon`, `Logo`, `Button`, `StatusChip`, `RegTag`, `Card`, `MarginNote`, `TextField`, `Eyebrow`, `Mono`, `SummaryTile`, `ErrorCard`, `useLocale`. |
 | `app-shell.jsx` | `TopBar` (logo, `LanguageSwitcher`), `SideNav` and `NAV_SECTIONS`, the side-nav items. |
-| `screen-conformance.jsx` | `IMPORT_REGULATIONS`, `DEFAULT_REGULATION`, `RULE_CLUSTERS`, the API helpers (`apiErrorMessage`, `postForResult`, `useRegulations`), `RegulationPicker`, `ScreenFrame` and the Generate & check screen (`ImportScreen`). |
+| `screen-conformance.jsx` | `STANDARD_INFO`, `DEFAULT_STANDARD`, `RULE_CLUSTERS`, the API helpers (`apiErrorMessage`, `postForResult`, `useStandards`), `StandardPicker`, `ScreenFrame` and the Generate & check screen (`ImportScreen`). |
 | `sbom-source.jsx` | `SbomSource` (windowed, highlighted source view), `DownloadSbomButton`, `downloadSbom`, the per-line highlight.js to React conversion. |
 | `generator-log.jsx` | `GeneratorLog`: the "Generator log" tab (`generation_log`, monospace, copy button), shown for a generated SBOM or a failed generation. |
 | `rule-evidence.jsx` | `RuleClusters` (per-rule outcomes by cluster, with the details toggles) and `RuleEvidence`. |

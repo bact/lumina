@@ -44,11 +44,10 @@ one per input mode plus About:
 | *Generate & check* (default) | [Mode 1](#mode-1--artefact-url-sbom-generation) | `POST /api/v1/artifact/check`, then `GET /api/v1/jobs/{job_id}` |
 | *Upload SBOM* | [Mode 2](#mode-2--sbom-upload) | `POST /api/v1/sbom/check` |
 | *Import SARIF* | [Mode 3](#mode-3--sarif-import) | `POST /api/v1/sarif/import` |
-| *About* | — | `GET /api/v1/regulations` |
+| *About* | — | `GET /api/v1/standards` |
 
-The standard picker lists exactly what `GET /api/v1/regulations` returns (the API
-and its identifiers keep the name *regulation*; the UI says *minimum elements
-standard*); an entry with `ready: false` is shown but cannot be picked. With a
+The standard picker lists exactly what `GET /api/v1/standards` returns (the UI
+spells *standard* out as *minimum elements standard*); an entry with `ready: false` is shown but cannot be picked. With a
 finished result in hand, picking another standard checks the same SBOM again
 from the `sbom.text` the first response returned, through `POST /sbom/check`:
 nothing is cloned, generated or uploaded again, and the generator, its log and
@@ -58,7 +57,7 @@ be checked or when no rule applies (`sbom.nothing-applies`). A refused request s
 
 ## Conformance checking architecture
 
-The API knows six regulation ids (`RegulationId` in
+The API knows six standard ids (`StandardId` in
 [`backend/app/conformance.py`](../backend/app/conformance.py)): `ntia` (NTIA
 Minimum Elements), `bsi` (BSI TR-03183-2), `g7ai` (G7 SBOM for AI Minimum
 Elements), `cisa2026` (CISA 2026 Minimum Elements), `fsct2024` (FSCT 2024, the
@@ -99,7 +98,7 @@ SbomCheckResponse
                                       # or an embedded SBOM whose text is JSON
 
 ConformanceResult                     # what was found
-  regulation_id : str                 # "ntia" | "bsi" | "g7ai" | "cisa2026"
+  standard_id : str                 # "ntia" | "bsi" | "g7ai" | "cisa2026"
                                       # | "fsct2024" | "mof"
   source        : str                 # "ntia-conformance-checker"
                                       # | "lumina-internal" | "external-sarif"
@@ -255,7 +254,7 @@ the UI shows it as the "Generator log" tab, in a monospace font.
 
 Lumina does no conformance checking itself. `run_checker` in
 [`backend/app/conformance.py`](../backend/app/conformance.py) (the source of
-truth) runs `ntia-conformance-checker` for a regulation, using the standard id
+truth) runs `ntia-conformance-checker` for a standard, using the standard id
 in `CHECKER_STANDARDS`, and parses its SARIF into `ConformanceResult` with
 `parse_sarif`. The SPDX version (2 or 3) is detected from the file.
 
@@ -274,12 +273,12 @@ in `CHECKER_STANDARDS`, and parses its SARIF into `ConformanceResult` with
   "Not provided" and is not a gap.
 - `mof` is not supported by the checker; the API returns 501 for it.
 
-When the checker adds a regulation, add it to `RegulationId` and
+When the checker adds a standard, add it to `StandardId` and
 `CHECKER_STANDARDS`, and its rule-id spec code to the maps in
 `sarif_ingest.py`; the API response shape and the UI stay unchanged (the steps
-are in `AGENTS.md`, "Adding a regulation").
+are in `AGENTS.md`, "Adding a standard").
 
-Beyond the current regulations, EU CRA, EO 14028, FDA PMP, and
+Beyond the current standards, EU CRA, EO 14028, FDA PMP, and
 ISO/IEC 5230 are on the roadmap; none is in the API yet.
 
 ## Input modes
@@ -325,7 +324,7 @@ forks.
 ### Mode 1 — Artefact URL (SBOM generation)
 
 - **Endpoint:** `POST /api/v1/artifact/check`
-- **Body:** `{ "artifact_url": "...", "regulation_id": "ntia" }`
+- **Body:** `{ "artifact_url": "...", "standard_id": "ntia" }`
 - **Flow:** the URL is checked by the SSRF guard (http/https only, at most 2048
   characters, every resolved address public) and dispatched by host: a Hugging
   Face Hub host goes to Pitloom's model path, any other host is treated as a
@@ -334,7 +333,7 @@ forks.
   can take minutes (large clones), it runs as a
   [background job](#background-job-execution): the endpoint returns a `job_id`
   immediately (202) and the client polls `GET /api/v1/jobs/{job_id}`. A
-  regulation the checker does not support is refused with 501 before anything
+  standard the checker does not support is refused with 501 before anything
   is queued.
 - **`embedded_sbom`:** absent.  Lumina holds the SBOM Pitloom just produced; no
   need to round-trip via SARIF.
@@ -371,7 +370,7 @@ forks.
 ### Mode 2 — SBOM upload
 
 - **Endpoint:** `POST /api/v1/sbom/check`
-- **Body:** multipart `file` plus a `regulation` form field (default `ntia`).
+- **Body:** multipart `file` plus a `standard` form field (default `ntia`).
   An SBOM URL is not supported.
 - **Size cap:** `LUMINA_MAX_SBOM_BYTES`, default 10 MiB. A larger file, or a
   `Content-Length` above the cap plus 64 KiB for the multipart framing, is
@@ -382,7 +381,7 @@ forks.
   `output_sarif(embed_sbom=False)` and feeds the SARIF log through
   `parse_sarif`. An SBOM the checker cannot process is refused with 422 (for
   example when its SPDX version cannot be determined); an unsupported
-  regulation with 501.
+  standard with 501.
 - **`embedded_sbom`:** absent.  Lumina already has the SBOM the user
   just supplied; embedding would double in-memory size for no benefit.
 - **Sync model:** synchronous for now (the check runs in a thread pool).  May
@@ -430,12 +429,12 @@ JobQueue.get(job_id)                 -> JobRecord(status, result?, error?)
 Everything above and below this line is **invariant across scaling stages** — the
 HTTP contract (`POST /artifact/check` → `job_id`, `GET /jobs/{job_id}`), the
 frontend (submit + poll), the job function itself
-(`generate_and_check(artifact_url, regulation_id) -> SbomCheckResponse`), the
+(`generate_and_check(artifact_url, standard_id) -> SbomCheckResponse`), the
 generators, and the conformance pipeline. Only the `JobQueue` *backend* changes.
 
 **Discipline that keeps the swap free:** job functions are written as if they
 already run in a separate worker — a top-level named function, JSON-serialisable
-arguments (a URL string, a regulation id), a JSON-serialisable result. They never
+arguments (a URL string, a standard id), a JSON-serialisable result. They never
 close over live in-process objects. Today the function runs in a thread; a future
 worker runs the identical function untouched.
 

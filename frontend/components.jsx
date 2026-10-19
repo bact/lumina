@@ -94,11 +94,11 @@ function StatusChip({ status, children }) {
   );
 }
 
-// ─── RegTag ─────────────────────────────────────────────────────────────
-// Display chip for a regulation (e.g. "NTIA Minimum Elements"). When onClick
+// ─── StandardTag ─────────────────────────────────────────────────────────────
+// Display chip for a standard (e.g. "NTIA Minimum Elements"). When onClick
 // is provided, becomes a keyboard-accessible button (or radio, via the `role`
 // prop). A `disabled` chip keeps its role but cannot be selected.
-function RegTag({ children, active, onClick, role, ariaChecked, ariaLabel, disabled }) {
+function StandardTag({ children, active, onClick, role, ariaChecked, ariaLabel, disabled }) {
   const interactive = !!onClick || disabled;
   const activate = (e) => { if (!disabled && onClick) onClick(e); };
   const a11y = interactive ? {
@@ -244,4 +244,4 @@ function useLocale() {
   };
 }
 
-Object.assign(window, { Icon, Logo, Button, StatusChip, RegTag, Card, MarginNote, TextField, Eyebrow, Mono, SummaryTile, ErrorCard, useLocale });
+Object.assign(window, { Icon, Logo, Button, StatusChip, StandardTag, Card, MarginNote, TextField, Eyebrow, Mono, SummaryTile, ErrorCard, useLocale });

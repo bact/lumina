@@ -7,7 +7,7 @@
 // /api/ route, visits every side-nav screen in headless Chromium and asserts:
 //   - no page errors and no console errors;
 //   - none of the old sample-data strings appear;
-//   - the standard chips equal the mocked GET /api/v1/regulations response
+//   - the standard chips equal the mocked GET /api/v1/standards response
 //     (same ids, same order, ready=false not selectable);
 //   - refused requests (413, 422, 501) show the server's `detail` text;
 //   - a per-rule BSI result shows its DOC and COMP clusters with their counts;
@@ -50,9 +50,9 @@ const outDir = path.resolve(process.argv[2] || path.join(os.tmpdir(), "lumina-ui
 fs.mkdirSync(outDir, { recursive: true });
 
 // ── Mocked API ───────────────────────────────────────────────────────────
-// The regulation list includes an id the frontend has no label for: the UI
+// The standard list includes an id the frontend has no label for: the UI
 // must show it by id and must not hide or add any entry.
-const REGULATIONS = [
+const STANDARDS = [
   { id: "ntia", ready: true }, { id: "bsi", ready: true }, { id: "g7ai", ready: true },
   { id: "cisa2026", ready: true }, { id: "fsct2024", ready: true }, { id: "mof", ready: false },
   { id: "xyz2030", ready: false },
@@ -97,7 +97,7 @@ const posted = [];
 const TOOL = { tool_name: "ntia-conformance-checker", tool_version: "0.0.0-mock" };
 const NTIA_RESULT = {
   conformance: {
-    regulation_id: "ntia", source: "ntia-conformance-checker", total: 7, present: 6, missing: 1, unverified: 0,
+    standard_id: "ntia", source: "ntia-conformance-checker", total: 7, present: 6, missing: 1, unverified: 0,
     gaps: [{ component_id: "SPDXRef-Package", field_key: "supplier", level: "missing", note: "Component 'glibc' is missing component supplier." }],
     rules: ["Component supplier", "Component name", "Component version", "Component identifier",
       "Dependency relationships", "SBOM author", "SBOM timestamp"].map((title, i) => ({
@@ -120,7 +120,7 @@ const NTIA_RESULT = {
   ],
 };
 const GEN_FAILED_RESULT = {
-  conformance: { regulation_id: "g7ai", source: "lumina-internal", total: 0, present: 0, missing: 0, unverified: 0, gaps: [], rules: [], system_judged_by_model: null },
+  conformance: { standard_id: "g7ai", source: "lumina-internal", total: 0, present: 0, missing: 0, unverified: 0, gaps: [], rules: [], system_judged_by_model: null },
   run: { tool_name: "lumina", tool_version: "", generator: "", execution_successful: false, notifications: [{
     level: "error", descriptor_id: "git.clone-failed", message: "fatal: repository not found" }] },
   embedded_sbom: null,
@@ -132,7 +132,7 @@ const GEN_FAILED_RESULT = {
 // The same SBOM checked against another standard (what POST /sbom/check returns
 // for a re-check): no generator, no log -- the page must carry those over.
 const RECHECK_RESULT = {
-  conformance: { regulation_id: "cisa2026", source: "ntia-conformance-checker", total: 1, present: 1, missing: 0, unverified: 0, gaps: [],
+  conformance: { standard_id: "cisa2026", source: "ntia-conformance-checker", total: 1, present: 1, missing: 0, unverified: 0, gaps: [],
     rules: [{ rule_id: "BOM-CISA2026-META-001", cluster: "META", title: "Recheck mock rule", provision: "requirement", outcome: "present", evidence: [], evidence_more: 0 }],
     system_judged_by_model: null },
   run: { ...TOOL, generator: "", execution_successful: true, notifications: [] },
@@ -146,7 +146,7 @@ const BIG_RESULT = { ...NTIA_RESULT,
       line: 1, end_line: BIG_LINES, items: [{ key: "key40000", value: "value 40000", line: 40000 }] }] })) },
   sbom: BIG_SBOM };
 const BSI_RESULT = {
-  conformance: { regulation_id: "bsi", source: "ntia-conformance-checker", total: 3, present: 1, missing: 2, unverified: 0, optional_present: 0, optional_missing: 1,
+  conformance: { standard_id: "bsi", source: "ntia-conformance-checker", total: 3, present: 1, missing: 2, unverified: 0, optional_present: 0, optional_missing: 1,
     gaps: [{ component_id: "document", field_key: "BOM-BSI2025-DOC-001", level: "missing", note: "Doc creator is missing." }],
     rules: [
       { rule_id: "BOM-BSI2025-DOC-001", cluster: "DOC", title: "Doc creator", provision: "requirement", outcome: "missing" },
@@ -162,14 +162,14 @@ const BSI_RESULT = {
   sbom: { ...SBOM, filename: "upload.spdx3.json" },
 };
 const UNREADABLE_RESULT = {
-  conformance: { regulation_id: "g7ai", source: "ntia-conformance-checker", total: 0, present: 0, missing: 0, unverified: 0, gaps: [], rules: [], system_judged_by_model: null },
+  conformance: { standard_id: "g7ai", source: "ntia-conformance-checker", total: 0, present: 0, missing: 0, unverified: 0, gaps: [], rules: [], system_judged_by_model: null },
   run: { ...TOOL, generator: "", execution_successful: false, notifications: [{
     level: "error", descriptor_id: "spdx.parsing-error", message: "The SBOM could not be read." }] },
   embedded_sbom: null,
 };
 // A rule in a cluster the frontend has no name for must still be shown.
 const SARIF_RESULT = {
-  conformance: { regulation_id: "g7ai", source: "external-sarif", total: 2, present: 1, missing: 1, unverified: 0,
+  conformance: { standard_id: "g7ai", source: "external-sarif", total: 2, present: 1, missing: 1, unverified: 0,
     gaps: [{ component_id: "document", field_key: "BOM-G7AI2026-MDL-001", level: "missing", note: "Model name is missing." }],
     rules: [
       { rule_id: "BOM-G7AI2026-MD-001", cluster: "MD", title: "SBOM author", provision: "requirement", outcome: "present" },
@@ -186,7 +186,7 @@ const DETAIL_422 = "Unsupported standard: no single supported standard in rule i
 const DETAIL_501 = "Minimum elements standard 'cisa2026' is not supported by ntia-conformance-checker.";
 
 async function mockApi(page) {
-  await page.route("**/api/v1/regulations", r => r.fulfill({ json: { regulations: REGULATIONS } }));
+  await page.route("**/api/v1/standards", r => r.fulfill({ json: { standards: STANDARDS } }));
   await page.route("**/api/v1/artifact/check", r => {
     const body = JSON.parse(r.request().postData() || "{}");
     posted.push(body);
@@ -198,9 +198,9 @@ async function mockApi(page) {
   await page.route("**/api/v1/jobs/job-2", r => r.fulfill({ json: { status: "done", result: BIG_RESULT } }));
   await page.route("**/api/v1/sbom/check", r => {
     const raw = r.request().postData() || "";
-    if (/name="regulation"\r\n\r\ncisa2026/.test(raw)) { rechecks.push(raw); return r.fulfill({ json: RECHECK_RESULT }); }
-    if (/name="regulation"\r\n\r\nbsi/.test(raw)) return r.fulfill({ json: BSI_RESULT });
-    if (/name="regulation"\r\n\r\ng7ai/.test(raw)) return r.fulfill({ json: UNREADABLE_RESULT });
+    if (/name="standard"\r\n\r\ncisa2026/.test(raw)) { rechecks.push(raw); return r.fulfill({ json: RECHECK_RESULT }); }
+    if (/name="standard"\r\n\r\nbsi/.test(raw)) return r.fulfill({ json: BSI_RESULT });
+    if (/name="standard"\r\n\r\ng7ai/.test(raw)) return r.fulfill({ json: UNREADABLE_RESULT });
     return r.fulfill({ status: 413, json: { detail: DETAIL_413 } });
   });
   await page.route("**/api/v1/sarif/import", r => {
@@ -266,14 +266,14 @@ async function chipsMatchApi(where) {
   await page.waitForSelector('[role=radiogroup][aria-label="Minimum elements standard"] [role=radio]');
   const chips = await page.$$eval('[role=radiogroup][aria-label="Minimum elements standard"] [role=radio]',
     els => els.map(e => ({ text: e.textContent, disabled: e.getAttribute("aria-disabled") === "true" })));
-  const expected = REGULATIONS.map(r => ({ label: LABELS[r.id] || r.id, disabled: !r.ready }));
+  const expected = STANDARDS.map(r => ({ label: LABELS[r.id] || r.id, disabled: !r.ready }));
   check(chips.length === expected.length && chips.every((c, i) => c.text.startsWith(expected[i].label) && c.disabled === expected[i].disabled),
     `${where}: standard chips equal the API list ${JSON.stringify(chips.map(c => c.text))}`);
   const checked = await page.$$eval('[role=radio][aria-checked="true"]', els => els.map(e => e.textContent));
   check(checked.length === 1 && checked[0] === LABELS.g7ai, `${where}: G7 SBOM for AI is preselected`);
   await page.getByRole("radio", { name: /Model Openness Framework/ }).click({ force: true });
   const after = await page.$$eval('[role=radio][aria-checked="true"]', els => els.map(e => e.textContent));
-  check(after[0] === LABELS.g7ai, `${where}: an unsupported regulation cannot be selected`);
+  check(after[0] === LABELS.g7ai, `${where}: an unsupported standard cannot be selected`);
 }
 
 // The Download SBOM button saves `sbom.text` under `sbom.filename`.
@@ -380,7 +380,7 @@ await page.waitForSelector("text=Data fields", { timeout: 10000 }).catch(() => {
 let body = await text();
 check(body.includes("Data fields") && body.includes("Component supplier") && body.includes("pitloom 0.0.0-mock"),
   "Generate & check: the job result renders with rules and generator");
-check(posted.at(-1).regulation_id === "g7ai", "Generate & check: the default request names g7ai");
+check(posted.at(-1).standard_id === "g7ai", "Generate & check: the default request names g7ai");
 await shot("2-generate-result");
 await evidenceAndSource("Generate & check");
 
@@ -530,7 +530,7 @@ await nav("About");
 await page.waitForSelector("text=Model Openness Framework");
 body = await text();
 check(/present means the property exists, not that its value is right/i.test(body), "About: states what present means");
-check(REGULATIONS.every(r => body.includes(r.id)), "About: lists every regulation the API returns");
+check(STANDARDS.every(r => body.includes(r.id)), "About: lists every standard the API returns");
 await noSampleData("About");
 await shot("9-about");
 

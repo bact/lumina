@@ -4,20 +4,20 @@ SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: SOURCE
 SPDX-License-Identifier: Apache-2.0
 */
-// Lumina frontend -- regulations, API helpers, the regulation picker and the
+// Lumina frontend -- standards, API helpers, the standard picker and the
 // Generate & check screen. The result view every check screen shares is
 // ArtifactResult (result-view.jsx).
 //
-// Every screen renders only what the API returns: the regulation list comes
-// from GET /api/v1/regulations, results are SbomCheckResponse objects, and a
+// Every screen renders only what the API returns: the standard list comes
+// from GET /api/v1/standards, results are SbomCheckResponse objects, and a
 // failed request shows the server's own error `detail`.
 
 const { useState: _useSC, useRef: _useRef, useEffect: _useEffect } = React;
 
-// The one place regulation ids get human labels and a short description of
-// what the check covers. Which regulations exist, and which are ready, comes
-// from GET /api/v1/regulations; an id missing here is shown by its id.
-const IMPORT_REGULATIONS = {
+// The one place standard ids get human labels and a short description of
+// what the check covers. Which standards exist, and which are ready, comes
+// from GET /api/v1/standards; an id missing here is shown by its id.
+const STANDARD_INFO = {
   ntia: {
     label: "NTIA Minimum Elements",
     covers: "NTIA 2021 minimum elements: the seven data fields (supplier, component name, version, other unique identifiers, dependency relationship, SBOM author, timestamp). Per-rule results.",
@@ -51,25 +51,25 @@ const IMPORT_REGULATIONS = {
 };
 
 // Preselected on the check screens when the API lists it as ready.
-const DEFAULT_REGULATION = "g7ai";
+const DEFAULT_STANDARD = "g7ai";
 
 // Example URLs for the Generate & check screen (the demo script, DEMO.md).
 // Each fills the URL field and picks the standard the demo uses for it; the
 // result is still whatever the server generates and checks.
 const DEMO_EXAMPLES = [
-  { label: "Model with a dataset", note: "Hugging Face", regulation: "g7ai",
+  { label: "Model with a dataset", note: "Hugging Face", standard: "g7ai",
     url: "https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad" },
-  { label: "Project with a fastText model", note: "GitHub", regulation: "g7ai",
+  { label: "Project with a fastText model", note: "GitHub", standard: "g7ai",
     url: "https://github.com/bact/sentimentdemo" },
-  { label: "Project with ONNX models", note: "GitHub, about 12 s", regulation: "g7ai",
+  { label: "Project with ONNX models", note: "GitHub, about 12 s", standard: "g7ai",
     url: "https://github.com/PyThaiNLP/pythainlp" },
-  { label: "Plain Python project", note: "GitHub", regulation: "ntia",
+  { label: "Plain Python project", note: "GitHub", standard: "ntia",
     url: "https://github.com/pallets/flask" },
 ];
 
-const regulationLabel = (id) => (IMPORT_REGULATIONS[id] && IMPORT_REGULATIONS[id].label) || id;
+const standardLabel = (id) => (STANDARD_INFO[id] && STANDARD_INFO[id].label) || id;
 
-// Rule clusters per regulation (the cluster segment of the rule id), in order.
+// Rule clusters per standard (the cluster segment of the rule id), in order.
 // A cluster the result has but this table lacks is still shown, by its code.
 const RULE_CLUSTERS = {
   ntia: [
@@ -107,11 +107,11 @@ const RULE_CLUSTERS = {
 // new result; the SBOM itself is not regenerated.
 const canRecheck = (result) => !!(result && result.sbom && typeof result.sbom.text === "string");
 
-async function recheckSbom(previous, regulationId) {
+async function recheckSbom(previous, standardId) {
   const sbom = previous.sbom;
   const form = new FormData();
   form.append("file", new Blob([sbom.text], { type: "application/octet-stream" }), sbom.filename || "sbom.json");
-  form.append("regulation", regulationId);
+  form.append("standard", standardId);
   const next = await postForResult("/api/v1/sbom/check", { body: form });
   const run = previous.run || {};
   if (run.generator) {
@@ -154,20 +154,20 @@ async function postForResult(url, init) {
   return response.json();
 }
 
-// GET /api/v1/regulations -> { regulations: [{ id, ready }], error }.
-function useRegulations() {
-  const [state, setState] = _useSC({ regulations: null, error: "" });
+// GET /api/v1/standards -> { standards: [{ id, ready }], error }.
+function useStandards() {
+  const [state, setState] = _useSC({ standards: null, error: "" });
   _useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const response = await fetch("/api/v1/regulations");
+        const response = await fetch("/api/v1/standards");
         if (!response.ok) throw new Error(await apiErrorMessage(response));
         const body = await response.json();
-        if (!body || !Array.isArray(body.regulations)) throw new Error("The list of minimum elements standards is malformed.");
-        if (alive) setState({ regulations: body.regulations, error: "" });
+        if (!body || !Array.isArray(body.standards)) throw new Error("The list of minimum elements standards is malformed.");
+        if (alive) setState({ standards: body.standards, error: "" });
       } catch (err) {
-        if (alive) setState({ regulations: null, error: String(err.message || err) });
+        if (alive) setState({ standards: null, error: String(err.message || err) });
       }
     })();
     return () => { alive = false; };
@@ -175,28 +175,28 @@ function useRegulations() {
   return state;
 }
 
-// The selected regulation id: until the user picks, DEFAULT_REGULATION when
+// The selected standard id: until the user picks, DEFAULT_STANDARD when
 // it is ready, else the first ready one.
-function useSelectedRegulation(regulations) {
+function useSelectedStandard(standards) {
   const [picked, setPicked] = _useSC(null);
-  const ready = (regulations || []).filter(r => r.ready).map(r => r.id);
+  const ready = (standards || []).filter(r => r.ready).map(r => r.id);
   if (picked && ready.includes(picked)) return [picked, setPicked];
-  return [ready.includes(DEFAULT_REGULATION) ? DEFAULT_REGULATION : ready[0] || null, setPicked];
+  return [ready.includes(DEFAULT_STANDARD) ? DEFAULT_STANDARD : ready[0] || null, setPicked];
 }
 
-// ─── RegulationPicker -- radio chips for the regulations the API lists ──
-function RegulationPicker({ state, value, onChange, disabled }) {
+// ─── StandardPicker -- radio chips for the standards the API lists ──
+function StandardPicker({ state, value, onChange, disabled }) {
   if (state.error) return <ErrorCard title="Could not load the list of minimum elements standards">{state.error}</ErrorCard>;
-  if (!state.regulations) return <div style={{ fontSize: 12.5, color: "var(--ink-3)" }}>Loading minimum elements standards…</div>;
+  if (!state.standards) return <div style={{ fontSize: 12.5, color: "var(--ink-3)" }}>Loading minimum elements standards…</div>;
   return (
     <div role="radiogroup" aria-label="Minimum elements standard" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      {state.regulations.map(r => (
-        <RegTag key={r.id} role="radio" ariaChecked={value === r.id} active={value === r.id}
+      {state.standards.map(r => (
+        <StandardTag key={r.id} role="radio" ariaChecked={value === r.id} active={value === r.id}
           disabled={!r.ready}
-          ariaLabel={r.ready ? regulationLabel(r.id) : `${regulationLabel(r.id)} (not supported)`}
+          ariaLabel={r.ready ? standardLabel(r.id) : `${standardLabel(r.id)} (not supported)`}
           onClick={() => { if (!disabled) onChange(r.id); }}>
-          {regulationLabel(r.id)}{r.ready ? null : " (not supported)"}
-        </RegTag>
+          {standardLabel(r.id)}{r.ready ? null : " (not supported)"}
+        </StandardTag>
       ))}
     </div>
   );
@@ -204,12 +204,12 @@ function RegulationPicker({ state, value, onChange, disabled }) {
 
 // ─── Generate & check (Mode 1) ─────────────────────────────────────────
 // Paste a Git repository or Hugging Face Hub URL; the backend generates an
-// SBOM (Pitloom, server-side) and checks it against a regulation:
+// SBOM (Pitloom, server-side) and checks it against a standard:
 //   POST /api/v1/artifact/check  -> { job_id }
 //   GET  /api/v1/jobs/{job_id}   -> { status, result?, error? }
 function ImportScreen() {
-  const regs = useRegulations();
-  const [regId, setRegId] = useSelectedRegulation(regs.regulations);
+  const standardList = useStandards();
+  const [standardId, setStandardId] = useSelectedStandard(standardList.standards);
   const [url, setUrl] = _useSC("");
   const [phase, setPhase] = _useSC("idle"); // idle | running | done | error
   const [result, setResult] = _useSC(null); // SbomCheckResponse
@@ -223,12 +223,12 @@ function ImportScreen() {
 
   async function run() {
     const artifactUrl = url.trim();
-    if (!artifactUrl || !regId) return;
+    if (!artifactUrl || !standardId) return;
     setPhase("running"); setResult(null); setErrorMsg("");
     try {
       const { job_id } = await postForResult("/api/v1/artifact/check", {
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ artifact_url: artifactUrl, regulation_id: regId }),
+        body: JSON.stringify({ artifact_url: artifactUrl, standard_id: standardId }),
       });
       // Poll until the job finishes. Jobs are minutes-long at most; a ~2.5s
       // interval keeps the UI responsive without hammering the API.
@@ -252,10 +252,10 @@ function ImportScreen() {
   // With a finished result in hand, picking another standard checks the same
   // SBOM again (nothing is cloned or generated again); else it just selects.
   async function pick(id) {
-    if (phase === "running" || id === regId) return;
-    setRegId(id);
+    if (phase === "running" || id === standardId) return;
+    setStandardId(id);
     if (!(phase === "done" && canRecheck(result))) { setResult(null); setPhase("idle"); return; }
-    const previous = result, previousId = regId;
+    const previous = result, previousId = standardId;
     setPhase("running"); setResult(null); setErrorMsg(""); setRechecking(true);
     try {
       const next = await recheckSbom(previous, id);
@@ -265,8 +265,8 @@ function ImportScreen() {
       if (!aliveRef.current) return;
       // The earlier result and standard stay (a generated SBOM over the upload
       // size limit, say, cannot be sent again); the reason is shown above them.
-      setRegId(previousId); setResult(previous); setPhase("done");
-      setErrorMsg(`Could not check this SBOM against ${regulationLabel(id)}; the earlier result is shown.\n${String(err.message || err)}`);
+      setStandardId(previousId); setResult(previous); setPhase("done");
+      setErrorMsg(`Could not check this SBOM against ${standardLabel(id)}; the earlier result is shown.\n${String(err.message || err)}`);
     } finally {
       if (aliveRef.current) setRechecking(false);
     }
@@ -275,7 +275,7 @@ function ImportScreen() {
   return (
     <ScreenFrame eyebrow="Generate & check" title="Check a repository or model"
       intro="Paste a Git repository URL or a Hugging Face Hub model URL. Lumina generates an SBOM for it (server-side, with Pitloom) and checks it against the minimum elements standard you pick. You can switch the standard afterwards without generating again.">
-      <RegulationPicker state={regs} value={regId} onChange={pick} disabled={phase === "running"} />
+      <StandardPicker state={standardList} value={standardId} onChange={pick} disabled={phase === "running"} />
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <TextField
@@ -289,7 +289,7 @@ function ImportScreen() {
           style={{ flex: "1 1 260px", minWidth: 0 }}
         />
         <Button variant="primary" icon={phase === "running" ? "loader" : "play"}
-          onClick={run} disabled={phase === "running" || !url.trim() || !regId}>
+          onClick={run} disabled={phase === "running" || !url.trim() || !standardId}>
           {phase === "running" ? "Working…" : "Generate & check"}
         </Button>
       </div>
@@ -301,10 +301,10 @@ function ImportScreen() {
             disabled={phase === "running"}
             onClick={() => {
               setUrl(ex.url); setResult(null); setPhase("idle");
-              const known = regs.regulations && regs.regulations.find(r => r.id === ex.regulation);
-              if (known && known.ready) setRegId(ex.regulation);
+              const known = standardList.standards && standardList.standards.find(r => r.id === ex.standard);
+              if (known && known.ready) setStandardId(ex.standard);
               setExampleNote(`Example chosen: ${ex.label}. The URL field now holds ${ex.url}` +
-                (known && known.ready ? ` and ${regulationLabel(ex.regulation)} is selected.` : "."));
+                (known && known.ready ? ` and ${standardLabel(ex.standard)} is selected.` : "."));
             }}>
             {ex.label}
           </Button>
@@ -351,7 +351,7 @@ function ScreenFrame({ eyebrow, title, intro, children }) {
 }
 
 Object.assign(window, {
-  IMPORT_REGULATIONS, RULE_CLUSTERS, DEFAULT_REGULATION, DEMO_EXAMPLES, regulationLabel, apiErrorMessage, postForResult, canRecheck, recheckSbom,
-  useRegulations, useSelectedRegulation, RegulationPicker, ScreenFrame,
+  STANDARD_INFO, RULE_CLUSTERS, DEFAULT_STANDARD, DEMO_EXAMPLES, standardLabel, apiErrorMessage, postForResult, canRecheck, recheckSbom,
+  useStandards, useSelectedStandard, StandardPicker, ScreenFrame,
   ImportScreen,
 });

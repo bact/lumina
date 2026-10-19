@@ -164,7 +164,7 @@ Requirement ids are the [SBOM requirements ontology][bom] ids, for example
 
 | Endpoint | Purpose |
 | - | - |
-| `GET /api/v1/regulations` | Regulations Lumina knows, with `ready` set when the checker supports them |
+| `GET /api/v1/standards` | Standards Lumina knows, with `ready` set when the checker supports them |
 | `POST /api/v1/sbom/check` | Upload an SBOM (SPDX 2 or 3; up to 10 MiB by default) and check it; the result carries the SBOM and per-rule evidence |
 | `POST /api/v1/artifact/check` | Generate an SBOM from a Git or Hugging Face URL, then check it (background job); the result carries the generated SBOM, per-rule evidence and the generator log |
 | `GET /api/v1/jobs/{job_id}` | Status and result of a background job |
@@ -179,12 +179,12 @@ SBOM each rule also carries `evidence`: the elements that have, or lack, what
 the rule asks for, with their lines in the SBOM. A refused request (413 too large, 422 unreadable or unsupported, 501
 unsupported standard) carries the reason in `detail`.
 
-### Adding a regulation
+### Adding a standard
 
-Add it to `RegulationId` and `CHECKER_STANDARDS` in
+Add it to `StandardId` and `CHECKER_STANDARDS` in
 [`backend/app/conformance.py`](backend/app/conformance.py) once the checker
-supports it; the UI lists what `GET /api/v1/regulations` returns. See
-[AGENTS.md](AGENTS.md#adding-a-regulation) for the SARIF and UI steps.
+supports it; the UI lists what `GET /api/v1/standards` returns. See
+[AGENTS.md](AGENTS.md#adding-a-standard) for the SARIF and UI steps.
 
 **Roadmap:** EU CRA, EO 14028, FDA PMP, and ISO/IEC 5230 are planned; none is
 in the API yet.

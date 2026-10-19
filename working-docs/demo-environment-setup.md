@@ -59,7 +59,7 @@ docker compose up --build
 
 ```shell
 curl -s http://localhost/api/health          # {"status":"ok"}
-curl -s http://localhost/api/v1/regulations  # ntia, bsi, g7ai, cisa2026, fsct2024 ready; mof not
+curl -s http://localhost/api/v1/standards  # ntia, bsi, g7ai, cisa2026, fsct2024 ready; mof not
 ```
 
 Open <http://localhost>. The four screens are *Generate & check*, *Upload SBOM*,

@@ -22,8 +22,8 @@ const RULE_CHIP = {
   "out-of-scope": { status: "neutral", label: "Not checked" },
 };
 
-function ruleClusters(regulationId, rules) {
-  const known = RULE_CLUSTERS[regulationId] || [];
+function ruleClusters(standardId, rules) {
+  const known = RULE_CLUSTERS[standardId] || [];
   const codes = known.map(cl => cl.code);
   rules.forEach(r => { if (!codes.includes(r.cluster)) codes.push(r.cluster); });
   return codes.map(code => ({
@@ -148,18 +148,18 @@ function RuleRow({ rule, last, details, expanded, onToggle, onShow }) {
 // `details`: whether rows get a toggle (the result has an SBOM or evidence).
 // `expanded` is a Set of rule ids, owned by ArtifactResult so it survives a
 // switch to the source tab and back.
-function RuleClusters({ regulationId, rules, judgedByModel, details, expanded, onToggle, onShow }) {
+function RuleClusters({ standardId, rules, judgedByModel, details, expanded, onToggle, onShow }) {
   const count = (list, outcome) => list.filter(r => r.outcome === outcome && !(isOptional(r) && outcome === "missing")).length;
   const notProvided = list => list.filter(r => isOptional(r) && r.outcome === "missing").length;
   const open = expanded || new Set();
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {regulationId === "g7ai" && judgedByModel && (
+      {standardId === "g7ai" && judgedByModel && (
         <MarginNote title="System judged by model">
           This SBOM describes only one AI model and nothing else. The system-level rules were judged by that model, <Mono>{judgedByModel}</Mono>.
         </MarginNote>
       )}
-      {ruleClusters(regulationId, rules).map(cl => (
+      {ruleClusters(standardId, rules).map(cl => (
         <Card key={cl.code} padding={0}>
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 500, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <span>{cl.name}</span>

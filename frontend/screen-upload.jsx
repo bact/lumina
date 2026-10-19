@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 */
 // Lumina frontend -- Upload SBOM (Mode 2) and Import SARIF (Mode 3) screens.
 //
-//   POST /api/v1/sbom/check    multipart: file + regulation -> SbomCheckResponse
+//   POST /api/v1/sbom/check    multipart: file + standard -> SbomCheckResponse
 //   POST /api/v1/sarif/import  SARIF 2.1.0 JSON body        -> SbomCheckResponse
 //
 // Both render the result with ArtifactResult (screen-conformance.jsx) and show
@@ -87,40 +87,40 @@ function CheckOutcome({ check }) {
 
 // ─── Upload SBOM ───────────────────────────────────────────────────────
 function UploadScreen() {
-  const regs = useRegulations();
-  const [regId, setRegId] = useSelectedRegulation(regs.regulations);
+  const standardList = useStandards();
+  const [standardId, setStandardId] = useSelectedStandard(standardList.standards);
   const [file, setFile] = _useSU(null);
   const check = useCheck();
   const running = check.phase === "running";
 
   function submit() {
-    if (!file || !regId) return;
+    if (!file || !standardId) return;
     const form = new FormData();
     form.append("file", file, file.name);
-    form.append("regulation", regId);
+    form.append("standard", standardId);
     check.start(() => postForResult("/api/v1/sbom/check", { body: form }));
   }
 
   return (
     <ScreenFrame eyebrow="Upload SBOM" title="Check an SBOM file"
       intro="Choose an SPDX 2 or SPDX 3 SBOM file and a minimum elements standard. The server checks it with ntia-conformance-checker; the file is deleted after the check. You can switch the standard afterwards without uploading again.">
-      <RegulationPicker state={regs} value={regId} disabled={running}
+      <StandardPicker state={standardList} value={standardId} disabled={running}
         onChange={(id) => {
-          if (running || id === regId) return;
-          setRegId(id);
+          if (running || id === standardId) return;
+          setStandardId(id);
           // A finished result is checked again against the new standard from its
           // own SBOM text; the file is not uploaded again.
           if (check.phase === "done" && canRecheck(check.result)) {
-            const previous = check.result, previousId = regId;
+            const previous = check.result, previousId = standardId;
             check.recheck(previous, () => recheckSbom(previous, id),
-              `Could not check this SBOM against ${regulationLabel(id)}; the earlier result is shown.`)
-              .then(ok => { if (!ok) setRegId(previousId); });
+              `Could not check this SBOM against ${standardLabel(id)}; the earlier result is shown.`)
+              .then(ok => { if (!ok) setStandardId(previousId); });
           } else check.reset();
         }} />
       <FilePicker id="sbom-file" label="Choose SBOM file" file={file} disabled={running}
         onChange={(f) => { setFile(f); check.reset(); }} />
       <div>
-        <Button variant="primary" icon={running ? "loader" : "play"} onClick={submit} disabled={running || !file || !regId}>
+        <Button variant="primary" icon={running ? "loader" : "play"} onClick={submit} disabled={running || !file || !standardId}>
           {running ? "Checking…" : "Check SBOM"}
         </Button>
       </div>

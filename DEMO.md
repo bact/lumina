@@ -43,7 +43,7 @@ Check from another terminal:
 
 ```shell
 curl -s http://localhost/api/health          # {"status":"ok"}
-curl -s http://localhost/api/v1/regulations  # ntia, bsi, g7ai, cisa2026, fsct2024 ready; mof not
+curl -s http://localhost/api/v1/standards  # ntia, bsi, g7ai, cisa2026, fsct2024 ready; mof not
 ```
 
 Stop with `Ctrl+C`, then `docker compose down`.
@@ -123,7 +123,7 @@ pip install -r requirements.txt          # one to four minutes
 licenseid update                         # SPDX licence list; without it licence ids are not canonicalised
 uvicorn app.main:app --port 8000          # leave running; use a second terminal below
 # second terminal, from the repository root:
-cd backend && curl -s -F file=@../demo/phi-tiny-random.spdx3.json -F regulation=g7ai \
+cd backend && curl -s -F file=@../demo/phi-tiny-random.spdx3.json -F standard=g7ai \
   http://localhost:8000/api/v1/sbom/check
 ```
 

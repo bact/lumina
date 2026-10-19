@@ -6,11 +6,11 @@ SPDX-License-Identifier: Apache-2.0
 */
 // Lumina frontend -- About screen
 //
-// What Lumina is, what it stands on, its licence, and the regulations the
-// API lists (GET /api/v1/regulations) with what each check covers.
+// What Lumina is, what it stands on, its licence, and the standards the
+// API lists (GET /api/v1/standards) with what each check covers.
 
 function AboutScreen() {
-  const regs = useRegulations();
+  const standardList = useStandards();
 
   // ── Dependencies Lumina leans on directly ──────────────────────────────
   const dependencies = [
@@ -94,7 +94,7 @@ function AboutScreen() {
         </Card>
       </section>
 
-      {/* ── Regulations, as the API lists them ──────────────────────────── */}
+      {/* ── Standards, as the API lists them ──────────────────────────── */}
       <section aria-labelledby="about-specs-h">
         <Eyebrow id="about-specs-h">Minimum elements standards</Eyebrow>
         <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--ink-3)", lineHeight: 1.55 }}>
@@ -103,12 +103,12 @@ function AboutScreen() {
           is right. SBOMs are read as SPDX 2 or SPDX 3; the version is detected
           from the file.
         </p>
-        {regs.error
-          ? <div style={{ marginTop: 8 }}><ErrorCard title="Could not load the list of minimum elements standards">{regs.error}</ErrorCard></div>
+        {standardList.error
+          ? <div style={{ marginTop: 8 }}><ErrorCard title="Could not load the list of minimum elements standards">{standardList.error}</ErrorCard></div>
           : (
             <Card padding={0} style={{ marginTop: 8 }}>
-              {!regs.regulations && <div style={{ padding: "14px 20px", fontSize: 12.5, color: "var(--ink-3)" }}>Loading minimum elements standards…</div>}
-              {(regs.regulations || []).map((r, i, all) => (
+              {!standardList.standards && <div style={{ padding: "14px 20px", fontSize: 12.5, color: "var(--ink-3)" }}>Loading minimum elements standards…</div>}
+              {(standardList.standards || []).map((r, i, all) => (
                 <SpecRow key={r.id} reg={r} isLast={i === all.length - 1} />
               ))}
             </Card>
@@ -152,9 +152,9 @@ function AboutScreen() {
   );
 }
 
-// ─── SpecRow -- one regulation the API lists ─────────────────────────────
+// ─── SpecRow -- one standard the API lists ─────────────────────────────
 function SpecRow({ reg, isLast }) {
-  const info = IMPORT_REGULATIONS[reg.id] || {};
+  const info = STANDARD_INFO[reg.id] || {};
   return (
     <div style={{
       padding: "14px 20px",
@@ -163,7 +163,7 @@ function SpecRow({ reg, isLast }) {
     }}>
       <div>
         <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--ink)" }}>
-          {regulationLabel(reg.id)} <Mono style={{ fontSize: 11, color: "var(--ink-3)", fontWeight: 400 }}>{reg.id}</Mono>
+          {standardLabel(reg.id)} <Mono style={{ fontSize: 11, color: "var(--ink-3)", fontWeight: 400 }}>{reg.id}</Mono>
         </div>
         {info.covers && <div style={{ fontSize: 12.5, color: "var(--ink-3)", marginTop: 3, lineHeight: 1.5 }}>{info.covers}</div>}
       </div>
@@ -174,7 +174,7 @@ function SpecRow({ reg, isLast }) {
           display: "inline-flex", alignItems: "center", gap: 5,
           borderBottom: "1px solid var(--ink-4)", paddingBottom: 1,
         }}
-        aria-label={`Open the source document for ${regulationLabel(reg.id)} (new tab)`}>
+        aria-label={`Open the source document for ${standardLabel(reg.id)} (new tab)`}>
           Source <Icon name="external-link" size={11} />
         </a>
       ) : <span aria-hidden="true" style={{ fontSize: 12, color: "var(--ink-4)" }}>--</span>}
