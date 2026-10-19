@@ -255,7 +255,7 @@ function ImportScreen() {
     if (phase === "running" || id === regId) return;
     setRegId(id);
     if (!(phase === "done" && canRecheck(result))) { setResult(null); setPhase("idle"); return; }
-    const previous = result;
+    const previous = result, previousId = regId;
     setPhase("running"); setResult(null); setErrorMsg(""); setRechecking(true);
     try {
       const next = await recheckSbom(previous, id);
@@ -263,7 +263,10 @@ function ImportScreen() {
       setResult(next); setPhase("done");
     } catch (err) {
       if (!aliveRef.current) return;
-      setErrorMsg(String(err.message || err)); setPhase("error");
+      // The earlier result and standard stay (a generated SBOM over the upload
+      // size limit, say, cannot be sent again); the reason is shown above them.
+      setRegId(previousId); setResult(previous); setPhase("done");
+      setErrorMsg(`Could not check this SBOM against ${regulationLabel(id)}; the earlier result is shown.\n${String(err.message || err)}`);
     } finally {
       if (aliveRef.current) setRechecking(false);
     }
@@ -321,6 +324,7 @@ function ImportScreen() {
       )}
 
       {phase === "error" && <ErrorCard>{errorMsg}</ErrorCard>}
+      {phase === "done" && errorMsg && <ErrorCard title="Could not switch the standard">{errorMsg}</ErrorCard>}
       {phase === "done" && result && <ArtifactResult result={result} />}
 
       <MarginNote title="What gets generated?">

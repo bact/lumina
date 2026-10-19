@@ -53,7 +53,20 @@ function useCheck() {
     }
   }
   const reset = () => { setPhase("idle"); setResult(null); setErrorMsg(""); };
-  return { phase, result, errorMsg, start, reset };
+  // Check the SBOM of `previous` again; if that fails, `previous` stays on
+  // screen with the reason above it. Returns whether the new check succeeded.
+  async function recheck(previous, request, failureText) {
+    setPhase("running"); setResult(null); setErrorMsg("");
+    try {
+      setResult(await request()); setPhase("done");
+      return true;
+    } catch (err) {
+      setResult(previous); setPhase("done");
+      setErrorMsg(`${failureText}\n${String(err.message || err)}`);
+      return false;
+    }
+  }
+  return { phase, result, errorMsg, start, reset, recheck };
 }
 
 function CheckOutcome({ check }) {
@@ -66,6 +79,7 @@ function CheckOutcome({ check }) {
         </div>
       )}
       {check.phase === "error" && <ErrorCard>{check.errorMsg}</ErrorCard>}
+      {check.phase === "done" && check.errorMsg && <ErrorCard title="Could not switch the standard">{check.errorMsg}</ErrorCard>}
       {check.phase === "done" && check.result && <ArtifactResult result={check.result} />}
     </>
   );
@@ -97,8 +111,10 @@ function UploadScreen() {
           // A finished result is checked again against the new standard from its
           // own SBOM text; the file is not uploaded again.
           if (check.phase === "done" && canRecheck(check.result)) {
-            const previous = check.result;
-            check.start(() => recheckSbom(previous, id));
+            const previous = check.result, previousId = regId;
+            check.recheck(previous, () => recheckSbom(previous, id),
+              `Could not check this SBOM against ${regulationLabel(id)}; the earlier result is shown.`)
+              .then(ok => { if (!ok) setRegId(previousId); });
           } else check.reset();
         }} />
       <FilePicker id="sbom-file" label="Choose SBOM file" file={file} disabled={running}

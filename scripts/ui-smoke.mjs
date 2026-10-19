@@ -421,6 +421,15 @@ check(await page.getByRole("tab", { name: "Generator log" }).count() === 1
 check((await page.locator("[role=status].sr-only").allInnerTexts()).some(t => /^Check finished: 1 present and 0 missing of 1 rules checked\.$/.test(t)),
   "switch standard: the new result is announced");
 await shot("2g-switched-standard");
+// A switch that fails (the mock refuses it with 413, as for an SBOM over the size
+// limit) keeps the earlier result and standard and says why.
+await page.getByRole("radio", { name: LABELS.fsct2024 }).click();
+await page.waitForSelector("text=Could not switch the standard", { timeout: 10000 }).catch(() => {});
+body = await text();
+check(body.includes("Could not switch the standard") && body.includes(DETAIL_413) && body.includes("Recheck mock rule")
+  && await page.getByRole("radio", { name: LABELS.cisa2026 }).getAttribute("aria-checked") === "true"
+  && await page.getByRole("radio", { name: LABELS.fsct2024 }).getAttribute("aria-checked") === "false",
+  "switch standard: a failed switch keeps the earlier result and standard and shows the reason");
 
 // A failed generation still shows why, in the log.
 await page.getByPlaceholder(/github/).fill("https://github.com/o/gone");
