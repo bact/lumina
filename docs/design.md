@@ -90,6 +90,8 @@ SbomCheckResponse
   run           : CheckRun
   embedded_sbom : EmbeddedSbom?       # populated only on SARIF-import path
                                       # when the producer chose to embed
+  sbom          : SbomSource?         # the SBOM checked (upload or generated),
+                                      # or an embedded SBOM whose text is JSON
 
 ConformanceResult                     # what was found
   regulation_id : str                 # "ntia" | "bsi" | "g7ai" | "cisa2026"
@@ -112,6 +114,30 @@ RuleResult
   provision     : str                 # "requirement" | "recommendation"
   outcome       : str                 # "present" | "missing"
                                       # | "not-applicable" | "out-of-scope"
+  evidence      : list[Evidence]      # at most 20; SPDX 3 JSON checks only
+  evidence_more : int                 # entries left out of evidence
+
+Evidence                              # where the SBOM shows the outcome
+  status        : "found" | "absent"
+  element_id    : str                 # spdxId, or @id ("_:CreationInfo0")
+  element_type  : str                 # "ai_AIPackage" | "CreationInfo" ...
+  element_name  : str?
+  line, end_line: int                 # 1-based, inclusive, in sbom.display
+  items         : list[EvidenceItem]  # empty for "absent"
+
+EvidenceItem
+  key           : str                 # property or relationship type
+  value         : str                 # one-line preview, <= 160 characters
+  line          : int                 # line of the key (of the entry, for a
+                                      # list value) in sbom.display
+
+SbomSource
+  filename      : str                 # upload name; "<repo or model>.spdx3.json"
+  format        : "spdx3-json" | "spdx2-json" | "other"
+  text          : str                 # original bytes as UTF-8 (download)
+  display       : str                 # pretty JSON (indent 2) for a JSON
+                                      # object, else text
+  line_count    : int                 # "\n"-separated lines of display
 
 FieldGap
   component_id  : str
@@ -165,6 +191,45 @@ and no gap is reported.
 | `pitloom.generation-failed`, `pitloom.url-unsupported` | Lumina, Mode 1 | Pitloom failed, or the URL has no host |
 | `git.clone-failed`, `git.timeout` | Lumina, Mode 1 | The shallow clone failed or exceeded 600 s |
 | `lumina.url-too-long`, `lumina.url-invalid`, `lumina.url-scheme-blocked`, `lumina.url-unresolvable`, `lumina.url-private-address` | Lumina, Mode 1 | The URL guard refused the URL: over 2048 characters, unparsable, not http/https, unresolvable, or resolving to a non-public address |
+
+### SBOM source and rule evidence
+
+`sbom` lets the UI offer the checked SBOM for download (`text`, as received or
+as generated) and show it with line numbers (`display`). Every line number in
+the response refers to `display`: an SBOM that is a JSON object is
+pretty-printed there (`json.dumps(indent=2, ensure_ascii=False)`, key order
+kept), anything else is shown as it is. Mode 3 sets `sbom` from an embedded
+SBOM whose text is JSON, without evidence.
+
+`evidence` says, for a rule the checker decided on an SPDX 3 JSON SBOM, which
+`@graph` elements it judged and what on them it read
+([`backend/app/evidence/`](../backend/app/evidence/__init__.py)):
+
+- **absent** -- an element the checker reported as lacking what the rule asks
+  for (the rule's findings); a document-level gap names the `CreationInfo`
+  element, the SBOM element (SBOM type) or the `SpdxDocument`. Absent
+  entries come first.
+- **found** -- an element the rule judged that the checker did not report,
+  with the properties, hashes, relationships or contacts that carry the rule
+  and their lines. Found evidence shows *where* the property is, not that its
+  value is right: the checker decides presence, and Lumina still does no
+  checking of its own.
+
+Which elements a rule judges and whether each passes come from the same
+checker instance that produced the result (its per-rule results, the
+`applies_when` probes and the adapter's components of each kind); the
+properties to point at come from each rule's probe params in the checker's
+spec. Only the two attribute probes (`supplier`, `timestamp` ...) name no
+SPDX 3 property, so a small table in `evidence/carriers.py` mirrors how the
+checker's SPDX 3 adapter reads each one; a rule whose carrier cannot be told
+gets element evidence without items. Element lines come from the structure of
+the parsed document (`app/sbom_source.py`), never from searching the text.
+
+The pass runs after the check, over the same file, and never changes or fails
+it: any error, or a pass over 5 s (an SBOM of many megabytes), logs one
+warning and leaves every rule without evidence. An element written inline
+inside another one, rather than as its own `@graph` object, is never
+evidence.
 
 ### Checker routing
 

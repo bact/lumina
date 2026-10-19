@@ -37,7 +37,8 @@ function Logo({ size = 22 }) {
 }
 
 // ─── Button ─────────────────────────────────────────────────────────────
-function Button({ variant = "secondary", size = "md", icon, iconAfter, children, onClick, disabled, style = {}, type = "button" }) {
+// Other props (id, aria-*, title) go to the <button> as they are.
+function Button({ variant = "secondary", size = "md", icon, iconAfter, children, onClick, disabled, style = {}, type = "button", ...rest }) {
   const base = {
     fontFamily: "inherit", fontWeight: 500, letterSpacing: "-0.005em",
     borderRadius: 4, cursor: disabled ? "not-allowed" : "pointer",
@@ -65,7 +66,7 @@ function Button({ variant = "secondary", size = "md", icon, iconAfter, children,
     : variant === "danger" ? { background: "var(--shu-soft)" }
     : {} : {};
   return (
-    <button type={type} onClick={onClick} disabled={disabled}
+    <button {...rest} type={type} onClick={onClick} disabled={disabled}
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       style={{ ...base, ...sizes[size], ...variants[variant], ...disabledStyle, ...hoverStyle, ...style }}>
       {icon && <Icon name={icon} size={size === "sm" ? 13 : 14} />}

@@ -237,6 +237,24 @@ def test_pitloom_warnings_reach_the_user_as_notifications(
     assert response.run.generator.startswith("pitloom ")
 
 
+def test_generated_result_carries_the_sbom(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The generated SBOM is returned (read before its file is deleted),
+    named after the model, with evidence."""
+    paths: list[str] = []
+
+    def fake_generate(_url: str, sbom_path: str) -> None:
+        paths.append(sbom_path)
+        shutil.copy(SPDX3_FIXTURE, sbom_path)
+
+    monkeypatch.setattr(generate, "_generate", fake_generate)
+    response = generate.generate_and_check("https://huggingface.co/o/m", "g7ai")
+    assert response.sbom is not None
+    assert response.sbom.filename == "m.spdx3.json"
+    assert response.sbom.text == SPDX3_FIXTURE.read_text(encoding="utf-8")
+    assert any(r.evidence for r in response.conformance.rules)
+    assert not Path(paths[0]).exists()
+
+
 def test_warnings_are_collected_only_during_generation() -> None:
     """A warning logged after the context manager exits is not collected."""
     sink: list[Notification] = []

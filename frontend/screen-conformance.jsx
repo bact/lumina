@@ -4,8 +4,9 @@ SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: SOURCE
 SPDX-License-Identifier: Apache-2.0
 */
-// Lumina frontend -- regulations, API helpers, the Generate & check screen and
-// the result view every check screen shares.
+// Lumina frontend -- regulations, API helpers, the regulation picker and the
+// Generate & check screen. The result view every check screen shares is
+// ArtifactResult (result-view.jsx).
 //
 // Every screen renders only what the API returns: the regulation list comes
 // from GET /api/v1/regulations, results are SbomCheckResponse objects, and a
@@ -48,6 +49,9 @@ const IMPORT_REGULATIONS = {
     href: "https://isitopen.ai/",
   },
 };
+
+// Preselected on the check screens when the API lists it as ready.
+const DEFAULT_REGULATION = "g7ai";
 
 const regulationLabel = (id) => (IMPORT_REGULATIONS[id] && IMPORT_REGULATIONS[id].label) || id;
 
@@ -131,11 +135,13 @@ function useRegulations() {
   return state;
 }
 
-// The selected regulation id: the first ready one until the user picks.
+// The selected regulation id: until the user picks, DEFAULT_REGULATION when
+// it is ready, else the first ready one.
 function useSelectedRegulation(regulations) {
   const [picked, setPicked] = _useSC(null);
   const ready = (regulations || []).filter(r => r.ready).map(r => r.id);
-  return [picked && ready.includes(picked) ? picked : ready[0] || null, setPicked];
+  if (picked && ready.includes(picked)) return [picked, setPicked];
+  return [ready.includes(DEFAULT_REGULATION) ? DEFAULT_REGULATION : ready[0] || null, setPicked];
 }
 
 // ─── RegulationPicker -- radio chips for the regulations the API lists ──
@@ -217,7 +223,7 @@ function ImportScreen() {
           onChange={setUrl}
           onKeyDown={(e) => { if (e.key === "Enter" && phase !== "running") run(); }}
           disabled={phase === "running"}
-          style={{ flex: 1, minWidth: 320 }}
+          style={{ flex: "1 1 260px", minWidth: 0 }}
         />
         <Button variant="primary" icon={phase === "running" ? "loader" : "play"}
           onClick={run} disabled={phase === "running" || !url.trim() || !regId}>
@@ -247,7 +253,7 @@ function ImportScreen() {
 // ─── ScreenFrame -- heading + column every check screen uses ──────────
 function ScreenFrame({ eyebrow, title, intro, children }) {
   return (
-    <div style={{ padding: "32px 48px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 880, margin: "0 auto" }}>
+    <div className="screen-frame" style={{ padding: "32px 48px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 880, margin: "0 auto" }}>
       <div>
         <Eyebrow>{eyebrow}</Eyebrow>
         <h1 style={{ margin: "6px 0 4px", fontSize: 32, fontWeight: 500, letterSpacing: "-0.018em" }}>{title}</h1>
@@ -258,193 +264,8 @@ function ScreenFrame({ eyebrow, title, intro, children }) {
   );
 }
 
-// ─── RuleClusters -- per-rule outcomes grouped by cluster ───────────────
-// "Not applicable" and "out of scope" rules are listed but never counted as
-// missing: out-of-scope rules are catalogue-only, the checker cannot check them.
-const RULE_CHIP = {
-  present: { status: "present" },
-  missing: { status: "missing" },
-  "not-applicable": { status: "neutral", label: "Not applicable" },
-  "out-of-scope": { status: "neutral", label: "Not checked" },
-};
-
-function ruleClusters(regulationId, rules) {
-  const known = RULE_CLUSTERS[regulationId] || [];
-  const codes = known.map(cl => cl.code);
-  rules.forEach(r => { if (!codes.includes(r.cluster)) codes.push(r.cluster); });
-  return codes.map(code => ({
-    code,
-    name: (known.find(cl => cl.code === code) || {}).name || code || "Other",
-    rules: rules.filter(r => r.cluster === code),
-  })).filter(cl => cl.rules.length > 0);
-}
-
-// A rule the standard only permits (BSI "optional") is never a gap: lacking it
-// is shown as "Not provided", not "Missing", and counted apart.
-const isOptional = r => r.provision === "permission";
-const ruleChip = r => (isOptional(r) && r.outcome === "missing"
-  ? { status: "neutral", label: "Not provided" }
-  : RULE_CHIP[r.outcome] || { status: "neutral", label: r.outcome });
-
-function RuleClusters({ regulationId, rules, judgedByModel }) {
-  const count = (list, outcome) => list.filter(r => r.outcome === outcome && !(isOptional(r) && outcome === "missing")).length;
-  const notProvided = list => list.filter(r => isOptional(r) && r.outcome === "missing").length;
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {regulationId === "g7ai" && judgedByModel && (
-        <MarginNote title="System judged by model">
-          This SBOM describes only one AI model and nothing else. The system-level rules were judged by that model, <Mono>{judgedByModel}</Mono>.
-        </MarginNote>
-      )}
-      {ruleClusters(regulationId, rules).map(cl => (
-        <Card key={cl.code} padding={0}>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 500, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-            <span>{cl.name}</span>
-            <span style={{ fontWeight: 400, color: "var(--ink-3)" }}>
-              {count(cl.rules, "present")} present · {count(cl.rules, "missing")} missing · {count(cl.rules, "not-applicable")} not applicable · {count(cl.rules, "out-of-scope")} not checked{notProvided(cl.rules) > 0 ? ` · ${notProvided(cl.rules)} optional not provided` : ""}
-            </span>
-          </div>
-          {cl.rules.map((r, i) => {
-            const chip = ruleChip(r);
-            return (
-              <div key={r.rule_id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "9px 16px", borderBottom: i < cl.rules.length - 1 ? "1px solid var(--border)" : "none" }}>
-                <div style={{ flex: "0 0 112px", paddingTop: 1 }}><StatusChip status={chip.status}>{chip.label}</StatusChip></div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: "var(--ink)" }}>{r.title}</div>
-                  <div style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 2 }}>
-                    <Mono>{r.rule_id.split("-").slice(2).join("-")}</Mono>{r.provision ? <> · {r.provision}</> : null}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-// ─── ArtifactResult -- render one SbomCheckResponse ────────────────────
-// Counts, per-rule outcomes, gaps and run notifications, exactly as the API
-// returned them. Two honest states replace the counts:
-//   - the SBOM could not be checked (run.execution_successful is false);
-//   - nothing was checked (an `sbom.nothing-applies` notification).
-function ArtifactResult({ result }) {
-  const c = result.conformance || {};
-  const run = result.run || {};
-  const notes = run.notifications || [];
-  const gaps = c.gaps || [];
-  const rules = c.rules || [];
-  const ok = run.execution_successful !== false;
-  const nothingApplies = notes.some(n => n.descriptor_id === "sbom.nothing-applies");
-  const showFindings = ok && !nothingApplies;
-  const optionalTotal = (c.optional_present ?? 0) + (c.optional_missing ?? 0);
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <RunLine result={result} />
-
-      {ok && nothingApplies && (
-        <Card variant="default" padding={16}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--ink-2)", fontSize: 14, fontWeight: 500 }}>
-            <Icon name="info" size={16} /> Nothing was checked: no rule of this regulation applies to this SBOM
-          </div>
-        </Card>
-      )}
-      {!ok && (
-        <Card variant="default" padding={16} style={{ borderColor: "var(--shu)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--shu)", fontSize: 14, fontWeight: 500 }}>
-            <Icon name="alert-triangle" size={16} /> The SBOM could not be checked
-          </div>
-          <div style={{ fontSize: 12.5, color: "var(--ink-3)", marginTop: 6 }}>
-            See the notifications below.
-          </div>
-        </Card>
-      )}
-      {showFindings && (
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${3 + ((c.unverified ?? 0) > 0 ? 1 : 0) + (optionalTotal > 0 ? 1 : 0)}, 1fr)`, gap: 12 }}>
-          <SummaryTile label="Fields checked" value={c.total ?? 0} />
-          <SummaryTile label="Present" value={c.present ?? 0} accent="var(--moss)" />
-          <SummaryTile label="Missing" value={c.missing ?? 0} accent={(c.missing ?? 0) > 0 ? "var(--ochre)" : undefined} />
-          {(c.unverified ?? 0) > 0 && <SummaryTile label="Unverified" value={c.unverified} accent="var(--indigo)" />}
-          {optionalTotal > 0 && <SummaryTile label="Optional provided" value={`${c.optional_present ?? 0} of ${optionalTotal}`} />}
-        </div>
-      )}
-
-      {showFindings && rules.length > 0 && <RuleClusters regulationId={c.regulation_id} rules={rules} judgedByModel={c.system_judged_by_model} />}
-
-      {showFindings && gaps.length > 0 && (
-        <Card padding={0}>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 500 }}>
-            Gaps ({gaps.length})
-          </div>
-          <div>
-            {gaps.map((g, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 16px", borderBottom: i < gaps.length - 1 ? "1px solid var(--border)" : "none" }}>
-                <div style={{ flex: "0 0 auto", paddingTop: 1 }}><StatusChip status={g.level === "unverified" ? "unverified" : "missing"} /></div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: "var(--ink)" }}><Mono>{g.field_key}</Mono></div>
-                  <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 2, lineHeight: 1.5 }}>
-                    {g.component_id ? <>{g.component_id} &middot; </> : null}{g.note}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {showFindings && gaps.length === 0 && (
-        <Card padding={16}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--moss)", fontSize: 14, fontWeight: 500 }}>
-            <Icon name="check" size={16} /> No conformance gaps found
-          </div>
-        </Card>
-      )}
-
-      {notes.length > 0 && (
-        <Card padding={0}>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 500 }}>
-            Notifications ({notes.length})
-          </div>
-          <div>
-            {notes.map((n, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 16px", borderBottom: i < notes.length - 1 ? "1px solid var(--border)" : "none" }}>
-                <StatusChip status={n.level === "error" ? "invalid" : n.level === "warning" ? "missing" : "neutral"}>{n.level}</StatusChip>
-                <div style={{ minWidth: 0, fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5, overflowWrap: "anywhere" }}>
-                  {n.descriptor_id ? <Mono style={{ marginRight: 6 }}>{n.descriptor_id}</Mono> : null}{n.message}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-    </div>
-  );
-}
-
-// ─── RunLine -- which regulation, which tool, which generator ──────────
-const SOURCE_NOTE = {
-  "external-sarif": "a third-party SARIF producer",
-  "lumina-internal": "Lumina (the checker did not run)",
-};
-
-function RunLine({ result }) {
-  const c = result.conformance || {};
-  const run = result.run || {};
-  const tool = c.source === "lumina-internal" ? "" : [run.tool_name, run.tool_version].filter(Boolean).join(" ");
-  return (
-    <div style={{ fontSize: 12.5, color: "var(--ink-3)", display: "flex", gap: 6, flexWrap: "wrap", alignItems: "baseline" }}>
-      <RegTag active>{regulationLabel(c.regulation_id)}</RegTag>
-      {tool ? <span>· run by <Mono>{tool}</Mono></span> : null}
-      {SOURCE_NOTE[c.source] ? <span>· from {SOURCE_NOTE[c.source]}</span> : null}
-      {run.generator ? <span>· SBOM generated by <Mono>{run.generator}</Mono></span> : null}
-    </div>
-  );
-}
-
 Object.assign(window, {
-  ArtifactResult,
-  IMPORT_REGULATIONS, RULE_CLUSTERS, regulationLabel, apiErrorMessage, postForResult,
+  IMPORT_REGULATIONS, RULE_CLUSTERS, DEFAULT_REGULATION, regulationLabel, apiErrorMessage, postForResult,
   useRegulations, useSelectedRegulation, RegulationPicker, ScreenFrame,
-  ImportScreen, RuleClusters,
+  ImportScreen,
 });

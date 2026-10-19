@@ -25,6 +25,7 @@ from .conformance import (
 from .generate import generate_and_check
 from .jobs import InProcessJobQueue
 from .sarif_ingest import SarifIngestError, parse_sarif
+from .sbom_source import load_sbom
 
 app = FastAPI(
     title="Lumina",
@@ -150,9 +151,13 @@ async def check_sbom(
     ) as tmp:
         tmp.write(content)
         tmp_path = tmp.name
+    text = content.decode("utf-8", errors="replace")
+    del content  # keep at most the text and its display in memory
 
     try:
-        return await run_in_threadpool(run_checker, tmp_path, regulation)
+        return await run_in_threadpool(
+            _check_upload, tmp_path, regulation, _upload_name(file.filename), text
+        )
     except NotImplementedError as exc:
         raise HTTPException(status_code=501, detail=str(exc)) from exc
     except Exception as exc:
@@ -221,6 +226,18 @@ async def get_job(job_id: str) -> JobStatusResponse:
     return JobStatusResponse(
         status=record.status, result=record.result, error=record.error
     )
+
+
+def _check_upload(
+    path: str, regulation: RegulationId, filename: str, text: str
+) -> SbomCheckResponse:
+    """Check the uploaded file at *path*; *text* is its content."""
+    return run_checker(path, regulation, load_sbom(filename, text))
+
+
+def _upload_name(filename: str | None) -> str:
+    """The upload's file name without any directory part, or ``sbom``."""
+    return (filename or "").replace("\\", "/").rsplit("/", 1)[-1] or "sbom"
 
 
 _SUFFIX = re.compile(r"\.[A-Za-z0-9]{1,8}")

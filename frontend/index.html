@@ -85,6 +85,9 @@ SPDX-License-Identifier: Apache-2.0
 <script type="text/babel" src="components.jsx"></script>
 <script type="text/babel" src="app-shell.jsx"></script>
 <script type="text/babel" src="screen-conformance.jsx"></script>
+<script type="text/babel" src="sbom-source.jsx"></script>
+<script type="text/babel" src="rule-evidence.jsx"></script>
+<script type="text/babel" src="result-view.jsx"></script>
 <script type="text/babel" src="screen-upload.jsx"></script>
 <script type="text/babel" src="screen-about.jsx"></script>
 
@@ -123,7 +126,7 @@ function App() {
   return (
     <>
       <TopBar />
-      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+      <div className="app-body" style={{ display: "flex", flex: 1, minHeight: 0 }}>
         <SideNav current={screen} onNav={setScreen} />
         <main id="main-content"
           data-screen={screen}

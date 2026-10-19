@@ -165,15 +165,18 @@ Requirement ids are the [SBOM requirements ontology][bom] ids, for example
 | Endpoint | Purpose |
 | - | - |
 | `GET /api/v1/regulations` | Regulations Lumina knows, with `ready` set when the checker supports them |
-| `POST /api/v1/sbom/check` | Upload an SBOM (SPDX 2 or 3; up to 10 MiB by default) and check it |
-| `POST /api/v1/artifact/check` | Generate an SBOM from a Git or Hugging Face URL, then check it (background job) |
+| `POST /api/v1/sbom/check` | Upload an SBOM (SPDX 2 or 3; up to 10 MiB by default) and check it; the result carries the SBOM and per-rule evidence |
+| `POST /api/v1/artifact/check` | Generate an SBOM from a Git or Hugging Face URL, then check it (background job); the result carries the generated SBOM and per-rule evidence |
 | `GET /api/v1/jobs/{job_id}` | Status and result of a background job |
-| `POST /api/v1/sarif/import` | Read a SARIF 2.1.0 log from any producer, without running a check |
+| `POST /api/v1/sarif/import` | Read a SARIF 2.1.0 log from any producer, without running a check; an embedded JSON SBOM is returned as `sbom` |
 
 Every check returns one `SbomCheckResponse`: the conformance result (counts,
 per-rule outcomes and gaps), the checker run (tool, version, the generator of a
-generated SBOM, notifications), and, when an imported SARIF log embeds it, the
-SBOM. A refused request (413 too large, 422 unreadable or unsupported, 501
+generated SBOM, notifications), and the SBOM itself (`sbom`: the uploaded or
+generated file for download and a pretty-printed copy with line numbers; for an
+imported SARIF log, the embedded SBOM when it is JSON). For an SPDX 3 JSON
+SBOM each rule also carries `evidence`: the elements that have, or lack, what
+the rule asks for, with their lines in the SBOM. A refused request (413 too large, 422 unreadable or unsupported, 501
 unsupported regulation) carries the reason in `detail`.
 
 ### Adding a regulation

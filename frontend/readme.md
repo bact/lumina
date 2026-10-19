@@ -32,10 +32,42 @@ It shows no counts, and says why, when the SBOM could not be checked
 "judged by model" note appears only for G7 AI, and the *Unverified* tile only
 when that count is above 0.
 
+## Result view, evidence and SBOM source
+
+When the response carries the checked SBOM (`sbom`: `filename`, `format`,
+`text`, `display`, `line_count`), `ArtifactResult` adds:
+
+- **Download SBOM** next to the tabs: saves `sbom.text` (the original bytes)
+  as `sbom.filename` through a Blob URL, so it works offline.
+- **Tabs** "Result" | "SBOM source" (WAI-ARIA tabs: arrow keys, Home, End).
+- **Rule details**: each rule row has a *Show more / Show less* button
+  (`aria-expanded`) and the result an *Expand all / Collapse all* button. The
+  details list `rule.evidence`: element name, id and type, *Found* or
+  *Absent*, and its `items` (key: value), then "and N more" for
+  `evidence_more`. A rule without evidence says so.
+- **SBOM source**: `sbom.display` with line numbers and JSON highlighting
+  (keys, strings, numbers, literals, punctuation; `--syntax-*` tokens), done
+  per line as React text nodes. The view is windowed (fixed 20 px rows; only
+  the visible rows plus 40 above and below are in the DOM), so a 10 MiB SBOM
+  stays responsive; a line over 4,000 characters is cut in the view only.
+  The toolbar has the file name, line count, *Go to line*, *Copy* and
+  *Download*.
+- **Show in SBOM** (per evidence entry: `line`..`end_line`; per item: its
+  `line`) switches to the source tab, scrolls the range into view, marks it
+  (background plus a left bar, fading to a lighter tint), moves focus to the
+  source and sets the URL hash (`#sbom-L57` or `#sbom-L57-L80`; a hash typed
+  in the same session jumps too). *Back to result* returns to the rule's
+  toggle.
+
+A response without `sbom` (older servers, a SARIF log with no JSON SBOM)
+shows the result alone: no tabs, no download, no rule toggles.
+
 ## Regulations
 
 The regulation chips list exactly what `GET /api/v1/regulations` returns, in
 its order. A regulation with `ready: false` is shown but cannot be selected.
+*G7 SBOM for AI* (`DEFAULT_REGULATION`, `g7ai`) is preselected when the API
+lists it as ready; otherwise the first ready one is.
 Labels, a one-line description of what each check covers, and a source link
 come from one table, `IMPORT_REGULATIONS` in `screen-conformance.jsx`; an id
 missing from it is shown by its id. `RULE_CLUSTERS` in the same file names and
@@ -52,7 +84,10 @@ still shown, by its code.
 | `i18n.js` | `window.LUMINA_I18N`: locales, catalogues, `t()`. |
 | `components.jsx` | `Icon`, `Logo`, `Button`, `StatusChip`, `RegTag`, `Card`, `MarginNote`, `TextField`, `Eyebrow`, `Mono`, `SummaryTile`, `ErrorCard`, `useLocale`. |
 | `app-shell.jsx` | `TopBar` (logo, `LanguageSwitcher`), `SideNav` and `NAV_SECTIONS`, the side-nav items. |
-| `screen-conformance.jsx` | `IMPORT_REGULATIONS`, `RULE_CLUSTERS`, the API helpers (`apiErrorMessage`, `postForResult`, `useRegulations`), `RegulationPicker`, the Generate & check screen (`ImportScreen`), `RuleClusters` and `ArtifactResult`. |
+| `screen-conformance.jsx` | `IMPORT_REGULATIONS`, `DEFAULT_REGULATION`, `RULE_CLUSTERS`, the API helpers (`apiErrorMessage`, `postForResult`, `useRegulations`), `RegulationPicker`, `ScreenFrame` and the Generate & check screen (`ImportScreen`). |
+| `sbom-source.jsx` | `SbomSource` (windowed, highlighted source view), `DownloadSbomButton`, `downloadSbom`, the per-line JSON tokenizer. |
+| `rule-evidence.jsx` | `RuleClusters` (per-rule outcomes by cluster, with the details toggles) and `RuleEvidence`. |
+| `result-view.jsx` | `ArtifactResult` (tabs, download, Show in SBOM wiring), `ResultTabs`, `RunLine`. |
 | `screen-upload.jsx` | Upload SBOM (`UploadScreen`) and Import SARIF (`SarifScreen`). |
 | `screen-about.jsx` | About (`AboutScreen`). |
 
@@ -99,8 +134,9 @@ mocked API and checks every screen; see `AGENTS.md` for how to run it.
 
 ## Not implemented
 
-- Viewing the SBOM itself (components, dependency graph, raw document). An
-  imported SARIF log's `embedded_sbom` is returned by the API but not shown.
+- A structured view of the SBOM (components, dependency graph); only its
+  source is shown.
 - An SBOM URL or SARIF URL as input (the API takes files and bodies only).
 - Authentication.
-- Small-viewport layouts (the layout is desktop-first).
+- A full small-viewport design: the layout is desktop-first; below 640 px
+  the side nav becomes a strip above the screen and gutters shrink.

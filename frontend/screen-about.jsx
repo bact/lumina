@@ -29,7 +29,7 @@ function AboutScreen() {
   ];
 
   return (
-    <div style={{ padding: "32px 48px", display: "flex", flexDirection: "column", gap: 24, maxWidth: 960, margin: "0 auto" }}>
+    <div className="screen-frame" style={{ padding: "32px 48px", display: "flex", flexDirection: "column", gap: 24, maxWidth: 960, margin: "0 auto" }}>
       {/* ── Header / one-line description ───────────────────────────────── */}
       <div>
         <Eyebrow>About</Eyebrow>

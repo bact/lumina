@@ -19,7 +19,9 @@ Flow:
 2. Pitloom writes an SPDX 3 JSON-LD file.
 3. The file is checked by the same :func:`run_checker` as an uploaded
    SBOM, which detects the SPDX version from the file.
-4. What Pitloom logs at WARNING or above while it generates is added to the
+4. The response carries the generated SBOM as ``sbom`` (read before the file
+   is deleted) and, per rule, the evidence in it.
+5. What Pitloom logs at WARNING or above while it generates is added to the
    result as ``pitloom.log`` notifications, and ``CheckRun.generator`` names
    the Pitloom version.
 
@@ -56,6 +58,7 @@ from .generators import (
     generate_from_git,
     generate_from_huggingface,
 )
+from .sbom_source import load_sbom
 
 logger = logging.getLogger(__name__)
 
@@ -214,13 +217,31 @@ def generate_and_check(
                 exc.descriptor_id,
                 hide_temp_dir(exc.message),
             )
-        response = run_checker(sbom_path, regulation_id)
+        with open(sbom_path, encoding="utf-8", errors="replace") as sbom_file:
+            loaded = load_sbom(sbom_filename(artifact_url), sbom_file.read())
+        response = run_checker(sbom_path, regulation_id, loaded)
         response.run.generator = f"pitloom {_pitloom_version()}"
         response.run.notifications.extend(warnings)
         return response
     finally:
         if os.path.exists(sbom_path):
             os.unlink(sbom_path)
+
+
+_UNSAFE_FILENAME_CHARS = re.compile(r"[^A-Za-z0-9._-]+")
+
+
+def sbom_filename(artifact_url: str) -> str:
+    """``<name>.spdx3.json`` for a generated SBOM: the Hugging Face model name
+    (``huggingface.co/<org>/<model>/...``) or the last path segment of a Git
+    URL (without ``.git``); ``sbom.spdx3.json`` when the URL names nothing."""
+    parsed = urlparse(artifact_url)
+    segments = [s for s in parsed.path.split("/") if s]
+    if (parsed.hostname or "").lower() in _HF_HOSTS:
+        segments = segments[:2]
+    name = segments[-1] if segments else ""
+    name = _UNSAFE_FILENAME_CHARS.sub("-", name.removesuffix(".git")).strip(".-")
+    return f"{name or 'sbom'}.spdx3.json"
 
 
 def _generate(artifact_url: str, sbom_path: str) -> None:
