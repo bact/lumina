@@ -18,8 +18,8 @@ from pydantic import BaseModel
 
 from .conformance import (
     CHECKER_STANDARDS,
-    StandardId,
     SbomCheckResponse,
+    StandardId,
     run_checker,
 )
 from .generate import generate_and_check

@@ -17,7 +17,12 @@ an SBOM from. The checks themselves are run by
 [ntia-conformance-checker][checker].
 
 The web UI has four screens: *Generate & check* (a URL), *Upload SBOM*,
-*Import SARIF* and *About*. It shows only what the API returns.
+*Import SARIF* and *About*. It shows only what the API returns: per rule, the
+value the SBOM holds and the SBOM elements behind it with a link to their lines
+in the SBOM source, the SBOM itself (download and highlighted source), and, for
+a generated SBOM, the generator's log. With a result on screen, picking another
+minimum elements standard checks the same SBOM again without generating or
+uploading it again.
 
 ---
 
@@ -143,18 +148,18 @@ Redis are introduced only if load grows. See
 ## Conformance checking
 
 Lumina does no checking itself. [ntia-conformance-checker][checker] runs every
-check, and Lumina turns its [SARIF][sarif] log into a field-level result: which
-requirements the SBOM has a property for, and which it lacks (`present` means the
+check, and Lumina turns its [SARIF][sarif] log into a rule-level result: which
+rules the SBOM has a property for, and which it lacks (`present` means the
 property exists, not that its value is right). The checker detects SPDX
 2 or 3 from the file.
 
 | Minimum elements standard | Checker standard | Result |
 | - | - | - |
-| NTIA Minimum Elements (2021) | `ntia` | per-requirement gaps |
-| G7 SBOM for AI Minimum Elements (2026) | `g7ai` | per-requirement gaps; partial coverage, SPDX 3 only |
-| CISA 2026 Minimum Elements | `cisa2026` | per-requirement gaps; partial coverage, SPDX 3 only |
-| FSCT 2024 (CISA Framing) | `fsct3` (API id `fsct2024`) | per-requirement gaps; partial coverage |
-| BSI TR-03183-2 v2.1 | `bsi` | per-requirement gaps; partial coverage, SPDX 3 only |
+| NTIA Minimum Elements (2021) | `ntia` | per-rule results; SPDX 2 and 3 |
+| G7 SBOM for AI Minimum Elements (2026) | `g7ai` | per-rule results; partial coverage, SPDX 3 only |
+| CISA 2026 Minimum Elements | `cisa2026` | per-rule results; partial coverage, SPDX 3 only |
+| FSCT 2024 (CISA Framing) | `fsct3` (API id `fsct2024`) | per-rule results; partial coverage; SPDX 2 and 3 |
+| BSI TR-03183-2 v2.1 | `bsi` | per-rule results; partial coverage, SPDX 3 only; optional elements counted apart |
 | MOF | none | not supported; the API returns HTTP 501 |
 
 Requirement ids are the [SBOM requirements ontology][bom] ids, for example

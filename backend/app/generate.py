@@ -22,8 +22,9 @@ Flow:
 4. The response carries the generated SBOM as ``sbom`` (read before the file
    is deleted) and, per rule, the evidence in it.
 5. What Pitloom logs at WARNING or above while it generates is added to the
-   result as ``pitloom.log`` notifications, and ``CheckRun.generator`` names
-   the Pitloom version.
+   result as ``pitloom.log`` notifications, ``CheckRun.generator`` names the
+   Pitloom version, and ``generation_log`` lists everything the generator side
+   did (:mod:`app.generation_log`).
 
 A generation failure is returned as a *degraded* response (zeroed conformance,
 ``execution_successful=False``, one ``error`` notification) rather than raised, so
@@ -49,16 +50,16 @@ from .conformance import (
     CheckRun,
     ConformanceResult,
     Notification,
-    StandardId,
     SbomCheckResponse,
+    StandardId,
     run_checker,
 )
+from .generation_log import GenerationLog, hide_temp_dir, note, recording
 from .generators import (
     GenerationError,
     generate_from_git,
     generate_from_huggingface,
 )
-from .generation_log import GenerationLog, hide_temp_dir, note, recording
 from .sbom_source import load_sbom
 
 logger = logging.getLogger(__name__)

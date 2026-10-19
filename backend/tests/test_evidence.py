@@ -19,9 +19,9 @@ from app import evidence
 from app.conformance import (
     CHECKER_STANDARDS,
     EvidenceItem,
-    StandardId,
     RuleResult,
     SbomCheckResponse,
+    StandardId,
     run_checker,
 )
 from app.evidence import rules

@@ -39,7 +39,9 @@ When the response carries the checked SBOM (`sbom`: `filename`, `format`,
 
 - **Download SBOM** next to the tabs: saves `sbom.text` (the original bytes)
   as `sbom.filename` through a Blob URL, so it works offline.
-- **Tabs** "Result" | "SBOM source" (WAI-ARIA tabs: arrow keys, Home, End).
+- **Tabs** "Result" | "SBOM source" (WAI-ARIA tabs: arrow keys, Home, End), plus
+  "Generator log" when the response carries `generation_log` (a generated SBOM,
+  or a failed generation, which has no SBOM source tab).
 - **Rule rows** show, under the title, the value the SBOM holds for the
   element (up to three, from the `items` of the elements that have it; prefixed
   with the element's name when the rule judged several), so the default view
@@ -64,8 +66,8 @@ When the response carries the checked SBOM (`sbom`: `filename`, `format`,
   in the same session jumps too). *Back to result* returns to the rule's
   toggle.
 
-A response without `sbom` (older servers, a SARIF log with no JSON SBOM)
-shows the result alone: no tabs, no download, no rule toggles.
+A response with neither `sbom` nor `generation_log` (a SARIF log with no JSON
+SBOM) shows the result alone: no tabs, no download, no rule toggles.
 
 ## Minimum elements standards
 
@@ -91,7 +93,7 @@ still shown, by its code.
 | `colors-and-type.css` | Design tokens: CSS variables for colours, typography, spacing, motion. |
 | `assets/` | Logo SVGs. |
 | `i18n.js` | `window.LUMINA_I18N`: locales, catalogues, `t()`. |
-| `components.jsx` | `Icon`, `Logo`, `Button`, `StatusChip`, `RegTag`, `Card`, `MarginNote`, `TextField`, `Eyebrow`, `Mono`, `SummaryTile`, `ErrorCard`, `useLocale`. |
+| `components.jsx` | `Icon`, `Logo`, `Button`, `StatusChip`, `StandardTag`, `Card`, `MarginNote`, `TextField`, `Eyebrow`, `Mono`, `SummaryTile`, `ErrorCard`, `useLocale`. |
 | `app-shell.jsx` | `TopBar` (logo, `LanguageSwitcher`), `SideNav` and `NAV_SECTIONS`, the side-nav items. |
 | `screen-conformance.jsx` | `STANDARD_INFO`, `DEFAULT_STANDARD`, `RULE_CLUSTERS`, the API helpers (`apiErrorMessage`, `postForResult`, `useStandards`), `StandardPicker`, `ScreenFrame` and the Generate & check screen (`ImportScreen`). |
 | `sbom-source.jsx` | `SbomSource` (windowed, highlighted source view), `DownloadSbomButton`, `downloadSbom`, the per-line highlight.js to React conversion. |
@@ -100,6 +102,7 @@ still shown, by its code.
 | `result-view.jsx` | `ArtifactResult` (tabs, download, Show in SBOM wiring), `ResultTabs`, `RunLine`. |
 | `screen-upload.jsx` | Upload SBOM (`UploadScreen`) and Import SARIF (`SarifScreen`). |
 | `screen-about.jsx` | About (`AboutScreen`). |
+| `vendor/` | React, React DOM, Babel, Lucide and highlight.js (JSON grammar), each with its licence; see `vendor/README.md`. |
 
 ## Internationalization
 
@@ -123,7 +126,11 @@ Built against WCAG 2.2 AA:
 - **Standard picker:** a `radiogroup` named "Minimum elements standard"; an unsupported one is a radio
   with `aria-disabled="true"`, out of the tab order.
 - **Errors and progress:** an error card has `role="alert"`; the working
-  message has `role="status"`.
+  message has `role="status"`, and a finished check, a copied log or source and
+  an example that filled the form are announced through live regions
+  (`ResultAnnouncer` and the screens' own `role="status"` regions).
+- **Names:** a control with visible text has an accessible name containing it
+  (WCAG 2.5.3); tab, tabpanel, `aria-controls` and `aria-labelledby` ids exist.
 - **Decorative icons and dots:** `aria-hidden="true"`; status is always text
   plus colour, never colour alone.
 - **Focus indicator:** a 2px ink outline plus shu glow on `:focus-visible`.

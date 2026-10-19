@@ -45,11 +45,11 @@ from .conformance import (
     FieldGap,
     Notification,
     NotificationLevel,
-    StandardId,
     RuleOutcome,
     RuleResult,
     SbomCheckResponse,
     SbomSource,
+    StandardId,
 )
 from .sbom_source import load_sbom
 

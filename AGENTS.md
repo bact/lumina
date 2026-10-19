@@ -37,6 +37,8 @@ lumina/
 ├── docker-compose.override.yml Dev overrides — auto-loaded; nginx target: dev,
 │                               mounts frontend/ at /workspace/frontend
 ├── .dockerignore               Keeps caches/git/docs out of Docker build context
+├── DEMO.md                     Demo guide: set up, warm up, script, troubleshooting
+├── demo/                       Real demo files: an SBOM and its G7 AI SARIF report
 ├── proxy/                      Reverse-proxy service (nginx)
 │   ├── Dockerfile              Multi-stage: dev (config only) / prod (self-contained)
 │   ├── prod.conf               Prod: root /app (frontend baked in)
@@ -84,7 +86,8 @@ id to the checker's own standard id; add a standard there once the checker
 supports it.
 
 Do not change the `SbomCheckResponse` models (`ConformanceResult`, `RuleResult`,
-`FieldGap`, `CheckRun`, `Notification`) in `conformance.py` without updating
+`Evidence`, `FieldGap`, `CheckRun`, `Notification`, `SbomSource` in
+`conformance.py`; `LogLine` in `generation_log.py`) without updating
 the frontend that reads them (`ArtifactResult` in `frontend/result-view.jsx`,
 `RuleClusters` and `RuleEvidence` in `frontend/rule-evidence.jsx`,
 `SbomSource` in `frontend/sbom-source.jsx`, `GeneratorLog` in
@@ -173,8 +176,11 @@ every side-nav screen in headless Chromium and fails on a page or console
 error, on an old sample-data string, when the standard chips differ from the
 mocked `GET /api/v1/standards`, when a refused request's `detail` is not
 shown, when the per-rule BSI result lacks its DOC and COMP clusters and counts,
-when G7 SBOM for AI is not preselected, or when the SBOM download, rule
-evidence, Show in SBOM or the windowed 50,000-line source view break. It needs Node 18+ and
+when G7 SBOM for AI is not preselected, when the SBOM download, rule values and
+evidence, Show in SBOM, the Generator log tab or the windowed 50,000-line source
+view break, when switching the standard does not re-check the same SBOM (and keep
+the generator and its log), when a failed switch loses the earlier result, or when
+a finished check or a chosen example is not announced. It needs Node 18+ and
 a `node_modules` directory (outside the repository; never commit it) with
 `playwright-core`. The page's scripts are vendored in `frontend/vendor/` (see
 its README), so the test uses no network and fails on a request to any other

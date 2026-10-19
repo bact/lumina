@@ -65,12 +65,13 @@ CISA Framing document) and `mof` (Model Openness Framework). The checker
 supports all but MOF.
 
 **Current checker support:**
-`ntia-conformance-checker` covers **NTIA Minimum Elements** and, partially,
-**G7 AI SBOM**, **CISA 2026 Minimum Elements** and **BSI TR-03183-2 v2.1** (all
-SPDX 3 only; rules the checker does not check, such as elements SPDX 3.0.1
-cannot show, are reported as out of scope) and **FSCT 2024** (the checker's
-`fsct3`). **MOF** is not
-implemented in the checker.
+`ntia-conformance-checker` checks **NTIA Minimum Elements** and **FSCT 2024**
+(the checker's `fsct3`) on SPDX 2 and 3, and **G7 SBOM for AI**, **CISA 2026
+Minimum Elements** and **BSI TR-03183-2 v2.1** on SPDX 3 only (on an SPDX 2
+SBOM they apply no rule: nothing is checked). Each is reported as per-rule
+results. Where the checker covers a standard only in part, the rules it does
+not check, such as elements SPDX 3.0.1 cannot show, are listed as out of scope,
+never as missing. **MOF** is not implemented in the checker.
 
 **Design principle:** the backend must present a single, uniform
 `ConformanceResult` schema to the API regardless of which checker
@@ -96,9 +97,11 @@ SbomCheckResponse
                                       # when the producer chose to embed
   sbom          : SbomSource?         # the SBOM checked (upload or generated),
                                       # or an embedded SBOM whose text is JSON
+  generation_log: list[LogLine]?      # what the generator did; generated SBOMs
+                                      # only (see "Generator log")
 
 ConformanceResult                     # what was found
-  standard_id : str                 # "ntia" | "bsi" | "g7ai" | "cisa2026"
+  standard_id   : str                 # "ntia" | "bsi" | "g7ai" | "cisa2026"
                                       # | "fsct2024" | "mof"
   source        : str                 # "ntia-conformance-checker"
                                       # | "lumina-internal" | "external-sarif"
@@ -146,6 +149,12 @@ SbomSource
   display       : str                 # pretty JSON (indent 2) for a JSON
                                       # object, else text
   line_count    : int                 # "\n"-separated lines of display
+
+LogLine
+  source        : "lumina" | "git" | "pitloom"
+  level         : "info" | "warning" | "error"
+  message       : str
+  elapsed_ms    : int                 # since the generation started
 
 FieldGap
   component_id  : str
@@ -266,8 +275,8 @@ truth) runs `ntia-conformance-checker` for a standard, using the standard id
 in `CHECKER_STANDARDS`, and parses its SARIF into `ConformanceResult` with
 `parse_sarif`. The SPDX version (2 or 3) is detected from the file.
 
-- `ntia`, `g7ai` (partial), `cisa2026` (partial), `fsct2024` (partial) and
-  `bsi` (partial) are supported.
+- `ntia`, `g7ai`, `cisa2026`, `fsct2024` and `bsi` are supported; every one
+  except `ntia` reports some rules as out of scope.
 - Per-rule results carry every rule's outcome. `out-of-scope` rules are
   catalogue-only (the checker cannot check them) and are shown as "not
   checked", never as missing. When the SBOM's only root is one AI model, the G7 AI
@@ -329,6 +338,10 @@ forks.
                            └────────────────────────────────────┘
 ```
 
+After the parse, Modes 1 and 2 add `sbom` (the SBOM text) and, for an SPDX 3
+JSON SBOM, per-rule `evidence`; Mode 1 also adds `generation_log`; Mode 3 sets
+`sbom` from an embedded SBOM whose text is JSON.
+
 ### Mode 1 — Artefact URL (SBOM generation)
 
 - **Endpoint:** `POST /api/v1/artifact/check`
@@ -358,17 +371,19 @@ forks.
     GitHub and any Git host; Pitloom reads the project's Python packaging
     metadata.
   - **Hugging Face Hub URLs** — Pitloom's `generate_model_sbom(url)`
-    (needs the `pitloom[huggingface_hub]` extra). Reads HF metadata via the HF API; it does **not**
-    download model files, so the host stays light on disk and bandwidth. HF
-    auth is optional (lower quota without a token, acceptable for now).
+    (needs the `pitloom[ai]` extra, which brings `huggingface_hub`). Reads HF
+    metadata via the HF API; it does **not** download model files, so the host
+    stays light on disk and bandwidth. HF auth is optional: without a token the
+    Hub allows fewer requests; `HF_TOKEN` raises the limit.
   Both record Lumina as a tool, not a creator, in the SBOM's creation info.
 - **Sync model:** asynchronous via the job queue (see
   [Background job execution](#background-job-execution)). Stage 0/1 runs the
   job in-process; Stage 2 can move it to a worker without changing this
   contract.
 - **Generator output:** what Pitloom logs at WARNING or above while it
-  generates is added as `pitloom.log` notifications, and `CheckRun.generator`
-  names the Pitloom version.
+  generates is added as `pitloom.log` notifications, `CheckRun.generator` names
+  the Pitloom version, and `generation_log` lists everything the generator side
+  did (see [Generator log](#generator-log)).
 - **Failure surfacing:** a refused URL or a failed clone or generation does not
   fail the job; it completes `done` with `execution_successful: false`, source
   `lumina-internal`, zeroed counts, and one `error` notification
@@ -415,7 +430,8 @@ forks.
 - **Producer:** `ntia-conformance-checker` is recognised by name; any other
   producer's result has source `external-sarif`.
 - **`embedded_sbom`:** **populated iff** the producer chose to embed. The API
-  returns it; the web UI does not show it yet.
+  returns it; when its text is JSON the UI shows it in the *SBOM source* tab
+  (through `sbom`), without per-rule evidence.
 - **Sync model:** synchronous (parsing is cheap; no external calls).
 
 ## Background job execution
