@@ -116,6 +116,10 @@ RuleResult
                                       # | "not-applicable" | "out-of-scope"
   evidence      : list[Evidence]      # at most 20; SPDX 3 JSON checks only
   evidence_more : int                 # entries left out of evidence
+  applies_to    : str                 # kind of element judged: "system" |
+                                      # "ai_model" | "dataset" | "component" | ""
+  combine       : str                 # "" (every judged element must have it)
+                                      # | "any-of" | "all-of" | "self-only"
 
 Evidence                              # where the SBOM shows the outcome
   status        : "found" | "absent"
@@ -211,7 +215,11 @@ SBOM whose text is JSON, without evidence.
   entries come first.
 - **found** -- an element the rule judged that the checker did not report,
   with the properties, hashes, relationships or contacts that carry the rule
-  and their lines. Found evidence shows *where* the property is, not that its
+  and their lines. The UI labels these elements "Has it" and "Lacks it", not
+  "Present" and "Missing", which are the rule's verdict: a rule that judges
+  several elements (the root packages for a System-level rule) is Missing when
+  any one lacks the property, so a Missing rule can list elements that have it
+  (`applies_to` and `combine` let the UI say so in words). Found evidence shows *where* the property is, not that its
   value is right: the checker decides presence, and Lumina still does no
   checking of its own.
 

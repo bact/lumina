@@ -40,10 +40,15 @@ When the response carries the checked SBOM (`sbom`: `filename`, `format`,
 - **Download SBOM** next to the tabs: saves `sbom.text` (the original bytes)
   as `sbom.filename` through a Blob URL, so it works offline.
 - **Tabs** "Result" | "SBOM source" (WAI-ARIA tabs: arrow keys, Home, End).
+- **Rule rows** show, under the title, the value the SBOM holds for the
+  element (up to three, from the `items` of the elements that have it; prefixed
+  with the element's name when the rule judged several), so the default view
+  needs no click. A hint such as "1 of 2 root packages lacks it" and, in the
+  details, a plain sentence say why a rule is Present or Missing.
 - **Rule details**: each rule row has a *Show more / Show less* button
   (`aria-expanded`) and the result an *Expand all / Collapse all* button. The
-  details list `rule.evidence`: element name, id and type, *Found* or
-  *Absent*, and its `items` (key: value), then "and N more" for
+  details list `rule.evidence`: element name, id and type, *Has it* or
+  *Lacks it*, and its `items` (key: value), then "and N more" for
   `evidence_more`. A rule without evidence says so.
 - **SBOM source**: `sbom.display` with line numbers, indent guides and JSON highlighting (highlight.js, JSON grammar only, vendored)
   (keys, strings, numbers, literals, punctuation; `--syntax-*` tokens), done
