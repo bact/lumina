@@ -24,16 +24,19 @@ const STANDARD_INFO = {
     href: "https://www.ntia.gov/report/2021/minimum-elements-software-bill-materials-sbom",
   },
   bsi: {
+    sbomSpecs: ["spdx3"], // the SBOM specifications the checker covers for it (omitted: any)
     label: "BSI TR-03183-2",
     covers: "BSI TR-03183-2 v2.1 SBOM content requirements (section 5.2). Per-rule, SPDX 3 only: elements SPDX 3.0.1 cannot show are listed as not checked.",
     href: "https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/TechGuidelines/TR03183/BSI-TR-03183-2_v2_1_0.html",
   },
   g7ai: {
+    sbomSpecs: ["spdx3"], // the SBOM specifications the checker covers for it (omitted: any)
     label: "G7 SBOM for AI",
     covers: "G7 2026 SBOM for AI minimum elements. Partial, SPDX 3 only: rules the checker cannot check are listed as not checked.",
     href: "https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/KI/SBOM-for-AI_minimum-elements.pdf",
   },
   cisa2026: {
+    sbomSpecs: ["spdx3"], // the SBOM specifications the checker covers for it (omitted: any)
     label: "CISA 2026 Minimum Elements",
     covers: "CISA 2026 minimum elements. Partial, SPDX 3 only: rules the checker cannot check are listed as not checked.",
     href: "https://www.cisa.gov/sites/default/files/2026-07/2026_cisa_sbom_minimum_elements_508c.pdf",

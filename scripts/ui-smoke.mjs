@@ -145,6 +145,17 @@ const RECHECK_RESULT = {
   sbom: SBOM,
 };
 const rechecks = [];
+// A standard that covers SPDX 3 only, given an SPDX 2 SBOM: nothing is checked.
+const spdx2Result = (message) => ({
+  conformance: { standard_id: "g7ai", source: "ntia-conformance-checker", total: 0, present: 0, missing: 0, unverified: 0, gaps: [],
+    rules: [{ rule_id: "BOM-G7AI2026-MD-001", cluster: "MD", title: "SBOM author", provision: "requirement", outcome: "not-applicable", evidence: [], evidence_more: 0 }],
+    system_judged_by_model: null },
+  run: { ...TOOL, generator: "", execution_successful: true, notifications: [{ level: "warning", message, descriptor_id: "sbom.nothing-applies" }] },
+  embedded_sbom: null,
+  sbom: { ...SBOM, filename: "old.spdx.json", format: "spdx2-json" },
+});
+const SPDX2_GENERIC = spdx2Result("No requirement of G7 SBOM for AI applies.");
+const SPDX2_SPECIFIC = spdx2Result("G7 SBOM for AI: checked on SPDX 3 SBOMs only; this SBOM is SPDX 2, so no rule was checked.");
 const BIG_RESULT = { ...NTIA_RESULT,
   conformance: { ...NTIA_RESULT.conformance, rules: NTIA_RESULT.conformance.rules.map((r, i) => (i !== 1 ? { ...r, evidence: [] }
     : { ...r, evidence: [{ status: "found", element_id: "document", element_type: "SpdxDocument", element_name: null,
@@ -203,6 +214,8 @@ async function mockApi(page) {
   await page.route("**/api/v1/jobs/job-2", r => r.fulfill({ json: { status: "done", result: BIG_RESULT } }));
   await page.route("**/api/v1/sbom/check", r => {
     const raw = r.request().postData() || "";
+    if (raw.includes('filename="old.spdx.json"')) return r.fulfill({ json: SPDX2_GENERIC });
+    if (raw.includes('filename="old-note.spdx.json"')) return r.fulfill({ json: SPDX2_SPECIFIC });
     if (/name="standard"\r\n\r\ncisa2026/.test(raw)) { rechecks.push(raw); return r.fulfill({ json: RECHECK_RESULT }); }
     if (/name="standard"\r\n\r\nbsi/.test(raw)) return r.fulfill({ json: BSI_RESULT });
     if (/name="standard"\r\n\r\ng7ai/.test(raw)) return r.fulfill({ json: UNREADABLE_RESULT });
@@ -523,6 +536,24 @@ body = await text();
 check(body.includes("The SBOM could not be checked") && body.includes("spdx.parsing-error") && !body.includes("Fields checked"),
   "Upload SBOM: an unreadable SBOM shows no counts, only why");
 await shot("5b-upload-unreadable");
+
+// Nothing was checked: the banner says why. An SPDX 2 SBOM under a standard that
+// covers SPDX 3 only gets that reason even from a checker that only says the
+// generic "no requirement applies"; a checker that says why is quoted as it is.
+for (const [name, reason] of [
+  ["old.spdx.json", "G7 SBOM for AI is checked on SPDX 3 SBOMs only; this SBOM is SPDX 2."],
+  ["old-note.spdx.json", "G7 SBOM for AI: checked on SPDX 3 SBOMs only; this SBOM is SPDX 2, so no rule was checked."],
+]) {
+  await page.setInputFiles("#sbom-file", { name, mimeType: "application/json", buffer: Buffer.from("{}") });
+  await page.getByRole("radio", { name: LABELS.g7ai }).click();
+  await page.getByRole("button", { name: "Check SBOM" }).click();
+  await page.waitForSelector("text=Nothing was checked", { timeout: 5000 }).catch(() => {});
+  const banner = await text();
+  check(banner.includes("Nothing was checked") && banner.includes(reason) && !banner.includes("Fields checked"),
+    `Upload SBOM: the nothing-checked banner gives the reason for ${name}`);
+  check((await page.locator("[role=status].sr-only").allInnerTexts()).some(t => t === `Check finished. Nothing was checked. ${reason}`),
+    `Upload SBOM: the nothing-checked reason is announced for ${name}`);
+}
 
 // Import SARIF
 await nav("Import SARIF");

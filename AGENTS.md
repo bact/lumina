@@ -180,7 +180,8 @@ when G7 SBOM for AI is not preselected, when the SBOM download, rule values and
 evidence, Show in SBOM, the Generator log tab or the windowed 50,000-line source
 view break, when switching the standard does not re-check the same SBOM (and keep
 the generator and its log), when a failed switch loses the earlier result, or when
-a finished check or a chosen example is not announced. It needs Node 18+ and
+a finished check or a chosen example is not announced, or when the
+"Nothing was checked" banner does not give its reason. It needs Node 18+ and
 a `node_modules` directory (outside the repository; never commit it) with
 `playwright-core`. The page's scripts are vendored in `frontend/vendor/` (see
 its README), so the test uses no network and fails on a request to any other

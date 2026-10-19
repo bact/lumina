@@ -28,7 +28,10 @@ The three check screens render the result with the same `ArtifactResult`
 view: counts, per-rule outcomes grouped by cluster, gaps and run notifications.
 It shows no counts, and says why, when the SBOM could not be checked
 (`execution_successful` is false) and when no rule applies
-(`sbom.nothing-applies`). The
+(`sbom.nothing-applies`): the banner gives the reason, the checker's own message
+when it says why, else "<standard> is checked on SPDX 3 SBOMs only; this SBOM is
+SPDX 2" for an SPDX 2 JSON SBOM under a standard whose `STANDARD_INFO` entry
+lists `sbomSpecs: ["spdx3"]`, else a generic line. It is announced too. The
 "judged by model" note appears only for G7 AI, and the *Unverified* tile only
 when that count is above 0.
 

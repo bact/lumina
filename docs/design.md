@@ -202,7 +202,7 @@ and no gap is reported.
 | Id | From | Meaning |
 | :- | :--- | :------ |
 | `spdx.parsing-error`, `spdx.validation-message`, `spdx.floating-component`, `spdx.unknown-pointer` | checker | The SBOM could not be read, failed validation, or has elements not connected to its root or pointers to missing elements |
-| `sbom.nothing-applies` | checker | No rule of the standard applies to this SBOM |
+| `sbom.nothing-applies` | checker | No rule of the standard applies to this SBOM; a newer checker says why in the message (the standard is checked on SPDX 3 only and the SBOM is SPDX 2) |
 | `sarif.no-rule-outcomes` | Lumina | The log has no `ruleOutcomes`; only missing rules are counted |
 | `pitloom.log` | Lumina, Mode 1 | A WARNING-or-above record Pitloom logged while generating |
 | `pitloom.generation-failed`, `pitloom.url-unsupported` | Lumina, Mode 1 | Pitloom failed, or the URL has no host |

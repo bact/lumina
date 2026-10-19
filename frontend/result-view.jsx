@@ -54,6 +54,24 @@ function ResultTabs({ tabs, tab, onChange }) {
   );
 }
 
+// Why nothing was checked, for the "Nothing was checked" banner and its
+// announcement. The checker's own words win when it says why (a standard that
+// does not cover the SBOM's specification); else, for an SPDX 2 JSON SBOM under
+// a standard that covers SPDX 3 only, the page says so; else the generic reason.
+const GENERIC_NOTHING_APPLIES = /^No requirement of .* applies\.$/;
+function nothingCheckedReason(result) {
+  const notes = (result.run && result.run.notifications) || [];
+  const note = notes.find(n => n.descriptor_id === "sbom.nothing-applies");
+  if (note && note.message && !GENERIC_NOTHING_APPLIES.test(note.message)) return note.message;
+  const id = result.conformance.standard_id;
+  const info = STANDARD_INFO[id] || {};
+  if (result.sbom && result.sbom.format === "spdx2-json" && info.sbomSpecs && !info.sbomSpecs.includes("spdx2")) {
+    return `${standardLabel(id)} is checked on SPDX 3 SBOMs only; this SBOM is SPDX 2.`;
+  }
+  return "No rule of this standard applies to this SBOM.";
+}
+const hasNothingApplies = (result) => ((result.run && result.run.notifications) || []).some(n => n.descriptor_id === "sbom.nothing-applies");
+
 // ─── ResultAnnouncer -- tells a screen reader the check has finished ────
 // Always mounted (a live region only announces changes to one that already
 // exists); `result` is the finished SbomCheckResponse, or null. A failed
@@ -62,9 +80,10 @@ function ResultAnnouncer({ result }) {
   let message = "";
   if (result) {
     const c = result.conformance;
-    message = result.run && result.run.execution_successful === false
-      ? "The check could not be completed. See the result for why."
-      : `Check finished: ${c.present} present and ${c.missing} missing of ${c.total} rules checked.`;
+    const ok = !(result.run && result.run.execution_successful === false);
+    if (!ok) message = "The check could not be completed. See the result for why.";
+    else if (hasNothingApplies(result)) message = `Check finished. Nothing was checked. ${nothingCheckedReason(result)}`;
+    else message = `Check finished: ${c.present} present and ${c.missing} missing of ${c.total} rules checked.`;
   }
   return <div role="status" className="sr-only">{message}</div>;
 }
@@ -171,8 +190,9 @@ function ResultBody({ result, expanded, setExpanded, onToggle, onShow, details }
       {ok && nothingApplies && (
         <Card variant="default" padding={16}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--ink-2)", fontSize: 14, fontWeight: 500 }}>
-            <Icon name="info" size={16} /> Nothing was checked: no rule of this standard applies to this SBOM
+            <Icon name="info" size={16} /> Nothing was checked
           </div>
+          <div style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 6 }}>{nothingCheckedReason(result)}</div>
         </Card>
       )}
       {!ok && (
