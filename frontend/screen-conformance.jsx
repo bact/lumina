@@ -66,6 +66,8 @@ const DEMO_EXAMPLES = [
     url: "https://huggingface.co/microsoft/phi-4" },
   { label: "Model with 119B parameters", note: "Hugging Face", standard: "g7ai",
     url: "https://huggingface.co/mistralai/Mistral-Small-4-119B-2603" },
+  { label: "Model with a base model", note: "Hugging Face", standard: "g7ai",
+    url: "https://huggingface.co/ibm-granite/granite-4.2-30b" },
   { label: "Model with GGUF weights", note: "Hugging Face", standard: "g7ai",
     url: "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF" },
   { label: "Project with a fastText model", note: "GitHub", standard: "g7ai",

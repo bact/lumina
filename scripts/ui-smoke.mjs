@@ -431,6 +431,10 @@ await page.getByRole("button", { name: "Model with 119B parameters" }).click();
 check(await page.getByPlaceholder(/github/).inputValue() === "https://huggingface.co/mistralai/Mistral-Small-4-119B-2603"
   && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
   "Generate & check: the Mistral model example fills the URL and picks G7 SBOM for AI");
+await page.getByRole("button", { name: "Model with a base model" }).click();
+check(await page.getByPlaceholder(/github/).inputValue() === "https://huggingface.co/ibm-granite/granite-4.2-30b"
+  && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
+  "Generate & check: the Granite model example fills the URL and picks G7 SBOM for AI");
 await page.getByRole("button", { name: "Model with GGUF weights" }).click();
 check(await page.getByPlaceholder(/github/).inputValue() === "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF"
   && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
