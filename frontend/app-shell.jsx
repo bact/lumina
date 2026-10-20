@@ -20,10 +20,11 @@ const { useState: _useStateA, useEffect: _useEffA, useRef: _useRefA } = React;
 // native + English language name pair so users can pick confidently.
 //
 // Accessibility:
-//   - Button announces "{Language label}: {current language}. Change language."
-//     (all three parts localised)
+//   - Button announces "{ISO code}, {Language label}: {current language} ({its
+//     English name}). Change language." (the label parts localised)
 //     so screen readers convey current state and afford navigation.
-//   - aria-haspopup / aria-expanded / aria-controls hook the listbox.
+//   - aria-haspopup / aria-expanded hook the listbox; aria-controls is set only
+//     while it is open (the listbox exists only then).
 //   - ESC closes and returns focus to the button; click-outside closes.
 //   - Each option's native name carries lang="..." and its English name lang="en", so AT speaks each in the right voice; the option's name is its visible text (WCAG 2.5.3).
 
@@ -81,8 +82,8 @@ function LanguageSwitcher() {
         onKeyDown={(e) => { if (e.key === "ArrowDown" && !open) { e.preventDefault(); setOpen(true); } }}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-controls={popoverId}
-        aria-label={`${shortCode}, ${t("topbar.language")}: ${currentLocale.label} (${englishName}). ${t("topbar.changeLanguage")}`}
+        aria-controls={open ? popoverId : undefined}
+        aria-label={`${shortCode}, ${t("topbar.language")}: ${currentLocale.label}${englishName !== currentLocale.label ? ` (${englishName})` : ""}. ${t("topbar.changeLanguage")}`}
         title={`${t("topbar.language")}: ${currentLocale.label}`}
         style={{
           display: "inline-flex", alignItems: "center", gap: 5,

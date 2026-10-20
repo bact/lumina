@@ -79,10 +79,10 @@ function Button({ variant = "secondary", size = "md", icon, iconAfter, children,
 // ─── StatusChip ─────────────────────────────────────────────────────────
 function StatusChip({ status, children }) {
   const map = {
-    present:    { bg: "#E1E8D5", fg: "#2E3D24", dot: "#5F7A4F", label: "Present" },
-    missing:    { bg: "#F1E5C9", fg: "#4F3A14", dot: "#B68333", label: "Missing" },
-    unverified: { bg: "#DCE3EC", fg: "#15263C", dot: "#2F4A6B", label: "Unverified" },
-    invalid:    { bg: "#F5DAD4", fg: "#5A1810", dot: "#C8392A", label: "Invalid" },
+    present:    { bg: "var(--moss-soft)",   fg: "var(--moss-ink)",   dot: "var(--moss)",   label: "Present" },
+    missing:    { bg: "var(--ochre-soft)",  fg: "var(--ochre-ink)",  dot: "var(--ochre)",  label: "Missing" },
+    unverified: { bg: "var(--indigo-soft)", fg: "var(--indigo-ink)", dot: "var(--indigo)", label: "Unverified" },
+    invalid:    { bg: "var(--shu-soft)",    fg: "var(--shu-ink)",    dot: "var(--shu)",    label: "Invalid" },
     neutral:    { bg: "var(--paper-2)", fg: "var(--ink-3)", dot: null, label: "--" },
   };
   const c = map[status] || map.neutral;

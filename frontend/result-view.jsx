@@ -207,7 +207,7 @@ function ResultBody({ result, expanded, setExpanded, onToggle, onShow, details }
       )}
       {showFindings && (
         <div className="summary-tiles" style={{ gridTemplateColumns: `repeat(${3 + ((c.unverified ?? 0) > 0 ? 1 : 0) + (optionalTotal > 0 ? 1 : 0)}, 1fr)` }}>
-          <SummaryTile label="Fields checked" value={c.total ?? 0} />
+          <SummaryTile label="Rules checked" value={c.total ?? 0} />
           <SummaryTile label="Present" value={c.present ?? 0} accent="var(--moss)" />
           <SummaryTile label="Missing" value={c.missing ?? 0} accent={(c.missing ?? 0) > 0 ? "var(--ochre)" : undefined} />
           {(c.unverified ?? 0) > 0 && <SummaryTile label="Unverified" value={c.unverified} accent="var(--indigo)" />}
@@ -271,9 +271,15 @@ function ResultBody({ result, expanded, setExpanded, onToggle, onShow, details }
           <div>
             {notes.map((n, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 16px", borderBottom: i < notes.length - 1 ? "1px solid var(--border)" : "none" }}>
-                <StatusChip status={n.level === "error" ? "invalid" : n.level === "warning" ? "missing" : "neutral"}>{n.level}</StatusChip>
+                <StatusChip status={n.level === "error" ? "invalid" : n.level === "warning" ? "missing" : "neutral"}>{n.level.charAt(0).toUpperCase() + n.level.slice(1)}</StatusChip>
                 <div style={{ minWidth: 0, fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5, overflowWrap: "anywhere" }}>
                   {n.descriptor_id ? <Mono style={{ marginRight: 6 }}>{n.descriptor_id}</Mono> : null}{n.message}
+                  {n.descriptor_id === "spdx.floating-component" && (
+                    <div style={{ marginTop: 4, color: "var(--ink-3)" }}>
+                      Not a failure: the checker does not evaluate a component that is not connected to the
+                      SBOM root. In a Hub model's SBOM that is typically its base model, linked only by <Mono>descendantOf</Mono>.
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

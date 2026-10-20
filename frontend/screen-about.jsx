@@ -79,7 +79,7 @@ function AboutScreen() {
 
       {/* ── License ─────────────────────────────────────────────────────── */}
       <section aria-labelledby="about-license-h">
-        <Eyebrow id="about-license-h">License</Eyebrow>
+        <Eyebrow id="about-license-h">Licence</Eyebrow>
         <Card padding={18} style={{ marginTop: 8 }}>
           <div style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: 16, alignItems: "baseline" }}>
             <div>
@@ -90,7 +90,7 @@ function AboutScreen() {
               Lumina is open source. Use, modify, and redistribute under the
               terms of the Apache License, Version 2.0. {" "}
               <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener noreferrer" style={inlineLinkStyle}>
-                Read the license
+                Read the licence
               </a>.
             </div>
           </div>
@@ -145,7 +145,7 @@ function AboutScreen() {
         </Card>
       </section>
 
-      <MarginNote title="A note --">
+      <MarginNote title="A note">
         Lumina is research software developed in the open. Field mappings and
         standard citations track public guidance documents but are not legal
         advice -- verify against the canonical source before relying on a
