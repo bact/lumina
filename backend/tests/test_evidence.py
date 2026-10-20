@@ -29,7 +29,7 @@ from app.sbom_source import load_sbom
 
 ROOT = Path(__file__).parent
 SBOM_DIR = ROOT / "fixtures" / "sbom"
-DEMO = ROOT.parent.parent / "demo" / "phi-tiny-random.spdx3.json"
+DEMO = ROOT.parent.parent / "frontend" / "examples" / "phi-tiny-random.spdx3.json"
 SPDX3 = [DEMO, *sorted(SBOM_DIR.glob("spdx3_*.json"))]
 SPDX3_CONTEXT = "https://spdx.org/rdf/3.0.1/spdx-context.jsonld"
 

@@ -39,6 +39,72 @@ function FilePicker({ id, label, accept, file, onChange, disabled }) {
   );
 }
 
+// ─── Example files ──────────────────────────────────────────────────────
+// Real files in frontend/examples/ (see frontend/readme.md for how each was
+// made). Choosing one picks it as if the visitor had chosen it from disk, so
+// the check that follows is the ordinary upload or import.
+const EXAMPLE_SBOMS = [
+  { label: "Tiny model with Safetensors weights", file: "phi-tiny-random.spdx3.json", standard: "g7ai",
+    note: "made by Pitloom from a tiny test model file" },
+  { label: "Model with Safetensors weights", file: "phi-4.spdx3.json", standard: "g7ai",
+    note: "microsoft/phi-4, made by Pitloom from the Hub metadata on 2026-10-20" },
+  { label: "Model with GGUF weights", file: "qwen2.5-0.5b-instruct-gguf.spdx3.json", standard: "g7ai",
+    note: "Qwen2.5-0.5B-Instruct-GGUF, made by Pitloom from the Hub metadata on 2026-10-20" },
+  { label: "Container image with an SPDX 2 SBOM", file: "chainguard-image.spdx.json", standard: "ntia",
+    note: "an SBOM in SPDX 2 JSON, made by apko for a Chainguard container image" },
+];
+
+const EXAMPLE_SARIFS = [
+  { label: "Tiny model with Safetensors weights (G7)", file: "phi-tiny-random.g7ai.sarif.json",
+    note: "G7 SBOM for AI result for the tiny test model's SBOM" },
+  { label: "Model with Safetensors weights (G7)", file: "phi-4.g7ai.sarif.json",
+    note: "G7 SBOM for AI result for the microsoft/phi-4 SBOM" },
+  { label: "Model with Safetensors weights (NTIA)", file: "phi-4.ntia.sarif.json",
+    note: "NTIA result for the same SBOM" },
+  { label: "Container image with an SPDX 2 SBOM (NTIA)", file: "chainguard-image.ntia.sarif.json",
+    note: "NTIA result for the Chainguard container image SBOM" },
+];
+
+// A row of buttons; `onPick(file, example)` gets the example as a File and
+// returns a short phrase for what else it set. What was chosen, with the
+// example's note, stays on screen (and is announced) under the buttons.
+function ExampleFiles({ labelId, examples, disabled, onPick }) {
+  const [note, setNote] = _useSU("");
+  const [error, setError] = _useSU("");
+  const latest = _useRefU(0); // the newest choice; an older load that ends later is dropped
+  async function choose(ex) {
+    const mine = ++latest.current;
+    setError("");
+    try {
+      const response = await fetch(`/examples/${ex.file}`);
+      if (!response.ok) throw new Error(`the server answered ${response.status}`);
+      const file = new File([await response.blob()], ex.file, { type: "application/json" });
+      if (mine !== latest.current) return;
+      const extra = onPick(file, ex) || "";
+      setNote(`Example chosen: ${ex.label} (${ex.note}). The file ${ex.file} is selected${extra}.`);
+    } catch (err) {
+      if (mine !== latest.current) return;
+      setNote("");
+      setError(`Could not load the example file ${ex.file}: ${String(err.message || err)}`);
+    }
+  }
+  return (
+    <>
+      <div role="group" aria-labelledby={labelId} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <span id={labelId} style={{ fontSize: 12.5, color: "var(--ink-3)" }}>Try an example:</span>
+        {examples.map(ex => (
+          <Button key={ex.file} size="sm" variant="ghost" disabled={disabled}
+            title={`${ex.file} (${ex.note})`} onClick={() => choose(ex)}>
+            {ex.label}
+          </Button>
+        ))}
+      </div>
+      <div role="status" style={note ? { fontSize: 12.5, color: "var(--ink-3)" } : undefined}>{note}</div>
+      {error && <ErrorCard title="Could not load the example">{error}</ErrorCard>}
+    </>
+  );
+}
+
 // Shared phase handling: run `request`, keep its result or its error text.
 function useCheck() {
   const [phase, setPhase] = _useSU("idle"); // idle | running | done | error
@@ -119,6 +185,14 @@ function UploadScreen() {
         }} />
       <FilePicker id="sbom-file" label="Choose SBOM file" file={file} disabled={running}
         onChange={(f) => { setFile(f); check.reset(); }} />
+      <ExampleFiles labelId="example-sbom-label" examples={EXAMPLE_SBOMS} disabled={running}
+        onPick={(f, ex) => {
+          setFile(f); check.reset();
+          const known = standardList.standards && standardList.standards.find(r => r.id === ex.standard);
+          if (!(known && known.ready)) return "";
+          setStandardId(ex.standard);
+          return ` and ${standardLabel(ex.standard)} is selected`;
+        }} />
       <div>
         <Button variant="primary" icon={running ? "loader" : "play"} onClick={submit} disabled={running || !file || !standardId}>
           {running ? "Checking…" : "Check SBOM"}
@@ -152,9 +226,11 @@ function SarifScreen() {
       intro="Choose or paste a SARIF 2.1.0 log made by a conformance checker. Nothing is re-checked: Lumina reads the log's results. The standard is taken from the log's rule ids.">
       <FilePicker id="sarif-file" label="Choose SARIF file" accept=".sarif,.json,application/json" file={file} disabled={running}
         onChange={(f) => { setFile(f); check.reset(); }} />
+      <ExampleFiles labelId="example-sarif-label" examples={EXAMPLE_SARIFS} disabled={running}
+        onPick={(f) => { setFile(f); check.reset(); }} />
       <div>
         <label htmlFor="sarif-text" style={{ display: "block", fontSize: 12, color: "var(--ink-3)", marginBottom: 6 }}>
-          {file ? "A file is chosen; clear it to paste instead." : "Or paste the SARIF JSON"}
+          {file ? (text.trim() ? "A file is chosen and is used; the text you pasted is kept until you clear the file." : "A file is chosen; clear it to paste instead.") : "Or paste the SARIF JSON"}
         </label>
         <textarea id="sarif-text" value={text} disabled={running || !!file}
           onChange={(e) => { setText(e.target.value); check.reset(); }}
