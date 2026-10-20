@@ -551,7 +551,7 @@ At Stage 0–1 the stack is **FastAPI + nginx** with no separate worker and no
 Redis — SBOM generation runs in-process (see
 [Background job execution](#background-job-execution)).  This fits inside the
 smallest free or cheap hosts.  Three deployment options are supported, each with
-its own Docker configuration under `docker/`:
+its own Docker configuration under `docker/` (Cloudflare is designed below, not built):
 
 | Option | Platform | Docker config | Shape |
 | :----- | :------- | :------------ | :---- |
@@ -568,6 +568,54 @@ At Stage 2 a `worker` service and a Redis (a local `redis:alpine` container, or
 Upstash serverless Redis) are added when load justifies them.  The worker rides
 on the same host (Option A) or as a separate Cloud Run job / HF Space (B/C);
 the `JobQueue` interface means only the backend implementation changes.
+
+### Cloudflare (designed, not built)
+
+Read from Cloudflare's documentation on 2026-10-20; items marked *to verify*
+were not stated there. What Lumina needs from a host: the `git` binary (a
+subprocess), packages installed from Git commits and with native extensions
+(the model readers, `rdflib`), Python 3.14, a job that runs for minutes beside
+the request that started it, a writable temporary disk, and outbound HTTPS to
+GitHub, Hugging Face and PyPI. If Pitloom's
+[`--allow-build`](https://github.com/bact/pitloom/blob/main/docs/allow-build.md)
+is ever used, also: running the scanned project's own PEP 517 build backend
+(untrusted code, in a subprocess, with network access for the project's
+`[build-system] requires`). Lumina does not pass `--allow-build` today.
+
+| Option | What runs where | Verdict |
+| :----- | :-------------- | :------ |
+| **Python Workers** | The API as a Worker on Pyodide (CPython compiled to WebAssembly in a V8 isolate) | **Not viable.** Packages must be pure Python or have Pyodide/PyEmscripten wheels (Git-pinned packages are not mentioned); Python follows the Worker's compatibility date, not 3.14; no subprocess, so no `git clone` and no build backend; the in-process job queue has no place to run beyond the request. |
+| **1. Static frontend on Cloudflare, API elsewhere** | `frontend/` as Workers static assets (or Pages); the API stays on Cloud Run or a VM (options A and C); `LUMINA_CORS_ORIGINS` names the Cloudflare origin, or a Worker proxies `/api/` | **Easiest; nothing in Lumina changes.** Cloudflare gives the HTTPS front, caching and DDoS cover; the API keeps the isolation it has today. |
+| **2. Cloudflare Containers** | A Worker routes `/api/` to a Durable Object class that starts the Lumina image (`docker/standalone/`, or the api image alone with the Worker serving static files) and forwards to its port | **Viable.** A container is a Firecracker microVM with its own kernel and network, so `git`, native wheels and Python 3.14 work as they do on Cloud Run. Disk is ephemeral (the licence database is baked into the image). Idle instances stop after `sleepAfter` (default 10 minutes); a cold start is "often 1-3 seconds". Instance types run from 256 MiB to 12 GiB RAM: start at `standard-1` (4 GiB, 1/2 vCPU); `basic` (1 GiB) is probably too small for the model readers (*to verify*). Needs the Workers Paid plan. |
+| **3. Containers, plus one sandbox per `--allow-build` job** | As option 2, but a job that needs a build runs in its own container started by the Worker (Cloudflare's Sandbox SDK is built for untrusted code), with no credentials in it | **The only safe shape for `--allow-build`.** A scanned project's build code never shares a process, kernel or secret with the API. Cost: a second image, a job hand-off, and a time and memory limit per sandbox. |
+
+Points to settle before building option 2 or 3:
+
+1. **Which instance answers a poll.** The job queue lives in one process
+   (`backend/app/jobs.py`): a `GET /api/v1/jobs/{id}` must reach the instance
+   that ran the `POST`. A Worker would mint the job id and route both calls by
+   it (`getContainer(env.LUMINA, jobId)`); the API would have to accept the id
+   instead of minting its own.
+2. **One container per job or shared.** Per job isolates scans and limits what
+   a hostile repository can do, but pays a cold start each time and scales
+   instances with traffic (no instance cap is stated; *to verify* the account
+   limits). Shared costs less and is fine without `--allow-build`.
+3. **Egress.** Cloudflare documents `enableInternet: false`, all or nothing. A
+   scan needs GitHub, Hugging Face and PyPI, and a build needs PyPI; whether
+   an allow-list per host exists is *to verify*. Lumina's own SSRF guard
+   (`backend/app/generate.py`) stays on either way.
+4. **Status and price.** The pages read do not say whether Containers or the
+   Sandbox SDK is beta or generally available (the Containers scheduling
+   policy is "in public beta"), nor what a container-second costs. Check both
+   before committing a demo date to it.
+5. **`--allow-build` policy.** Never taken from the scanned repository; an
+   operator setting that is off by default, applied only to jobs that run in a
+   sandbox (option 3), with a build timeout.
+
+**Recommendation.** For the demo, option 1: no change to Lumina, and the API
+stays where it is already tested. Move to option 2 when Containers is
+confirmed generally available and priced acceptably. Build option 3 only when
+`--allow-build` is wanted, and not before the hand-off in point 1 exists.
 
 - **Local development:** see the [README](../README.md#quick-start-with-docker).
 - **Deployment step-by-step:** see [INSTALL.md](../INSTALL.md).
