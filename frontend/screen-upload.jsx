@@ -44,22 +44,22 @@ function FilePicker({ id, label, accept, file, onChange, disabled }) {
 // made). Choosing one picks it as if the visitor had chosen it from disk, so
 // the check that follows is the ordinary upload or import.
 const EXAMPLE_SBOMS = [
-  { label: "Tiny model with Safetensors weights", file: "phi-tiny-random.spdx3.json", standard: "g7ai",
+  { label: "Safetensors model with 80K parameters", file: "phi-tiny-random.spdx3.json", standard: "g7ai",
     note: "made by Pitloom from a tiny test model file" },
-  { label: "Model with Safetensors weights", file: "phi-4.spdx3.json", standard: "g7ai",
+  { label: "Safetensors model with 14.7B parameters", file: "phi-4.spdx3.json", standard: "g7ai",
     note: "microsoft/phi-4, made by Pitloom from the Hub metadata on 2026-10-20" },
-  { label: "Model with GGUF weights", file: "qwen2.5-0.5b-instruct-gguf.spdx3.json", standard: "g7ai",
+  { label: "GGUF model with 630M parameters", file: "qwen2.5-0.5b-instruct-gguf.spdx3.json", standard: "g7ai",
     note: "Qwen2.5-0.5B-Instruct-GGUF, made by Pitloom from the Hub metadata on 2026-10-20" },
   { label: "Container image with an SPDX 2 SBOM", file: "chainguard-image.spdx.json", standard: "ntia",
     note: "an SBOM in SPDX 2 JSON, made by apko for a Chainguard container image" },
 ];
 
 const EXAMPLE_SARIFS = [
-  { label: "Tiny model with Safetensors weights (G7)", file: "phi-tiny-random.g7ai.sarif.json",
+  { label: "Safetensors model with 80K parameters (G7)", file: "phi-tiny-random.g7ai.sarif.json",
     note: "G7 SBOM for AI result for the tiny test model's SBOM" },
-  { label: "Model with Safetensors weights (G7)", file: "phi-4.g7ai.sarif.json",
+  { label: "Safetensors model with 14.7B parameters (G7)", file: "phi-4.g7ai.sarif.json",
     note: "G7 SBOM for AI result for the microsoft/phi-4 SBOM" },
-  { label: "Model with Safetensors weights (NTIA)", file: "phi-4.ntia.sarif.json",
+  { label: "Safetensors model with 14.7B parameters (NTIA)", file: "phi-4.ntia.sarif.json",
     note: "NTIA result for the same SBOM" },
   { label: "Container image with an SPDX 2 SBOM (NTIA)", file: "chainguard-image.ntia.sarif.json",
     note: "NTIA result for the Chainguard container image SBOM" },
