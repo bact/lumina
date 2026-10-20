@@ -44,6 +44,19 @@ SPDX-License-Identifier: Apache-2.0
   }
   .skip-link:focus { transform: translateY(0); }
 
+  /* A skip link inside the page (over a long list): hidden until focused, then
+     shown in flow. */
+  .skip-inline {
+    position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden;
+    clip: rect(0, 0, 0, 0); white-space: nowrap;
+  }
+  .skip-inline:focus {
+    position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto;
+    align-self: flex-start; padding: 8px 14px; border-radius: 4px;
+    background: var(--ink); color: var(--paper); font-size: 13px; font-weight: 500;
+    text-decoration: none;
+  }
+
   /* Visually hidden but readable by screen readers */
   .sr-only {
     position: absolute !important;
@@ -132,14 +145,6 @@ function App() {
     const link = document.querySelector(".skip-link");
     if (link) link.textContent = t("topbar.skipToContent");
   }, [locale]);
-
-  // Lucide replaces <i data-lucide> placeholders; re-run as screens render.
-  useEffect(() => {
-    const tick = () => { if (window.lucide) window.lucide.createIcons({ attrs: { "stroke-width": 1.5 } }); };
-    tick();
-    const id = setInterval(tick, 400);
-    return () => clearInterval(id);
-  }, [screen]);
 
   const View = SCREENS[screen];
   const screenLabel = t(navLabelKey(screen));

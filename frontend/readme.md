@@ -160,6 +160,9 @@ Built against WCAG 2.2 AA:
   screen moves focus to its `<main>` (no ring, it is not a control) so a screen
   reader announces it, and each screen has one `<h1>`. A result adds an `<h2>`
   for each rule cluster, *Gaps* and *Notifications*.
+- **Skip the rule list:** a result with rules has a link, hidden until it has
+  focus, just before the first rule; Enter moves focus to the *Gaps* heading (or
+  the "No conformance gaps found" line) after the list.
 - **Language of parts:** `<html lang>` follows the locale; a screen's eyebrow
   and `<h1>` carry the locale's `lang`, the rest of the screen (English) sits in
   a `lang="en"` wrapper whenever the locale is not English.
@@ -182,7 +185,7 @@ Built against WCAG 2.2 AA:
   plus colour, never colour alone.
 - **Focus indicator:** a 2px ink outline plus shu glow on `:focus-visible`.
 - **Motion:** `@media (prefers-reduced-motion: reduce)` disables transitions
-  and animations.
+  and animations. No timer runs while the page is idle (each `Icon` draws itself).
 
 ## Icons
 

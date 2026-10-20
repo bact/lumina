@@ -769,6 +769,19 @@ await page.setInputFiles("#sbom-file", { name: "bsi.spdx.json", mimeType: "appli
 await page.getByRole("radio", { name: LABELS.bsi }).click();
 await page.getByRole("button", { name: "Check SBOM" }).click();
 await page.waitForSelector("text=Fields checked", { timeout: 5000 }).catch(() => {});
+// The skip link over the rule list: hidden until focused, then jumps past the list.
+const skipRules = page.getByRole("link", { name: "Skip the rule list" });
+check(await skipRules.count() === 1 && (await skipRules.boundingBox()).width <= 1, "Skip the rule list: one link, hidden until it has focus");
+await page.getByRole("button", { name: /Expand all|Collapse all/ }).first().focus().catch(() => {});
+await page.keyboard.press("Tab");
+check(await page.evaluate(() => document.activeElement.textContent === "Skip the rule list") && (await skipRules.boundingBox()).width > 50,
+  "Skip the rule list: Tab reaches it (before the first rule) and it shows");
+await page.keyboard.press("Enter");
+check(await page.evaluate(() => document.activeElement.id === "after-rules") , "Skip the rule list: Enter moves focus past the list");
+const afterSkip = await page.evaluate(() => { const r = document.activeElement.getBoundingClientRect(); return r.top > 0 && r.top < innerHeight; });
+check(afterSkip, "Skip the rule list: the target is scrolled into view");
+await page.keyboard.press("Tab");
+check(await page.evaluate(() => !document.activeElement.id.startsWith("rule-toggle-")), "Skip the rule list: the next Tab is not a rule's Show more");
 const h2s = await page.locator("main h2").allInnerTexts();
 check(h2s.length >= 2, `A result has h2 headings for its clusters and sections ${JSON.stringify(h2s)}`);
 const small = await page.evaluate(() => {
@@ -805,6 +818,14 @@ check((await page.getAttribute("html", "lang")) === "de", "Language picker: Ente
 await trigger.focus(); await page.keyboard.press("Enter");
 await page.getByRole("option", { name: /^English/ }).click();
 
+// Icons are drawn by the Icon component alone (no timer re-runs Lucide).
+check(await page.evaluate(() => [...document.querySelectorAll(".lumina-icon")].every(e => e.querySelector("svg"))), "Every icon placeholder is drawn");
+const idleCalls = await page.evaluate(() => new Promise(done => {
+  let calls = 0; const real = window.lucide.createIcons;
+  window.lucide.createIcons = (...args) => { calls++; return real.apply(window.lucide, args); };
+  setTimeout(() => { window.lucide.createIcons = real; done(calls); }, 1500);
+}));
+check(idleCalls === 0, `Nothing re-runs the icon library while the page is idle (${idleCalls} calls in 1.5 s)`);
 check(errors.length === 0, `no page or console errors ${JSON.stringify(errors)}`);
 await browser.close();
 server.close();

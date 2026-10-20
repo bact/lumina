@@ -224,13 +224,19 @@ function ResultBody({ result, expanded, setExpanded, onToggle, onShow, details }
         </div>
       )}
       {showFindings && rules.length > 0 && (
+        <a className="skip-inline" href="#after-rules" onClick={(e) => {
+          e.preventDefault();
+          document.getElementById("after-rules")?.focus();
+        }}>Skip the rule list</a>
+      )}
+      {showFindings && rules.length > 0 && (
         <RuleClusters standardId={c.standard_id} rules={rules} judgedByModel={c.system_judged_by_model}
           details={withDetails} expanded={expanded} onToggle={onToggle} onShow={onShow} />
       )}
 
       {showFindings && gaps.length > 0 && (
         <Card padding={0}>
-          <h2 style={{ margin: 0, padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 500 }}>
+          <h2 id="after-rules" tabIndex={-1} style={{ margin: 0, padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 500 }}>
             Gaps ({gaps.length})
           </h2>
           <div>
@@ -251,7 +257,7 @@ function ResultBody({ result, expanded, setExpanded, onToggle, onShow, details }
 
       {showFindings && gaps.length === 0 && (
         <Card padding={16}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--moss)", fontSize: 14, fontWeight: 500 }}>
+          <div id="after-rules" tabIndex={-1} style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--moss)", fontSize: 14, fontWeight: 500 }}>
             <Icon name="check" size={16} /> No conformance gaps found
           </div>
         </Card>
