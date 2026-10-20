@@ -416,22 +416,32 @@ await page.getByRole("button", { name: "Project with no AI model" }).click();
 check(await page.getByPlaceholder(/github/).inputValue() === "https://github.com/pallets/flask"
   && await page.getByRole("radio", { name: "NTIA Minimum Elements" }).getAttribute("aria-checked") === "true",
   "Generate & check: an example fills the URL and picks its standard");
-await page.getByRole("button", { name: "Model with a dataset" }).click();
+await page.getByRole("button", { name: "Safetensors model with a dataset" }).click();
 check((await page.getByPlaceholder(/github/).inputValue()).startsWith("https://huggingface.co/distilbert/")
   && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
   "Generate & check: the model example fills the URL and picks G7 SBOM for AI");
 check(await page.getByRole("group", { name: "Try an example:" }).count() === 1
-  && (await page.locator("[role=status].sr-only").allInnerTexts()).some(t => t.includes("Example chosen: Model with a dataset") && t.includes("G7 SBOM for AI")),
+  && (await page.locator("[role=status].sr-only").allInnerTexts()).some(t => t.includes("Example chosen: Safetensors model with a dataset") && t.includes("G7 SBOM for AI")),
   "Generate & check: the examples are a named group and the choice is announced");
-await page.getByRole("button", { name: "Model with Safetensors weights" }).click();
+await page.getByRole("button", { name: "Safetensors model with 14.7B parameters" }).click();
 check(await page.getByPlaceholder(/github/).inputValue() === "https://huggingface.co/microsoft/phi-4"
   && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
   "Generate & check: the Safetensors model example fills the URL and picks G7 SBOM for AI");
-await page.getByRole("button", { name: "Model with 119B parameters" }).click();
+await page.getByRole("button", { name: "Safetensors model with 119B parameters" }).click();
 check(await page.getByPlaceholder(/github/).inputValue() === "https://huggingface.co/mistralai/Mistral-Small-4-119B-2603"
   && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
   "Generate & check: the Mistral model example fills the URL and picks G7 SBOM for AI");
-await page.getByRole("button", { name: "Model with GGUF weights" }).click();
+await page.getByRole("button", { name: "Safetensors model with 29.3B parameters" }).click();
+check(await page.getByPlaceholder(/github/).inputValue() === "https://huggingface.co/ibm-granite/granite-4.2-30b"
+  && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
+  "Generate & check: the Granite model example fills the URL and picks G7 SBOM for AI");
+for (const [name, url] of [["Safetensors model with 303M parameters", "https://huggingface.co/sonyinteractive/grooming-risk-classifier"], ["Safetensors model with 14.8B parameters", "https://huggingface.co/JTS-AI/OpenJAI-v1.0-14B"]]) {
+  await page.getByRole("button", { name }).click();
+  check(await page.getByPlaceholder(/github/).inputValue() === url
+    && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
+    `Generate & check: the example ${name} fills the URL and picks G7 SBOM for AI`);
+}
+await page.getByRole("button", { name: "GGUF model with 630M parameters" }).click();
 check(await page.getByPlaceholder(/github/).inputValue() === "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF"
   && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
   "Generate & check: the GGUF model example fills the URL and picks G7 SBOM for AI");
@@ -556,11 +566,11 @@ for (const ex of sbomExamples) {
 }
 // Two quick choices: the slower, older load must not replace the newer one.
 await page.route("**/examples/phi-4.spdx3.json", async r => { await new Promise(res => setTimeout(res, 700)); await r.continue(); });
-await page.getByRole("button", { name: "Model with Safetensors weights", exact: true }).click();
-await page.getByRole("button", { name: "Model with GGUF weights", exact: true }).click();
+await page.getByRole("button", { name: "Safetensors model with 14.7B parameters", exact: true }).click();
+await page.getByRole("button", { name: "GGUF model with 630M parameters", exact: true }).click();
 await page.waitForTimeout(1200);
-check((await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("Example chosen: Model with GGUF weights"))
-    && !(await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("Example chosen: Model with Safetensors weights"))
+check((await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("Example chosen: GGUF model with 630M parameters"))
+    && !(await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("Example chosen: Safetensors model with 14.7B parameters"))
     && await page.getByText("qwen2.5-0.5b-instruct-gguf.spdx3.json").first().isVisible(),
   "Upload SBOM: an older, slower example load does not replace a newer choice");
 await page.unroute("**/examples/phi-4.spdx3.json");
@@ -641,7 +651,7 @@ for (const ex of sarifExamples) {
 }
 // Choosing an example replaces what was in the box, and says so; Clear text empties it.
 await page.fill("#sarif-text", "pasted text");
-await page.getByRole("button", { name: "Model with Safetensors weights (G7)", exact: true }).click();
+await page.getByRole("button", { name: "Safetensors model with 14.7B parameters (G7)", exact: true }).click();
 await page.waitForFunction(() => document.getElementById("sarif-text").value !== "pasted text", null, { timeout: 5000 }).catch(() => {});
 check((await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("replacing what was there")), "Import SARIF: an example that replaces pasted text says so");
 await page.getByRole("button", { name: "Clear text" }).click();
@@ -655,7 +665,7 @@ await page.getByRole("button", { name: "Clear", exact: true }).click();
 check(await page.inputValue("#sarif-text") === "pasted text" && !(await page.locator("#sarif-text").isDisabled()),
   "Import SARIF: the pasted text is back when the file is cleared");
 await page.getByRole("button", { name: "Clear text" }).click();
-await page.getByRole("button", { name: "Model with Safetensors weights (NTIA)", exact: true }).click();
+await page.getByRole("button", { name: "Safetensors model with 14.7B parameters (NTIA)", exact: true }).click();
 await page.waitForFunction(() => document.getElementById("sarif-text").value.length > 0, null, { timeout: 5000 }).catch(() => {});
 const sentLogs = [];
 page.on("request", q => { if (q.url().endsWith("/api/v1/sarif/import")) sentLogs.push(q.postData() || ""); });

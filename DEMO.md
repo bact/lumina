@@ -79,15 +79,20 @@ Then run the check again.
 ## 3. Warm it up (the day before, on the demo network)
 
 Run each once from the page. This confirms the URL works from that machine and
-fills caches. The page has "Try an example" buttons for these seven: each fills
-the URL and picks the standard named below.
+fills caches. The page has "Try an example" buttons for these ten: each fills
+the URL and picks the standard named below. A button names the model's file
+format (Safetensors, GGUF, ONNX, fastText, CRFsuite) where it has one, and the
+parameter count the Hub or the file states.
 
 | Step | URL | Standard | Expect |
 | :--- | :-- | :------- | :----- |
-| Model with a dataset | `https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad` | G7 SBOM for AI | 27 of 56 rules present; model Apache-2.0, dataset `squad` CC-BY-SA-4.0 |
-| Model with Safetensors weights | `https://huggingface.co/microsoft/phi-4` | G7 SBOM for AI | 23 of 38 present; no dataset listed; parameter count read from the Hub's Safetensors summary; "judged by `phi-4`" |
-| Model with 119B parameters | `https://huggingface.co/mistralai/Mistral-Small-4-119B-2603` | G7 SBOM for AI | 22 of 38 present; no dataset listed; model Apache-2.0; "judged by `Mistral-Small-4-119B-2603`" |
-| Model with GGUF weights | `https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF` | G7 SBOM for AI | 22 of 38 present; model Apache-2.0; parameter count read from the Hub's GGUF summary; a `descendantOf` link to the base model `Qwen2.5-0.5B-Instruct` (quantized) |
+| Safetensors model with a dataset | `https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad` | G7 SBOM for AI | 27 of 56 rules present; model Apache-2.0, dataset `squad` CC-BY-SA-4.0 |
+| Safetensors model with 14.7B parameters | `https://huggingface.co/microsoft/phi-4` | G7 SBOM for AI | 23 of 38 present; no dataset listed; parameter count read from the Hub's Safetensors summary; "judged by `phi-4`" |
+| Safetensors model with 119B parameters | `https://huggingface.co/mistralai/Mistral-Small-4-119B-2603` | G7 SBOM for AI | 22 of 38 present; no dataset listed; model Apache-2.0; "judged by `Mistral-Small-4-119B-2603`" |
+| Safetensors model with 29.3B parameters | `https://huggingface.co/ibm-granite/granite-4.2-30b` | G7 SBOM for AI | 25 of 38 present; model Apache-2.0; parameter count read from the Hub's Safetensors summary; a `descendantOf` link to its base model `granite-4.1-30b-base`; "judged by `granite-4.2-30b`" |
+| Safetensors model with 303M parameters | `https://huggingface.co/sonyinteractive/grooming-risk-classifier` | G7 SBOM for AI | 25 of 38 present; text classification; model Apache-2.0; parameter count read from the Hub's Safetensors summary; a `descendantOf` link to its base model `embeddinggemma-300m` |
+| Safetensors model with 14.8B parameters | `https://huggingface.co/JTS-AI/OpenJAI-v1.0-14B` | G7 SBOM for AI | 25 of 38 present; text generation; model Apache-2.0; parameter count read from the Hub's Safetensors summary; a `descendantOf` link to its base model `Qwen3-14B` |
+| GGUF model with 630M parameters | `https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF` | G7 SBOM for AI | 22 of 38 present; model Apache-2.0; parameter count read from the Hub's GGUF summary; a `descendantOf` link to the base model `Qwen2.5-0.5B-Instruct` (quantized) |
 | Project with a fastText model | `https://github.com/bact/sentimentdemo` | G7 SBOM for AI | 22 of 38 |
 | Project with ONNX and CRFsuite models (about 12 s) | `https://github.com/PyThaiNLP/pythainlp` | G7 SBOM for AI | 21 of 38; three ONNX and five CRFsuite models |
 | Project with no AI model | `https://github.com/pallets/flask` | NTIA, then BSI TR-03183-2 | NTIA 6 of 7; BSI 6 of 13, 2 optional not provided |
@@ -105,7 +110,7 @@ example" button (see [frontend/readme.md](frontend/readme.md) for how each was
 made). The first is a small SBOM Pitloom generated for a tiny Safetensors model,
 and the SARIF log the checker made from it for the G7 SBOM for AI standard.
 
-1. **Upload SBOM.** Click the example *Tiny model with Safetensors weights* (it
+1. **Upload SBOM.** Click the example *Safetensors model with 80K parameters* (it
    picks *G7 SBOM for AI*), then *Check SBOM*. The other examples are a model
    with Safetensors weights (`phi-4`), a model with GGUF weights, and a container
    image with an SPDX 2 SBOM (NTIA). Lumina shows the
@@ -123,7 +128,7 @@ and the SARIF log the checker made from it for the G7 SBOM for AI standard.
    *FSCT 2024* or *BSI TR-03183-2*. The same SBOM is checked again at once, with
    nothing uploaded again. Each standard asks for different things, and the page
    says which of its rules were not checked.
-3. **Import SARIF.** Click the example *Tiny model with Safetensors weights (G7)*: the
+3. **Import SARIF.** Click the example *Safetensors model with 80K parameters (G7)*: the
    log appears in the text box, so you can show what it holds. Then *Import SARIF*. This is what
    the checker writes; Lumina shows the same result without running a check. (An
    imported log has no SBOM source tab and no per-rule evidence, because the log
@@ -135,8 +140,8 @@ and the SARIF log the checker made from it for the G7 SBOM for AI standard.
    dataset `squad` with its own licence (CC-BY-SA-4.0, read from the dataset's
    card) and the `trainedOn` link between them. Open the *Generator log* tab to
    show what the server did.
-   Then click *Model with Safetensors weights* (`microsoft/phi-4`): a model with
-   no dataset. Its parameter count comes from the Safetensors summary on the Hub;
+   Then click *Safetensors model with 14.7B parameters* (`microsoft/phi-4`): a
+   model with no dataset. Its parameter count comes from the Safetensors summary on the Hub;
    no weights are downloaded. The *Generator log* says so: it reads the Hub
    metadata and downloads no model files.
 5. **A project that ships a fastText model.** Click *Project with a fastText
@@ -145,7 +150,7 @@ and the SARIF log the checker made from it for the G7 SBOM for AI standard.
    so. The System producer rule is *Missing* while one line inside it says the
    project has a producer: the rule judges every root package, and the model
    has none.
-6. **A project that ships ONNX models.** Click *Project with ONNX models*.
+6. **A project that ships ONNX models.** Click *Project with ONNX and CRFsuite models*.
    Slowest step (about 12 seconds). Three ONNX models carry a version and a
    parameter count read from the files; five CRFsuite models carry less, because
    that format states less. The SBOM records what each file states and nothing
@@ -215,8 +220,9 @@ address), so use Docker for the page.
 - Tested in a clean Python 3.14 environment (the same `pip install -r
   requirements.txt` the image runs): the install, all five standards through
   the API, SARIF import, and the Git-URL flow against a local Git server.
-- The seven demo URLs were run for real (four on 2026-10-19, `microsoft/phi-4`, the
-  Mistral model and the GGUF model on 2026-10-20) and gave the counts in step 3.
+- The ten demo URLs were run for real (four on 2026-10-19, and `microsoft/phi-4`, the
+  Mistral, GGUF, Granite, `sonyinteractive/grooming-risk-classifier` and
+  `JTS-AI/OpenJAI-v1.0-14B` models on 2026-10-20) and gave the counts in step 3.
 - The web page was exercised with a headless browser against mocked and real
   API responses (see `scripts/ui-smoke.mjs`).
 - The Docker images themselves were **not built** on the machine where this
