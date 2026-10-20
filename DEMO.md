@@ -128,8 +128,8 @@ made from it for the G7 SBOM for AI standard.
    show what the server did.
    Then click *Model with Safetensors weights* (`microsoft/phi-4`): a model with
    no dataset. Its parameter count comes from the Safetensors summary on the Hub;
-   no weights are downloaded. Point out the *Generator log* line naming the
-   Hub metadata as the only source.
+   no weights are downloaded. The *Generator log* says so: it reads the Hub
+   metadata and downloads no model files.
 5. **A project that ships a fastText model.** Click *Project with a fastText
    model*. Pitloom finds the model file and hashes it (SHA-256 and SHA-512). Its
    name is just "model": the file name is all the file states, and the SBOM says
