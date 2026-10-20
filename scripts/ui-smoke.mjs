@@ -630,32 +630,39 @@ await noSampleData("Import SARIF");
 await shot("6-sarif");
 const sarifExamples = await page.evaluate(() => EXAMPLE_SARIFS);
 for (const ex of sarifExamples) {
-  const log = JSON.parse(fs.readFileSync(path.join(root, "examples", ex.file), "utf8"));
+  const raw = fs.readFileSync(path.join(root, "examples", ex.file), "utf8");
+  const log = JSON.parse(raw);
   check(log.version === "2.1.0" && log.runs.length > 0, `Import SARIF: example ${ex.file} is a SARIF 2.1.0 log`);
   await page.getByRole("button", { name: ex.label, exact: true }).click();
-  await page.waitForSelector(`text=${ex.file}`, { timeout: 5000 }).catch(() => {});
-  check(await page.getByText(ex.file, { exact: false }).first().isVisible()
-      && (await page.locator("[role=status]").allInnerTexts()).some(t => t.includes(`Example chosen: ${ex.label} (${ex.note})`)),
-    `Import SARIF: choosing the example ${ex.label} selects its file, and says so`);
+  await page.waitForFunction(r => document.getElementById("sarif-text").value === r, raw, { timeout: 5000 }).catch(() => {});
+  check(await page.inputValue("#sarif-text") === raw
+      && (await page.locator("[role=status]").allInnerTexts()).some(t => t.includes(`Example chosen: ${ex.label} (${ex.note})`) && t.includes("in the text box below")),
+    `Import SARIF: choosing the example ${ex.label} puts its SARIF in the text box, and says so`);
 }
-await page.getByRole("button", { name: "Clear" }).click();
+// Choosing an example replaces what was in the box, and says so; Clear text empties it.
 await page.fill("#sarif-text", "pasted text");
 await page.getByRole("button", { name: "Model with Safetensors weights (G7)", exact: true }).click();
-await page.waitForSelector("text=phi-4.g7ai.sarif.json", { timeout: 5000 }).catch(() => {});
+await page.waitForFunction(() => document.getElementById("sarif-text").value !== "pasted text", null, { timeout: 5000 }).catch(() => {});
+check((await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("replacing what was there")), "Import SARIF: an example that replaces pasted text says so");
+await page.getByRole("button", { name: "Clear text" }).click();
+check(await page.inputValue("#sarif-text") === "" && await page.evaluate(() => document.activeElement.id) === "sarif-text", "Import SARIF: Clear text empties the box and keeps focus in it");
+// A file chosen with the picker leaves the pasted text in place.
+await page.fill("#sarif-text", "pasted text");
+await page.setInputFiles("#sarif-file", { name: "own.sarif.json", mimeType: "application/json", buffer: Buffer.from("{}") });
 check(await page.inputValue("#sarif-text") === "pasted text" && (await text()).includes("the text you pasted is kept"),
-  "Import SARIF: choosing an example keeps the pasted text, and the label says so");
-await page.getByRole("button", { name: "Clear" }).click();
+  "Import SARIF: choosing a file keeps the pasted text, and the label says so");
+await page.getByRole("button", { name: "Clear", exact: true }).click();
 check(await page.inputValue("#sarif-text") === "pasted text" && !(await page.locator("#sarif-text").isDisabled()),
   "Import SARIF: the pasted text is back when the file is cleared");
-await page.fill("#sarif-text", "");
+await page.getByRole("button", { name: "Clear text" }).click();
 await page.getByRole("button", { name: "Model with Safetensors weights (NTIA)", exact: true }).click();
-await page.waitForSelector("text=phi-4.ntia.sarif.json", { timeout: 5000 }).catch(() => {});
+await page.waitForFunction(() => document.getElementById("sarif-text").value.length > 0, null, { timeout: 5000 }).catch(() => {});
 const sentLogs = [];
 page.on("request", q => { if (q.url().endsWith("/api/v1/sarif/import")) sentLogs.push(q.postData() || ""); });
 await page.getByRole("button", { name: "Import SARIF" }).last().click();
 await page.waitForTimeout(500);
 check(sentLogs.length === 1 && sentLogs[0].includes('"ruleId"'), "Import SARIF: an example is sent as its real log");
-await page.getByRole("button", { name: "Clear" }).click();
+await page.getByRole("button", { name: "Clear text" }).click();
 await page.fill("#sarif-text", '{"version": "2.1.0", "runs": [{"results": [{"ruleId": "BOM-CISA2025-META-001"}]}]}');
 await page.getByRole("button", { name: "Import SARIF" }).last().click();
 await page.waitForSelector("text=Unsupported standard", { timeout: 5000 }).catch(() => {});

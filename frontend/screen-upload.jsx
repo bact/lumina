@@ -65,10 +65,11 @@ const EXAMPLE_SARIFS = [
     note: "NTIA result for the Chainguard container image SBOM" },
 ];
 
-// A row of buttons; `onPick(file, example)` gets the example as a File and
-// returns a short phrase for what else it set. What was chosen, with the
-// example's note, stays on screen (and is announced) under the buttons.
-function ExampleFiles({ labelId, examples, disabled, onPick }) {
+// A row of buttons; `onPick(file, example)` gets the example as a File (or, with
+// `as="text"`, as its text) and returns a short phrase for what else it set.
+// What was chosen, with the example's note, stays on screen (and is announced)
+// under the buttons; `where` says where it went.
+function ExampleFiles({ labelId, examples, disabled, onPick, as = "file", where = "is selected" }) {
   const [note, setNote] = _useSU("");
   const [error, setError] = _useSU("");
   const latest = _useRefU(0); // the newest choice; an older load that ends later is dropped
@@ -78,10 +79,11 @@ function ExampleFiles({ labelId, examples, disabled, onPick }) {
     try {
       const response = await fetch(`/examples/${ex.file}`);
       if (!response.ok) throw new Error(`the server answered ${response.status}`);
-      const file = new File([await response.blob()], ex.file, { type: "application/json" });
+      const blob = await response.blob();
+      const content = as === "text" ? await blob.text() : new File([blob], ex.file, { type: "application/json" });
       if (mine !== latest.current) return;
-      const extra = onPick(file, ex) || "";
-      setNote(`Example chosen: ${ex.label} (${ex.note}). The file ${ex.file} is selected${extra}.`);
+      const extra = onPick(content, ex) || "";
+      setNote(`Example chosen: ${ex.label} (${ex.note}). The file ${ex.file} ${where}${extra}.`);
     } catch (err) {
       if (mine !== latest.current) return;
       setNote("");
@@ -209,6 +211,7 @@ function UploadScreen() {
 // whether the text is valid JSON and a usable SARIF 2.1.0 log.
 function SarifScreen() {
   const { t } = useLocale();
+  const textRef = _useRefU(null);
   const [file, setFile] = _useSU(null);
   const [text, setText] = _useSU("");
   const check = useCheck();
@@ -229,14 +232,25 @@ function SarifScreen() {
       <FilePicker id="sarif-file" label="Choose SARIF file" accept=".sarif,.json,application/json" file={file} disabled={running}
         onChange={(f) => { setFile(f); check.reset(); }} />
       <ExampleFiles labelId="example-sarif-label" examples={EXAMPLE_SARIFS} disabled={running}
-        onPick={(f) => { setFile(f); check.reset(); }} />
+        as="text" where="is in the text box below"
+        onPick={(content) => {
+          const replaced = text.trim() !== "" || !!file;
+          setFile(null); setText(content); check.reset();
+          return replaced ? ", replacing what was there" : "";
+        }} />
       <div>
-        <label htmlFor="sarif-text" style={{ display: "block", fontSize: 12, color: "var(--ink-3)", marginBottom: 6 }}>
-          {file ? (text.trim() ? "A file is chosen and is used; the text you pasted is kept until you clear the file." : "A file is chosen; clear it to paste instead.") : "Or paste the SARIF JSON"}
-        </label>
-        <textarea id="sarif-text" value={text} disabled={running || !!file}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
+          <label htmlFor="sarif-text" style={{ fontSize: 12, color: "var(--ink-3)" }}>
+            {file ? (text.trim() ? "A file is chosen and is used; the text you pasted is kept until you clear the file." : "A file is chosen; clear it to paste instead.") : "Or paste the SARIF JSON"}
+          </label>
+          {text !== "" && !file && (
+            <Button variant="ghost" size="sm" icon="x" disabled={running}
+              onClick={() => { setText(""); check.reset(); textRef.current && textRef.current.focus(); }}>Clear text</Button>
+          )}
+        </div>
+        <textarea id="sarif-text" ref={textRef} value={text} disabled={running || !!file}
           onChange={(e) => { setText(e.target.value); check.reset(); }}
-          rows={8} spellCheck={false}
+          rows={text ? 14 : 8} spellCheck={false}
           placeholder='{"version": "2.1.0", "runs": [ ... ]}'
           style={{
             width: "100%", boxSizing: "border-box", resize: "vertical",
