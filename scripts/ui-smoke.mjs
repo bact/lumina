@@ -423,6 +423,14 @@ check((await page.getByPlaceholder(/github/).inputValue()).startsWith("https://h
 check(await page.getByRole("group", { name: "Try an example:" }).count() === 1
   && (await page.locator("[role=status].sr-only").allInnerTexts()).some(t => t.includes("Example chosen: Model with a dataset") && t.includes("G7 SBOM for AI")),
   "Generate & check: the examples are a named group and the choice is announced");
+await page.getByRole("button", { name: "Model with Safetensors weights" }).click();
+check(await page.getByPlaceholder(/github/).inputValue() === "https://huggingface.co/microsoft/phi-4"
+  && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
+  "Generate & check: the Safetensors model example fills the URL and picks G7 SBOM for AI");
+await page.getByRole("button", { name: "Large Mistral model" }).click();
+check(await page.getByPlaceholder(/github/).inputValue() === "https://huggingface.co/mistralai/Mistral-Small-4-119B-2603"
+  && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
+  "Generate & check: the Mistral model example fills the URL and picks G7 SBOM for AI");
 await page.getByPlaceholder(/github/).fill("https://github.com/o/refuse");
 await page.getByRole("button", { name: "Generate & check" }).last().click();
 await page.waitForSelector(`text=${DETAIL_501}`, { timeout: 5000 }).catch(() => {});
