@@ -40,7 +40,8 @@ when that count is above 0.
 `examples/` holds real files the "Try an example" buttons on *Upload SBOM* and
 *Import SARIF* load (`EXAMPLE_SBOMS`, `EXAMPLE_SARIFS` in `screen-upload.jsx`).
 A button fetches `/examples/<file>` and selects it as if it were chosen from
-disk, so the check that follows is the ordinary upload or import. None is
+disk (what was chosen, with the example's note, stays on screen and is
+announced; of two quick choices the newer wins), so the check that follows is the ordinary upload or import. None is
 edited by hand; `scripts/ui-smoke.mjs` checks that each listed file exists and
 is an SPDX document or a SARIF 2.1.0 log.
 
@@ -51,6 +52,8 @@ is an SPDX document or a SARIF 2.1.0 log.
 | `spdx-2.3-spec-example.spdx.json` | the SPDX 2.3 specification's own example (`spdx/spdx-spec`, branch `support/2.3`, `examples/SPDXJSONExample-v2.3.spdx.json`) |
 | `*.sarif.json` | `sbomcheck -s <spdx3\|spdx2> -c <g7ai\|ntia> -r sarif -o <file>` on the SBOM of the same name (checker pinned in `backend/requirements.txt`) |
 
+The Hub and GitHub SBOMs are one run each, dated 2026-10-20 (their `created` time
+is real and does not change when the demo is rebuilt); the button's note says so.
 To refresh one, rerun the command or URL above and replace the file. A file
 that is not a real tool output does not belong here.
 

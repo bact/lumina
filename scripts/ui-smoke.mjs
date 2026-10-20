@@ -546,9 +546,19 @@ for (const ex of sbomExamples) {
   await page.waitForSelector(`text=${ex.file}`, { timeout: 5000 }).catch(() => {});
   check(await page.getByText(ex.file, { exact: false }).first().isVisible()
       && await page.getByRole("radio", { name: LABELS[ex.standard] }).getAttribute("aria-checked") === "true"
-      && (await page.locator("[role=status].sr-only").allInnerTexts()).some(t => t.includes(`Example chosen: ${ex.label}`) && t.includes(LABELS[ex.standard])),
+      && (await page.locator("[role=status]").allInnerTexts()).some(t => t.includes(`Example chosen: ${ex.label} (${ex.note})`) && t.includes(LABELS[ex.standard])),
     `Upload SBOM: choosing the example ${ex.label} selects its file and standard, and says so`);
 }
+// Two quick choices: the slower, older load must not replace the newer one.
+await page.route("**/examples/phi-4.spdx3.json", async r => { await new Promise(res => setTimeout(res, 700)); await r.continue(); });
+await page.getByRole("button", { name: "Hugging Face model", exact: true }).click();
+await page.getByRole("button", { name: "GGUF model", exact: true }).click();
+await page.waitForTimeout(1200);
+check((await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("Example chosen: GGUF model"))
+    && !(await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("Example chosen: Hugging Face model"))
+    && await page.getByText("qwen2.5-0.5b-instruct-gguf.spdx3.json").first().isVisible(),
+  "Upload SBOM: an older, slower example load does not replace a newer choice");
+await page.unroute("**/examples/phi-4.spdx3.json");
 const sentBodies = [];
 page.on("request", q => { if (q.url().endsWith("/api/v1/sbom/check")) sentBodies.push(q.postData() || ""); });
 await page.getByRole("button", { name: "SPDX 2 SBOM", exact: true }).click();
@@ -620,9 +630,21 @@ for (const ex of sarifExamples) {
   await page.getByRole("button", { name: ex.label, exact: true }).click();
   await page.waitForSelector(`text=${ex.file}`, { timeout: 5000 }).catch(() => {});
   check(await page.getByText(ex.file, { exact: false }).first().isVisible()
-      && (await page.locator("[role=status].sr-only").allInnerTexts()).some(t => t.includes(`Example chosen: ${ex.label}`)),
+      && (await page.locator("[role=status]").allInnerTexts()).some(t => t.includes(`Example chosen: ${ex.label} (${ex.note})`)),
     `Import SARIF: choosing the example ${ex.label} selects its file, and says so`);
 }
+await page.getByRole("button", { name: "Clear" }).click();
+await page.fill("#sarif-text", "pasted text");
+await page.getByRole("button", { name: "G7: Hugging Face model", exact: true }).click();
+await page.waitForSelector("text=phi-4.g7ai.sarif.json", { timeout: 5000 }).catch(() => {});
+check(await page.inputValue("#sarif-text") === "pasted text" && (await text()).includes("the text you pasted is kept"),
+  "Import SARIF: choosing an example keeps the pasted text, and the label says so");
+await page.getByRole("button", { name: "Clear" }).click();
+check(await page.inputValue("#sarif-text") === "pasted text" && !(await page.locator("#sarif-text").isDisabled()),
+  "Import SARIF: the pasted text is back when the file is cleared");
+await page.fill("#sarif-text", "");
+await page.getByRole("button", { name: "NTIA: Python project", exact: true }).click();
+await page.waitForSelector("text=sentimentdemo.ntia.sarif.json", { timeout: 5000 }).catch(() => {});
 const sentLogs = [];
 page.on("request", q => { if (q.url().endsWith("/api/v1/sarif/import")) sentLogs.push(q.postData() || ""); });
 await page.getByRole("button", { name: "Import SARIF" }).last().click();

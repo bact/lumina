@@ -47,11 +47,11 @@ const EXAMPLE_SBOMS = [
   { label: "AI model (Safetensors)", file: "phi-tiny-random.spdx3.json", standard: "g7ai",
     note: "made by Pitloom from a tiny test model file" },
   { label: "Hugging Face model", file: "phi-4.spdx3.json", standard: "g7ai",
-    note: "microsoft/phi-4, made by Pitloom from the Hub metadata" },
+    note: "microsoft/phi-4, made by Pitloom from the Hub metadata on 2026-10-20" },
   { label: "GGUF model", file: "qwen2.5-0.5b-instruct-gguf.spdx3.json", standard: "g7ai",
-    note: "Qwen2.5-0.5B-Instruct-GGUF, made by Pitloom from the Hub metadata" },
+    note: "Qwen2.5-0.5B-Instruct-GGUF, made by Pitloom from the Hub metadata on 2026-10-20" },
   { label: "Project with a fastText model", file: "sentimentdemo.spdx3.json", standard: "g7ai",
-    note: "bact/sentimentdemo, made by Pitloom" },
+    note: "bact/sentimentdemo, made by Pitloom on 2026-10-20" },
   { label: "SPDX 2 SBOM", file: "spdx-2.3-spec-example.spdx.json", standard: "ntia",
     note: "the SPDX 2.3 specification's own example" },
 ];
@@ -68,19 +68,25 @@ const EXAMPLE_SARIFS = [
 ];
 
 // A row of buttons; `onPick(file, example)` gets the example as a File and
-// returns a short phrase for what else it set (spoken with the choice).
+// returns a short phrase for what else it set. What was chosen, with the
+// example's note, stays on screen (and is announced) under the buttons.
 function ExampleFiles({ labelId, examples, disabled, onPick }) {
   const [note, setNote] = _useSU("");
   const [error, setError] = _useSU("");
+  const latest = _useRefU(0); // the newest choice; an older load that ends later is dropped
   async function choose(ex) {
-    setError(""); setNote("");
+    const mine = ++latest.current;
+    setError("");
     try {
       const response = await fetch(`/examples/${ex.file}`);
       if (!response.ok) throw new Error(`the server answered ${response.status}`);
       const file = new File([await response.blob()], ex.file, { type: "application/json" });
+      if (mine !== latest.current) return;
       const extra = onPick(file, ex) || "";
-      setNote(`Example chosen: ${ex.label}. The file ${ex.file} is selected${extra}.`);
+      setNote(`Example chosen: ${ex.label} (${ex.note}). The file ${ex.file} is selected${extra}.`);
     } catch (err) {
+      if (mine !== latest.current) return;
+      setNote("");
       setError(`Could not load the example file ${ex.file}: ${String(err.message || err)}`);
     }
   }
@@ -95,7 +101,7 @@ function ExampleFiles({ labelId, examples, disabled, onPick }) {
           </Button>
         ))}
       </div>
-      <div role="status" className="sr-only">{note}</div>
+      <div role="status" style={note ? { fontSize: 12.5, color: "var(--ink-3)" } : undefined}>{note}</div>
       {error && <ErrorCard title="Could not load the example">{error}</ErrorCard>}
     </>
   );
@@ -223,10 +229,10 @@ function SarifScreen() {
       <FilePicker id="sarif-file" label="Choose SARIF file" accept=".sarif,.json,application/json" file={file} disabled={running}
         onChange={(f) => { setFile(f); check.reset(); }} />
       <ExampleFiles labelId="example-sarif-label" examples={EXAMPLE_SARIFS} disabled={running}
-        onPick={(f) => { setFile(f); setText(""); check.reset(); }} />
+        onPick={(f) => { setFile(f); check.reset(); }} />
       <div>
         <label htmlFor="sarif-text" style={{ display: "block", fontSize: 12, color: "var(--ink-3)", marginBottom: 6 }}>
-          {file ? "A file is chosen; clear it to paste instead." : "Or paste the SARIF JSON"}
+          {file ? (text.trim() ? "A file is chosen and is used; the text you pasted is kept until you clear the file." : "A file is chosen; clear it to paste instead.") : "Or paste the SARIF JSON"}
         </label>
         <textarea id="sarif-text" value={text} disabled={running || !!file}
           onChange={(e) => { setText(e.target.value); check.reset(); }}
