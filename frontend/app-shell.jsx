@@ -158,10 +158,12 @@ function TopBar() {
       background: "var(--paper)", borderBottom: "1px solid var(--border)",
       flex: "0 0 52px", position: "relative", zIndex: 4,
     }}>
-      <a href="#main-content" style={{ display: "inline-flex" }} aria-label={t("topbar.home")}>
-        <Logo size={22} />
+      <a href="#main-content" aria-label={t("topbar.home", { title: t("topbar.title") })} style={{
+        flex: 1, minWidth: 0, color: "var(--ink)", textDecoration: "none",
+        fontSize: 15, fontWeight: 500, letterSpacing: "-0.01em", lineHeight: 1.2,
+      }}>
+        {t("topbar.title")}
       </a>
-      <div style={{ flex: 1 }} />
       <LanguageSwitcher />
     </header>
   );
