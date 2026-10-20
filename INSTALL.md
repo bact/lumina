@@ -500,27 +500,6 @@ gcloud run deploy lumina \
 
 ---
 
-## Next steps — scaling up
-
-The current deployment runs SBOM generation in-process (no Redis, no worker).
-This is intentional: the `JobQueue` abstraction in `backend/app/jobs.py` lets
-the backend swap from `InProcessJobQueue` to an RQ or Taskiq worker without
-changing the API, the frontend, or the job functions.
-
-When load grows and the in-process queue is no longer enough, the upgrade path is:
-
-1. Add a `worker` service and a local `redis:alpine` container (or Upstash
-   serverless Redis) to the compose stack.
-2. Add an `RQJobQueue` or `TaskiqJobQueue` next to `InProcessJobQueue` in
-   `backend/app/jobs.py` and use it where the app creates its queue.
-3. Nothing else changes — the HTTP contract, the frontend polling loop, the
-   generators, and the conformance pipeline are all untouched.
-
-The staged-backends design, the RQ vs Taskiq comparison and guidance on when to
-pick each are in the project's internal design notes.
-
----
-
 ## Hardening for public use
 
 These apply to all options once the deployment is working.

@@ -550,26 +550,23 @@ that registration lands.
 ## Infrastructure
 
 At Stage 0–1 the stack is **FastAPI + nginx** with no separate worker and no
-Redis — SBOM generation runs in-process (see
+Redis; SBOM generation runs in-process (see
 [Background job execution](#background-job-execution)).  This fits inside the
-smallest free or cheap hosts.  Three deployment options are supported, each with
-its own Docker configuration under `docker/`:
+smallest free or cheap hosts.
 
-| Option | Platform | Docker config | Shape |
-| :----- | :------- | :------------ | :---- |
-| **A** | VM with Docker Compose — OCI Always Free + Cloudflare Tunnel | [`docker/compose/`](../docker/compose/) | Two containers: nginx + api, via `docker compose` |
-| **B** | Hugging Face Spaces (free CPU Basic tier) | [`docker/hfspaces/`](../docker/hfspaces/) | Single container: nginx + uvicorn via supervisord; git-clones Lumina at build time |
-| **C** | Google Cloud Run (free tier, scale-to-zero) | [`docker/standalone/`](../docker/standalone/) | Single container: nginx + uvicorn via supervisord; built from local source |
+The three supported deployment options (A: VM with Docker Compose, B: Hugging
+Face Spaces, C: Google Cloud Run), their cost and their configuration folders
+under `docker/` are listed in
+[INSTALL.md](../INSTALL.md#deployment-options); step-by-step instructions are
+there too.  Design points only:
 
-Options B and C use a single-container image because those platforms run one
-container per deployment.  The `docker/standalone/` image reads the `PORT` env
-var (injected by Cloud Run as `8080`; defaults to `7860` for HF Spaces and
-local testing) and writes the nginx server block at start time via `start.sh`.
+- Options B and C run one container per deployment, so they use a single-container
+  image (nginx + uvicorn via supervisord).  `docker/standalone/` reads the `PORT`
+  env var (Cloud Run injects `8080`; the default `7860` serves HF Spaces and local
+  testing) and writes the nginx server block at start time via `start.sh`.
+  `docker/hfspaces/` git-clones Lumina at build time.
+- The Stage 2 upgrade (a `worker` service plus Redis) rides on the same host in
+  Option A and as a separate Cloud Run job or HF Space in B/C; see
+  [Staged backends](#staged-backends).
 
-At Stage 2 a `worker` service and a Redis (a local `redis:alpine` container, or
-Upstash serverless Redis) are added when load justifies them.  The worker rides
-on the same host (Option A) or as a separate Cloud Run job / HF Space (B/C);
-the `JobQueue` interface means only the backend implementation changes.
-
-- **Local development:** see the [README](../README.md#quick-start-with-docker).
-- **Deployment step-by-step:** see [INSTALL.md](../INSTALL.md).
+Local development: see the [README](../README.md#quick-start-with-docker).
