@@ -144,7 +144,8 @@ and the SARIF log the checker made from it for the G7 SBOM for AI standard.
    metadata (no weights are downloaded) and checks it. Point out the model's
    Apache-2.0 licence, the dataset `squad` with its own licence (CC-BY-SA-4.0,
    read from the dataset's card) and the `trainedOn` link between them. Open the
-   *Generator log* tab to show what the server did.
+   *Generator log* tab to show what the server did. In the result, *SBOM author*
+   is Lumina (a software agent: it ran Pitloom) and *SBOM tool name* is Pitloom.
    Then click the card *microsoft/phi-4*: a
    model with no dataset. Its parameter count comes from the Safetensors summary
    on the Hub; no weights are downloaded. The *Generator log* says so: it reads the Hub metadata and downloads no model files.

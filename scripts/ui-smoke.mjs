@@ -113,7 +113,8 @@ const NTIA_RESULT = {
     system_judged_by_model: null,
   },
   run: { ...TOOL, generator: "pitloom 0.0.0-mock", execution_successful: true,
-    notifications: [{ level: "warning", message: "Mock Pitloom warning.", descriptor_id: "pitloom.log" }] },
+    notifications: [{ level: "warning", message: "Mock Pitloom warning.", descriptor_id: "pitloom.log" },
+      { level: "warning", message: "1 component(s) are not connected to the SBOM root and were not evaluated.", descriptor_id: "spdx.floating-component" }] },
   embedded_sbom: null,
   sbom: SBOM,
   generation_log: [
@@ -438,6 +439,28 @@ check(grid.length === 10 && grid.every(Boolean), `Generate & check: ten cards, n
 check(await page.evaluate(() => JSON.stringify([...document.querySelectorAll("#example-generate-region .example-group-label")].map(e => e.textContent))) === JSON.stringify(["Models", "Projects"]), "Generate & check: the examples are grouped as Models and Projects");
 check(await card("https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad").getAttribute("aria-current") === "true"
   && await card("https://github.com/pallets/flask").getAttribute("aria-current") === null, "Generate & check: the chosen card is marked");
+// The cards are one tab stop; the arrow keys, Home and End move between them.
+const PHI = "https://huggingface.co/microsoft/phi-4";
+check(await page.evaluate(() => [...document.querySelectorAll("#example-generate-region .example-card")].filter(c => c.tabIndex === 0).length) === 1, "Generate & check: the example cards are one tab stop");
+await card(PHI).focus();
+const focusedKey = () => page.evaluate(() => document.activeElement.dataset.example);
+const rect = () => page.evaluate(() => { const r = document.activeElement.getBoundingClientRect(); return { top: r.top, left: r.left }; });
+await page.keyboard.press("ArrowRight");
+check(await focusedKey() === "https://huggingface.co/mistralai/Mistral-Small-4-119B-2603", "Generate & check: ArrowRight moves to the next card");
+await page.keyboard.press("ArrowLeft");
+const before = await rect();
+await page.keyboard.press("ArrowDown");
+const below = await rect();
+check(below.top > before.top && Math.abs(below.left - before.left) < 40, "Generate & check: ArrowDown moves to the card below");
+await page.keyboard.press("ArrowUp");
+check(await focusedKey() === PHI, "Generate & check: ArrowUp moves back up");
+await page.keyboard.press("End");
+check(await focusedKey() === "https://github.com/pallets/flask", "Generate & check: End moves to the last card");
+await page.keyboard.press("Home");
+check(await focusedKey() === "https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad", "Generate & check: Home moves to the first card");
+check(await page.evaluate(() => [...document.querySelectorAll("#example-generate-region .example-card")].filter(c => c.tabIndex === 0).length) === 1, "Generate & check: the arrow keys keep one tab stop");
+await page.keyboard.press("Enter");
+check(await page.getByPlaceholder(/github/).inputValue() === "https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad", "Generate & check: Enter on a card chooses it");
 await page.getByPlaceholder(/github/).fill("https://github.com/o/refuse");
 await page.getByRole("button", { name: "Generate & check" }).last().click();
 await page.waitForSelector(`text=${DETAIL_501}`, { timeout: 5000 }).catch(() => {});
@@ -457,6 +480,7 @@ await page.waitForSelector("text=Data fields", { timeout: 10000 }).catch(() => {
 let body = await text();
 check(body.includes("Data fields") && body.includes("Component supplier") && body.includes("pitloom 0.0.0-mock"),
   "Generate & check: the job result renders with rules and generator");
+check((await text()).includes("Not a failure: the checker does not evaluate a component that is not connected"), "Generate & check: a floating-component notification explains itself");
 check(posted.at(-1).standard_id === "g7ai", "Generate & check: the default request names g7ai");
 await shot("2-generate-result");
 await evidenceAndSource("Generate & check");

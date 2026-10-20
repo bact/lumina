@@ -52,7 +52,7 @@ so none is included.
 
 | File | How it was made |
 | - | - |
-| `phi-tiny-random.spdx3.json` | `loom model` on a tiny Safetensors model |
+| `phi-tiny-random.spdx3.json` | `loom model` on a tiny Safetensors model; run by hand, so its SBOM author is Pitloom itself, unlike the SBOMs Lumina generates (author Lumina, tool Pitloom) |
 | `phi-4.spdx3.json`, `qwen2.5-0.5b-instruct-gguf.spdx3.json` | the SBOM Lumina's *Generate & check* returned on 2026-10-20 for `huggingface.co/microsoft/phi-4` and `huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF` (Pitloom at the commit pinned in `backend/requirements.txt`) |
 | `chainguard-image.spdx.json` | an SPDX 2.3 JSON SBOM that apko wrote for a Chainguard container image, copied unchanged from the checker's test data (`tests/data/SPDXSBOMExampleTests/chainguard.spdx.json`) |
 | `*.sarif.json` | `sbomcheck -s <spdx3\|spdx2> -c <g7ai\|ntia> -r sarif -o <file>` on the SBOM of the same name (checker pinned in `backend/requirements.txt`) |

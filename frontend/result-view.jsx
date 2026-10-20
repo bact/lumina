@@ -274,6 +274,12 @@ function ResultBody({ result, expanded, setExpanded, onToggle, onShow, details }
                 <StatusChip status={n.level === "error" ? "invalid" : n.level === "warning" ? "missing" : "neutral"}>{n.level.charAt(0).toUpperCase() + n.level.slice(1)}</StatusChip>
                 <div style={{ minWidth: 0, fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5, overflowWrap: "anywhere" }}>
                   {n.descriptor_id ? <Mono style={{ marginRight: 6 }}>{n.descriptor_id}</Mono> : null}{n.message}
+                  {n.descriptor_id === "spdx.floating-component" && (
+                    <div style={{ marginTop: 4, color: "var(--ink-3)" }}>
+                      Not a failure: the checker does not evaluate a component that is not connected to the
+                      SBOM root. In a Hub model's SBOM that is typically its base model, linked only by <Mono>descendantOf</Mono>.
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

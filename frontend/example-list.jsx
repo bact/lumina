@@ -20,7 +20,7 @@ SPDX-License-Identifier: Apache-2.0
 // The list is a disclosure: open at first, collapsed by the screen once a check
 // is started (more room, less distraction), and the visitor can open it again.
 
-const { useState: _useSE } = React;
+const { useState: _useSE, useRef: _useRefE } = React;
 
 // What each example is about. kind: model | project | image (the group it is
 // listed in). Fields not stated by the files are not invented: a size is the
@@ -60,7 +60,33 @@ const standardShort = (id) => (STANDARD_INFO[id] && STANDARD_INFO[id].short) || 
 // is what is spoken (and shown, while open) after a choice; `chosenKey` marks
 // the card the form currently holds.
 function ExampleList({ idPrefix, examples, open, onOpenChange, disabled, onChoose, chosenKey, note, showStandard = false, children }) {
-  const regionId = `${idPrefix}-region`, headId = `${idPrefix}-head`;
+  const regionId = `${idPrefix}-region`, headId = `${idPrefix}-head`, hintId = `${idPrefix}-hint`;
+  // The cards are one tab stop (roving tabindex); the arrow keys move between
+  // them, Home and End go to the first and last.
+  const regionRef = _useRefE(null);
+  const [active, setActive] = _useSE(0);
+  const ordered = EXAMPLE_GROUPS.flatMap(g => examples.filter(ex => EXAMPLE_SUBJECTS[ex.subject].kind === g.kind));
+  function move(event, from) {
+    const cards = [...regionRef.current.querySelectorAll(".example-card")];
+    let to = null;
+    if (event.key === "Home") to = 0;
+    else if (event.key === "End") to = cards.length - 1;
+    else if (event.key === "ArrowRight") to = Math.min(from + 1, cards.length - 1);
+    else if (event.key === "ArrowLeft") to = Math.max(from - 1, 0);
+    else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      // The nearest card in the next row up or down, by its position on screen.
+      const here = cards[from].getBoundingClientRect(), down = event.key === "ArrowDown";
+      const beyond = cards.map((c, i) => ({ i, r: c.getBoundingClientRect() }))
+        .filter(({ r }) => (down ? r.top > here.bottom - 1 : r.bottom < here.top + 1));
+      if (beyond.length === 0) return;
+      const rowGap = Math.min(...beyond.map(({ r }) => Math.abs(r.top - here.top)));
+      to = beyond.filter(({ r }) => Math.abs(r.top - here.top) === rowGap)
+        .sort((a, b) => Math.abs(a.r.left - here.left) - Math.abs(b.r.left - here.left))[0].i;
+    } else return;
+    event.preventDefault();
+    setActive(to);
+    cards[to].focus();
+  }
   return (
     <section aria-labelledby={headId} className="example-list">
       <h2 id={headId} className="example-head">
@@ -70,18 +96,20 @@ function ExampleList({ idPrefix, examples, open, onOpenChange, disabled, onChoos
         </button>
       </h2>
       <div role="status" className="example-note">{open ? note : ""}</div>
-      <div id={regionId} hidden={!open}>
+      <div id={regionId} hidden={!open} ref={regionRef}>
+        <p id={hintId} className="sr-only">The arrow keys move between the examples; Enter or Space chooses one.</p>
         {EXAMPLE_GROUPS.filter(g => examples.some(ex => EXAMPLE_SUBJECTS[ex.subject].kind === g.kind)).map(g => {
           const gid = `${idPrefix}-group-${g.kind}`;
           return (
             <div key={g.kind} className="example-group">
               <div id={gid} className="example-group-label">{g.label}</div>
-              <ul className="example-grid" aria-labelledby={gid}>
+              <ul className="example-grid" aria-labelledby={gid} aria-describedby={hintId}>
                 {examples.filter(ex => EXAMPLE_SUBJECTS[ex.subject].kind === g.kind).map(ex => {
-                  const s = EXAMPLE_SUBJECTS[ex.subject];
+                  const s = EXAMPLE_SUBJECTS[ex.subject], at = ordered.indexOf(ex);
                   return (
                     <li key={ex.key}>
                       <button type="button" className="example-card" data-example={ex.key} disabled={disabled}
+                        tabIndex={at === active ? 0 : -1} onKeyDown={(e) => move(e, at)} onFocus={() => setActive(at)}
                         aria-current={ex.key === chosenKey ? "true" : undefined} onClick={() => onChoose(ex)}>
                         <span className="example-card-head">
                           <span className="example-name">{s.name}</span>
