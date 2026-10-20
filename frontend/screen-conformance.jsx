@@ -370,11 +370,14 @@ function ImportScreen() {
 
 // ─── ScreenFrame -- heading + column every check screen uses ──────────
 function ScreenFrame({ eyebrow, title, intro, children }) {
+  const { locale } = useLocale();
   return (
     <div className="screen-frame" style={{ padding: "32px 48px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 880, margin: "0 auto" }}>
       <div>
-        <Eyebrow>{eyebrow}</Eyebrow>
-        <h1 style={{ margin: "6px 0 4px", fontSize: 32, fontWeight: 500, letterSpacing: "-0.018em" }}>{title}</h1>
+        <div lang={locale}>
+          <Eyebrow>{eyebrow}</Eyebrow>
+          <h1 style={{ margin: "6px 0 4px", fontSize: 32, fontWeight: 500, letterSpacing: "-0.018em" }}>{title}</h1>
+        </div>
         <p style={{ margin: 0, fontSize: 14.5, color: "var(--ink-3)" }}>{intro}</p>
       </div>
       {children}

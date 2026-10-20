@@ -164,7 +164,7 @@ function RuleEvidence({ rule, onShow }) {
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <StatusChip status={chip.status}>{chip.label}</StatusChip>
               <span style={{ fontSize: 13, color: "var(--ink)", fontWeight: 500, overflowWrap: "anywhere" }}>{name}</span>
-              {ev.element_type && <Mono style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{ev.element_type}</Mono>}
+              {ev.element_type && <Mono style={{ fontSize: 12, color: "var(--ink-3)" }}>{ev.element_type}</Mono>}
               {onShow && ev.line ? (
                 <LinkButton onClick={() => onShow({ line: ev.line, end_line: ev.end_line || ev.line }, rule)}
                   ariaLabel={`Show in SBOM: ${name}, ${lineRange(ev.line, ev.end_line)}`}>
@@ -173,7 +173,7 @@ function RuleEvidence({ rule, onShow }) {
               ) : null}
             </div>
             {ev.element_name && ev.element_id && (
-              <div style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 2, overflowWrap: "anywhere" }}><Mono>{ev.element_id}</Mono></div>
+              <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 2, overflowWrap: "anywhere" }}><Mono>{ev.element_id}</Mono></div>
             )}
             {items.length > 0 && (
               <dl className="evidence-items">
@@ -217,7 +217,7 @@ function RuleRow({ rule, last, details, expanded, onToggle, onShow }) {
               {more > 0 && <li className="rule-values-more">and {more} more in the details</li>}
             </ul>
           )}
-          <div style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 2 }}>
+          <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 2 }}>
             <Mono>{rule.rule_id.split("-").slice(2).join("-")}</Mono>{rule.provision ? <> · {rule.provision}</> : null}
             {ruleHint(rule) ? <> · {ruleHint(rule)}</> : null}
           </div>
@@ -256,7 +256,7 @@ function RuleClusters({ standardId, rules, judgedByModel, details, expanded, onT
       {ruleClusters(standardId, rules).map(cl => (
         <Card key={cl.code} padding={0}>
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 500, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-            <span>{cl.name}</span>
+            <h2 style={{ margin: 0, fontSize: 13, fontWeight: 500 }}>{cl.name}</h2>
             <span style={{ fontWeight: 400, color: "var(--ink-3)" }}>
               {count(cl.rules, "present")} present · {count(cl.rules, "missing")} missing · {count(cl.rules, "not-applicable")} not applicable · {count(cl.rules, "out-of-scope")} not checked{notProvided(cl.rules) > 0 ? ` · ${notProvided(cl.rules)} optional not provided` : ""}
             </span>

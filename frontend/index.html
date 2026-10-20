@@ -44,6 +44,19 @@ SPDX-License-Identifier: Apache-2.0
   }
   .skip-link:focus { transform: translateY(0); }
 
+  /* A skip link inside the page (over a long list): hidden until focused, then
+     shown in flow. */
+  .skip-inline {
+    position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden;
+    clip: rect(0, 0, 0, 0); white-space: nowrap;
+  }
+  .skip-inline:focus {
+    position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto;
+    align-self: flex-start; padding: 8px 14px; border-radius: 4px;
+    background: var(--ink); color: var(--paper); font-size: 13px; font-weight: 500;
+    text-decoration: none;
+  }
+
   /* Visually hidden but readable by screen readers */
   .sr-only {
     position: absolute !important;
@@ -57,6 +70,11 @@ SPDX-License-Identifier: Apache-2.0
   *::-webkit-scrollbar { width: 10px; height: 10px; }
   *::-webkit-scrollbar-thumb { background: var(--paper-3); border-radius: 999px; border: 2px solid var(--paper); }
   *::-webkit-scrollbar-track { background: transparent; }
+
+  /* The main landmark takes focus when a screen is chosen or the skip link is
+     used. It is not a control, so it gets no ring; what the user does next is
+     focused and ringed as usual. */
+  #main-content:focus-visible { outline: none; }
 
   /* Respect reduced-motion users */
   @media (prefers-reduced-motion: reduce) {
@@ -107,20 +125,26 @@ const SCREENS = {
 function App() {
   const { t, locale } = useLocale();
   const [screen, setScreen] = useState("generate");
+  const navigated = React.useRef(false);
+  const go = (id) => { navigated.current = true; setScreen(id); };
+
+  // Each screen has its own translated document title; choosing a screen moves
+  // focus to its main landmark, so a screen reader announces where it landed.
+  useEffect(() => {
+    const heading = screen === "about" ? t("nav.about") : t(`screen.${screen}.title`);
+    document.title = `${heading} | Lumina`;
+  }, [screen, locale]);
+  useEffect(() => {
+    if (!navigated.current) return;
+    navigated.current = false;
+    document.getElementById("main-content")?.focus({ preventScroll: true });
+  }, [screen]);
 
   // Keep the skip-link (which lives outside the React tree) in sync with locale
   useEffect(() => {
     const link = document.querySelector(".skip-link");
     if (link) link.textContent = t("topbar.skipToContent");
   }, [locale]);
-
-  // Lucide replaces <i data-lucide> placeholders; re-run as screens render.
-  useEffect(() => {
-    const tick = () => { if (window.lucide) window.lucide.createIcons({ attrs: { "stroke-width": 1.5 } }); };
-    tick();
-    const id = setInterval(tick, 400);
-    return () => clearInterval(id);
-  }, [screen]);
 
   const View = SCREENS[screen];
   const screenLabel = t(navLabelKey(screen));
@@ -129,13 +153,16 @@ function App() {
     <>
       <TopBar />
       <div className="app-body" style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        <SideNav current={screen} onNav={setScreen} />
+        <SideNav current={screen} onNav={go} />
         <main id="main-content"
           data-screen={screen}
           aria-label={t("main.label", { screen: screenLabel })}
           tabIndex="-1"
           style={{ flex: 1, overflow: "auto", background: "var(--paper)" }}>
-          <View />
+          {/* Screen content is English; the headings set their own language. */}
+          <div lang={locale === "en" ? undefined : "en"} style={{ display: "contents" }}>
+            <View />
+          </div>
         </main>
       </div>
     </>

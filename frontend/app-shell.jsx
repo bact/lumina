@@ -38,7 +38,21 @@ function LanguageSwitcher() {
   const buttonRef = _useRefA(null);
   const popoverRef = _useRefA(null);
   const popoverId = "lumina-language-popover";
+  const optionRefs = _useRefA([]);
+  const locales = window.LUMINA_I18N.LOCALES;
+  const [active, setActive] = _useStateA(0); // the option holding the roving tab stop
   const currentLocale = window.LUMINA_I18N.LOCALES.find(l => l.code === locale) || { code: locale, label: locale };
+
+  // Opening puts focus on the selected option (listbox pattern); arrow keys,
+  // Home and End then move it, and Tab or Escape close the list and return focus.
+  _useEffA(() => {
+    if (!open) return;
+    const at = Math.max(0, locales.findIndex(l => l.code === locale));
+    setActive(at);
+    optionRefs.current[at]?.focus();
+  }, [open]);
+  const choose = (code) => { setLocale(code); setOpen(false); buttonRef.current?.focus(); };
+  const moveTo = (i) => { const at = (i + locales.length) % locales.length; setActive(at); optionRefs.current[at]?.focus(); };
 
   _useEffA(() => {
     if (!open) return;
@@ -64,6 +78,7 @@ function LanguageSwitcher() {
         ref={buttonRef}
         type="button"
         onClick={() => setOpen(o => !o)}
+        onKeyDown={(e) => { if (e.key === "ArrowDown" && !open) { e.preventDefault(); setOpen(true); } }}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={popoverId}
@@ -79,7 +94,7 @@ function LanguageSwitcher() {
         onMouseEnter={(e) => { if (!open) e.currentTarget.style.background = "var(--paper-2)"; }}
         onMouseLeave={(e) => { if (!open) e.currentTarget.style.background = "transparent"; }}>
         <Icon name="languages" size={15} style={{ color: "var(--ink-3)" }} />
-        <span aria-hidden="true" style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, letterSpacing: "0.04em", color: "var(--ink-3)" }}>{shortCode}</span>
+        <span aria-hidden="true" style={{ fontFamily: "var(--font-mono)", fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-3)" }}>{shortCode}</span>
       </button>
 
       {open && (
@@ -96,17 +111,25 @@ function LanguageSwitcher() {
             minWidth: 240, maxHeight: 360, overflowY: "auto",
             padding: 6, zIndex: 20,
           }}>
-          {window.LUMINA_I18N.LOCALES.map(l => {
+          {locales.map((l, i) => {
             const sel = l.code === locale;
             const eng = LUMINA_LANG_ENGLISH[l.code] || l.code;
             return (
               <div
                 key={l.code}
+                ref={(el) => { optionRefs.current[i] = el; }}
                 role="option"
-                tabIndex={0}
+                tabIndex={i === active ? 0 : -1}
                 aria-selected={sel}
-                onClick={() => { setLocale(l.code); setOpen(false); buttonRef.current?.focus(); }}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setLocale(l.code); setOpen(false); buttonRef.current?.focus(); } }}
+                onClick={() => choose(l.code)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); choose(l.code); }
+                  else if (e.key === "ArrowDown") { e.preventDefault(); moveTo(i + 1); }
+                  else if (e.key === "ArrowUp") { e.preventDefault(); moveTo(i - 1); }
+                  else if (e.key === "Home") { e.preventDefault(); moveTo(0); }
+                  else if (e.key === "End") { e.preventDefault(); moveTo(locales.length - 1); }
+                  else if (e.key === "Tab") { e.preventDefault(); setOpen(false); buttonRef.current?.focus(); }
+                }}
                 style={{
                   padding: "7px 10px", borderRadius: 2, cursor: "pointer",
                   background: sel ? "var(--paper-2)" : "transparent",
@@ -117,7 +140,7 @@ function LanguageSwitcher() {
                 <div>
                   <div lang={l.code} style={{ fontSize: 13, color: "var(--ink)", fontWeight: sel ? 500 : 400 }}>{l.label}</div>
                   {eng !== l.label && (
-                    <div lang="en" style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 2, fontFamily: "var(--font-sans)" }}>{eng}</div>
+                    <div lang="en" style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 2, fontFamily: "var(--font-sans)" }}>{eng}</div>
                   )}
                 </div>
                 {sel && <Icon name="check" size={14} style={{ color: "var(--shu)" }} />}
