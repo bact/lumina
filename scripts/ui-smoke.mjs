@@ -435,6 +435,12 @@ await page.getByRole("button", { name: "Model with a base model" }).click();
 check(await page.getByPlaceholder(/github/).inputValue() === "https://huggingface.co/ibm-granite/granite-4.2-30b"
   && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
   "Generate & check: the Granite model example fills the URL and picks G7 SBOM for AI");
+for (const [name, url] of [["Model with 303M parameters", "https://huggingface.co/sonyinteractive/grooming-risk-classifier"], ["Model with 14.8B parameters", "https://huggingface.co/JTS-AI/OpenJAI-v1.0-14B"]]) {
+  await page.getByRole("button", { name }).click();
+  check(await page.getByPlaceholder(/github/).inputValue() === url
+    && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
+    `Generate & check: the example ${name} fills the URL and picks G7 SBOM for AI`);
+}
 await page.getByRole("button", { name: "Model with GGUF weights" }).click();
 check(await page.getByPlaceholder(/github/).inputValue() === "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF"
   && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
