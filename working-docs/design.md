@@ -38,7 +38,7 @@ passes it to the web UI.
 
 ## Web UI
 
-Static React pages in `frontend/` (see [`working-docs/frontend.md`](frontend.md)),
+Static React pages in `frontend/` (see [frontend.md](frontend.md)),
 one per input mode plus About:
 
 | Screen | Input mode | Endpoint |
