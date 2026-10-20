@@ -15,3 +15,4 @@ Internal notes. Content can change without notice; the user-facing docs
 - [design.md](design.md): architecture and design decisions.
 - [demo.md](demo.md): set up, warm up and run a demo.
 - [frontend.md](frontend.md): frontend notes (screens, examples, conventions).
+- [deployment-options.md](deployment-options.md): which deployment option to pick, and why.

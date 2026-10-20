@@ -21,12 +21,6 @@ situation, then follow its section end-to-end.
 \* HF Spaces may sleep when inactive; the first request after a sleep takes
 30–60 s to wake.
 
-**Choosing:**
-
-- No infrastructure to manage, simplest setup → **Option B** (HF Spaces).
-- Always-on, full control, can survive a sleeping policy change → **Option A** (VM).
-- Low traffic, pay nothing when idle, Google Cloud ecosystem → **Option C** (Cloud Run).
-
 ---
 
 ## Before you deploy — test locally first
@@ -76,10 +70,6 @@ docker compose down
 ---
 
 ## Option A — VM with Docker Compose (OCI Always Free + Cloudflare Tunnel)
-
-**Best for:** always-on, full features, running the unmodified `docker compose`
-stack. Lumina's nginx and api services stay on the same host and communicate
-over the compose network — no cross-service URLs to re-wire.
 
 **What you need:**
 
@@ -303,9 +293,6 @@ docker compose -f docker-compose.yml -f docker/compose/docker-compose.prod.yml d
 
 ## Option B — Hugging Face Spaces
 
-**Best for:** simplest setup, no infrastructure to manage, free `*.hf.space`
-HTTPS URL.
-
 **What you need:** a [Hugging Face](https://huggingface.co/join) account (free).
 No card required.
 
@@ -385,9 +372,6 @@ ARG LUMINA_REF=v0.2.0   # branch or tag
 ---
 
 ## Option C — Google Cloud Run
-
-**Best for:** scale-to-zero (no charges when idle), low-traffic deployments,
-Google Cloud ecosystem.
 
 **What you need:**
 
@@ -494,7 +478,7 @@ gcloud run deploy lumina \
 | Flag | Value | Reason |
 | :--- | :---- | :----- |
 | `--min-instances` | `0` | Scale-to-zero; no idle charges |
-| `--max-instances` | `1` | One in-process job at a time (matches `Semaphore(1)`) |
+| `--max-instances` | `1` | One in-process job at a time |
 | `--memory` | `2Gi` | Peak during git clone + Pitloom scan |
 | `--cpu` | `1` | Checkout and conformance check are not CPU-bound |
 
@@ -553,13 +537,10 @@ These apply to all options once the deployment is working.
    - Option B: push a rebuild commit to the Space repo
    - Option C: re-run `gcloud builds submit` + `gcloud run deploy`
 
-7. **Artefact-URL fetching (SSRF).** `POST /api/v1/artifact/check` fetches a
-   user-supplied URL server-side. The built-in guard
-   (`backend/app/generate.py`) allows only http/https URLs resolving to
-   public addresses, and clones skip blobs over 10 MB. Leave
-   `LUMINA_ALLOW_PRIVATE_URLS` unset in production — it is a dev-only escape
-   hatch. For defence in depth, add network-level egress rules so the
-   containers cannot reach internal ranges or cloud metadata endpoints.
+7. **Artefact-URL fetching (SSRF).** Leave `LUMINA_ALLOW_PRIVATE_URLS` unset
+   in production (a dev-only switch that lets the server fetch private
+   addresses). Add network-level egress rules so the containers cannot reach
+   internal ranges or cloud metadata endpoints.
 
 ---
 
