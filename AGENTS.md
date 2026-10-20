@@ -166,8 +166,9 @@ standard appears in the UI only once the backend knows it. To add one:
   list of standards, rules or results.
 - Show a failed request's `detail` text (`apiErrorMessage` in
   `screen-conformance.jsx`); never replace it with a generic message.
-- Only the app shell is translated (`i18n.js`). Offer a locale in the picker
-  only when it has a catalogue with every shell key.
+- Only the app shell and each screen's heading are translated (`i18n.js`); the
+  rest of a screen is English. Offer a locale in the picker only when it has a
+  catalogue with every key.
 
 ### UI smoke test
 

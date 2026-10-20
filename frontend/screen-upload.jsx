@@ -153,6 +153,7 @@ function CheckOutcome({ check }) {
 
 // ─── Upload SBOM ───────────────────────────────────────────────────────
 function UploadScreen() {
+  const { t } = useLocale();
   const standardList = useStandards();
   const [standardId, setStandardId] = useSelectedStandard(standardList.standards);
   const [file, setFile] = _useSU(null);
@@ -168,7 +169,7 @@ function UploadScreen() {
   }
 
   return (
-    <ScreenFrame eyebrow="Upload SBOM" title="Check an SBOM file"
+    <ScreenFrame eyebrow={t("nav.upload")} title={t("screen.upload.title")}
       intro="Choose an SPDX 2 or SPDX 3 SBOM file and a minimum elements standard. The server checks it with ntia-conformance-checker; the file is deleted after the check. You can switch the standard afterwards without uploading again.">
       <StandardPicker state={standardList} value={standardId} disabled={running}
         onChange={(id) => {
@@ -207,6 +208,7 @@ function UploadScreen() {
 // The SARIF log goes to the server as-is: it, not the browser, decides
 // whether the text is valid JSON and a usable SARIF 2.1.0 log.
 function SarifScreen() {
+  const { t } = useLocale();
   const [file, setFile] = _useSU(null);
   const [text, setText] = _useSU("");
   const check = useCheck();
@@ -222,7 +224,7 @@ function SarifScreen() {
   }
 
   return (
-    <ScreenFrame eyebrow="Import SARIF" title="Read a SARIF conformance log"
+    <ScreenFrame eyebrow={t("nav.sarif")} title={t("screen.sarif.title")}
       intro="Choose or paste a SARIF 2.1.0 log made by a conformance checker. Nothing is re-checked: Lumina reads the log's results. The standard is taken from the log's rule ids.">
       <FilePicker id="sarif-file" label="Choose SARIF file" accept=".sarif,.json,application/json" file={file} disabled={running}
         onChange={(f) => { setFile(f); check.reset(); }} />

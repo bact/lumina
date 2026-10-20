@@ -692,6 +692,53 @@ check(await page.getByRole("navigation").getByRole("button", { name: "SBOM hochl
 check((await page.getByRole("banner").innerText()).includes("SBOMs erzeugen und gegen G7 SBOM for AI prüfen"), "German top bar title");
 check((await page.getAttribute("main", "aria-label")) === "Ansicht Über", "German main landmark label");
 await shot("10-about-de");
+// The other locales: nav label, top bar title, main label and <html lang>.
+const LOCALES = [
+  { option: /Français/, lang: "fr", nav: "Téléverser un SBOM", title: "Générer des SBOM et les vérifier selon G7 SBOM for AI", main: "Écran À propos" },
+  { option: /Gaeilge/, lang: "ga", nav: "Uaslódáil SBOM", title: "Gin SBOManna agus seiceáil iad i gcoinne G7 SBOM for AI", main: "Scáileán Maidir leis" },
+  { option: /ไทย/, lang: "th", nav: "อัปโหลด SBOM", title: "สร้าง SBOM และตรวจสอบตาม G7 SBOM for AI", main: "หน้าจอ เกี่ยวกับ" },
+];
+for (const loc of LOCALES) {
+  await page.getByRole("button", { name: /^[A-Z]{2}, / }).click();
+  await page.getByRole("option", { name: loc.option }).click();
+  check(await page.getByRole("navigation").getByRole("button", { name: loc.nav }).isVisible()
+      && (await page.getByRole("banner").innerText()).includes(loc.title)
+      && (await page.getAttribute("main", "aria-label")) === loc.main
+      && (await page.getAttribute("html", "lang")) === loc.lang,
+    `Locale ${loc.lang}: nav label, top bar title, main label and html lang`);
+}
+await page.getByRole("button", { name: /^[A-Z]{2}, / }).click();
+check(JSON.stringify(await page.getByRole("option").allInnerTexts()) === JSON.stringify(["English", "Deutsch\nGerman", "Français\nFrench", "Gaeilge\nIrish", "日本語\nJapanese", "ไทย\nThai"])
+    && (await page.getByRole("option", { name: "Gaeilge Irish" }).count()) === 1,
+  "Language picker: each option is named by its visible text (native name, then English name)");
+await page.keyboard.press("Escape");
+// Each screen's heading follows the locale: generate, upload, sarif, about.
+// innerText puts a space after the inline logo, so "lumina?" reads "lumina ?".
+const TITLES = {
+  de: ["Repository oder Modell prüfen", "SBOM-Datei prüfen", "SARIF-Konformitätsprotokoll lesen", "Was lumina ist."],
+  fr: ["Vérifier un dépôt ou un modèle", "Vérifier un fichier SBOM", "Lire un journal de conformité SARIF", "Qu'est-ce que lumina ?"],
+  ga: ["Seiceáil stór nó samhail", "Seiceáil comhad SBOM", "Léigh logchomhad comhlíonta SARIF", "Cad é lumina ?"],
+  ja: ["リポジトリまたはモデルをチェック", "SBOM ファイルをチェック", "SARIF 適合性ログを読み込む", "lumina とは"],
+  th: ["ตรวจสอบรีโพซิทอรีหรือโมเดล", "ตรวจสอบไฟล์ SBOM", "อ่านบันทึกความสอดคล้อง SARIF", "lumina คืออะไร"],
+};
+for (const [code, label] of [["de", /Deutsch/], ["fr", /Français/], ["ga", /Gaeilge/], ["ja", /日本語/], ["th", /ไทย/]]) {
+  await page.getByRole("button", { name: /^[A-Z]{2}, / }).click();
+  await page.getByRole("option", { name: label }).click();
+  const heads = [];
+  for (let i = 0; i < 4; i++) {
+    await page.getByRole("navigation").getByRole("button").nth(i).click();
+    await page.waitForTimeout(150);
+    heads.push((await page.locator("main h1").innerText()).replace(/\s+/g, " ").trim());
+  }
+  check(JSON.stringify(heads) === JSON.stringify(TITLES[code]), `Locale ${code}: each screen's heading is translated ${JSON.stringify(heads)}`);
+}
+await page.getByRole("button", { name: /^[A-Z]{2}, / }).click();
+await page.getByRole("option", { name: /^English/ }).click();
+const missingKeys = await page.evaluate(() => {
+  const { STRINGS } = window.LUMINA_I18N;
+  return Object.entries(STRINGS).flatMap(([code, cat]) => Object.keys(STRINGS.en).filter(k => cat[k] === undefined).map(k => `${code}:${k}`));
+});
+check(missingKeys.length === 0, `every catalogue has every shell key ${JSON.stringify(missingKeys)}`);
 
 check(errors.length === 0, `no page or console errors ${JSON.stringify(errors)}`);
 await browser.close();

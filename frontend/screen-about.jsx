@@ -10,6 +10,7 @@ SPDX-License-Identifier: Apache-2.0
 // API lists (GET /api/v1/standards) with what each check covers.
 
 function AboutScreen() {
+  const { t } = useLocale();
   const standardList = useStandards();
 
   // ── Dependencies Lumina leans on directly ──────────────────────────────
@@ -32,11 +33,11 @@ function AboutScreen() {
     <div className="screen-frame" style={{ padding: "32px 48px", display: "flex", flexDirection: "column", gap: 24, maxWidth: 960, margin: "0 auto" }}>
       {/* ── Header / one-line description ───────────────────────────────── */}
       <div>
-        <Eyebrow>About</Eyebrow>
+        <Eyebrow>{t("nav.about")}</Eyebrow>
         <h1 style={{ margin: "6px 0 4px", fontSize: 32, fontWeight: 500, letterSpacing: "-0.018em" }}>
-          <span style={{ color: "var(--ink-3)" }}>What </span>
+          <span style={{ color: "var(--ink-3)" }}>{t("screen.about.titleBefore")}</span>
           <Logo size={32} />
-          <span style={{ color: "var(--ink-3)" }}> is.</span>
+          <span style={{ color: "var(--ink-3)" }}>{t("screen.about.titleAfter")}</span>
         </h1>
         <p style={{ margin: "12px 0 0", fontSize: 15, color: "var(--ink-2)", lineHeight: 1.6, maxWidth: 640 }}>
           Lumina checks a Software Bill of Materials (SBOM) against a

@@ -239,6 +239,7 @@ function StandardPicker({ state, value, onChange, disabled }) {
 //   POST /api/v1/artifact/check  -> { job_id }
 //   GET  /api/v1/jobs/{job_id}   -> { status, result?, error? }
 function ImportScreen() {
+  const { t } = useLocale();
   const standardList = useStandards();
   const [standardId, setStandardId] = useSelectedStandard(standardList.standards);
   const [url, setUrl] = _useSC("");
@@ -304,7 +305,7 @@ function ImportScreen() {
   }
 
   return (
-    <ScreenFrame eyebrow="Generate & check" title="Check a repository or model"
+    <ScreenFrame eyebrow={t("nav.generate")} title={t("screen.generate.title")}
       intro="Paste a Git repository URL or a Hugging Face Hub model URL. Lumina generates an SBOM for it (server-side, with Pitloom) and checks it against the minimum elements standard you pick. You can switch the standard afterwards without generating again.">
       <StandardPicker state={standardList} value={standardId} onChange={pick} disabled={phase === "running"} />
 
