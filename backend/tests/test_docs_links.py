@@ -15,5 +15,6 @@ ROOT = Path(__file__).resolve().parents[2]
 
 @pytest.mark.parametrize("name", ["README.md", "INSTALL.md"])
 def test_user_docs_do_not_link_working_docs(name: str) -> None:
+    """Neither user-facing doc mentions ``working-docs``."""
     text = (ROOT / name).read_text(encoding="utf-8")
     assert "working-docs" not in text
