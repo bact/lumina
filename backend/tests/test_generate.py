@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import http.server
+import importlib.metadata
 import importlib.util
 import json
 import logging
@@ -206,7 +207,9 @@ def test_clone_does_not_follow_a_redirect(tmp_path: Path) -> None:
     assert not hits
 
 
-def test_lumina_is_the_author_of_a_scanned_project_not_its_supplier(tmp_path: Path) -> None:
+def test_lumina_is_the_author_of_a_scanned_project_not_its_supplier(
+    tmp_path: Path,
+) -> None:
     """Regression: the supplier must come from the project, which states none."""
     project = tmp_path / "p"
     project.mkdir()
@@ -220,7 +223,8 @@ def test_lumina_is_the_author_of_a_scanned_project_not_its_supplier(tmp_path: Pa
     assert "suppliedBy" not in demo
     by_id = {e["spdxId"]: e for e in graph if "spdxId" in e}
     info = next(e for e in graph if e["type"] == "CreationInfo")
-    assert [(by_id[i]["type"], by_id[i]["name"]) for i in info["createdBy"]] == [("SoftwareAgent", "Lumina")]
+    authors = [(by_id[i]["type"], by_id[i]["name"]) for i in info["createdBy"]]
+    assert authors == [("SoftwareAgent", "Lumina")]
     assert [by_id[i]["name"] for i in info["createdUsing"]] == ["Pitloom"]
 
 
@@ -303,6 +307,7 @@ def test_pitloom_warnings_survive_its_logging_setup(
 ) -> None:
     """Pitloom's ``configure_logging()`` replaces its logger's handlers; its
     warnings still reach the user, with the temp dir hidden."""
+
     def fake_generate(_url: str, sbom_path: str) -> None:
         configure_logging()
         logging.getLogger("pitloom.assemble").warning(
@@ -314,3 +319,42 @@ def test_pitloom_warnings_survive_its_logging_setup(
     response = generate.generate_and_check("https://example.org/r", "ntia")
     messages = [n.message for n in response.run.notifications]
     assert messages == ["WARNING-ish: <tmp>/clone failed"]
+
+
+class _FakeDistribution:  # pylint: disable=too-few-public-methods
+    """What ``importlib.metadata.distribution`` returns, with a chosen
+    ``direct_url.json``."""
+
+    version = "0.20.2"
+
+    def __init__(self, direct_url: str | None) -> None:
+        self._direct_url = direct_url
+
+    def read_text(self, _name: str) -> str | None:
+        """The file's text, or ``None`` when the distribution has none."""
+        return self._direct_url
+
+
+_GIT = {
+    "vcs_info": {"vcs": "git", "commit_id": "49a8285e481051e0a58b099621464facc0074178"}
+}
+
+
+@pytest.mark.parametrize(
+    ("direct_url", "expected"),
+    [
+        (json.dumps(_GIT), "0.20.2 (49a8285)"),
+        (json.dumps({"dir_info": {}}), "0.20.2"),  # installed from a directory
+        (None, "0.20.2"),  # an ordinary wheel: no direct_url.json
+        (json.dumps({"vcs_info": {"commit_id": ""}}), "0.20.2"),  # states nothing
+    ],
+    ids=["git", "directory", "wheel", "empty-commit"],
+)
+def test_the_generator_line_names_the_pinned_commit(
+    direct_url: str | None, expected: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """requirements.txt pins a commit, later than the version number it reports."""
+    monkeypatch.setattr(
+        importlib.metadata, "distribution", lambda _n: _FakeDistribution(direct_url)
+    )
+    assert generate._pitloom_version() == expected  # pylint: disable=protected-access

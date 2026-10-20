@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import contextlib
 import importlib.metadata
+import json
 import ipaddress
 import logging
 import os
@@ -187,7 +188,17 @@ def _collect_warnings(sink: list[Notification]) -> Iterator[None]:
 
 
 def _pitloom_version() -> str:
-    return importlib.metadata.version("pitloom")
+    """The installed Pitloom's version, and its short commit when it was
+    installed from Git: ``requirements.txt`` pins a commit that can be later
+    than the version number it still reports."""
+    dist = importlib.metadata.distribution("pitloom")
+    raw = dist.read_text("direct_url.json")
+    commit = json.loads(raw).get("vcs_info", {}).get("commit_id") if raw else None
+    return (
+        f"{dist.version} ({commit[:7]})"
+        if isinstance(commit, str) and commit
+        else dist.version
+    )
 
 
 def generate_and_check(
