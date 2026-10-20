@@ -156,11 +156,11 @@ property exists, not that its value is right). The checker detects SPDX
 | Minimum elements standard | Checker standard | Result |
 | - | - | - |
 | NTIA Minimum Elements (2021) | `ntia` | per-rule results; SPDX 2 and 3 |
-| G7 SBOM for AI Minimum Elements (2026) | `g7ai` | per-rule results; partial coverage, SPDX 3 only |
+| G7 SBOM for AI (2026) | `g7ai` | per-rule results; partial coverage, SPDX 3 only |
 | CISA 2026 Minimum Elements | `cisa2026` | per-rule results; partial coverage, SPDX 3 only |
 | FSCT 2024 (CISA Framing) | `fsct3` (API id `fsct2024`) | per-rule results; partial coverage; SPDX 2 and 3 |
 | BSI TR-03183-2 v2.1 | `bsi` | per-rule results; partial coverage, SPDX 3 only; optional elements counted apart |
-| MOF | none | not supported; the API returns HTTP 501 |
+| Model Openness Framework | none | not supported; the API returns HTTP 501 |
 
 Requirement ids are the [SBOM requirements ontology][bom] ids, for example
 `BOM-NTIA2021-DF-001`.
@@ -216,17 +216,23 @@ lumina/
 │   ├── index.html              Entry point + router
 │   ├── colors-and-type.css     Design tokens
 │   ├── assets/                 Logo SVGs
+│   ├── examples/               Real SBOM and SARIF files the example buttons load
+│   ├── vendor/                 React, Babel, Lucide, highlight.js (no CDN)
 │   └── *.jsx / *.js            Shell, shared components, screens
 ├── backend/                    Python API
 │   ├── Dockerfile
 │   ├── requirements.txt        Pinned; Pitloom and the checker by Git commit
-│   └── app/
-│       ├── main.py             FastAPI app + endpoints
-│       ├── conformance.py      run_checker, CHECKER_STANDARDS, schemas
-│       ├── sarif_ingest.py     SARIF 2.1.0 → SbomCheckResponse
-│       ├── jobs.py             JobQueue interface + in-process backend
-│       ├── generate.py         Mode-1 job: artefact URL → SBOM → check
-│       └── generators/         Pitloom-backed SBOM generators (git, hf)
+│   ├── app/
+│   │   ├── main.py             FastAPI app + endpoints
+│   │   ├── conformance.py      run_checker, CHECKER_STANDARDS, schemas
+│   │   ├── sarif_ingest.py     SARIF 2.1.0 → SbomCheckResponse
+│   │   ├── generation_log.py   Generation log shown in the Generator log tab
+│   │   ├── sbom_source.py      SBOM source text and @graph line index
+│   │   ├── evidence/           Per-rule evidence: the SBOM elements behind each outcome
+│   │   ├── jobs.py             JobQueue interface + in-process backend
+│   │   ├── generate.py         Mode-1 job: artefact URL → SBOM → check
+│   │   └── generators/         Pitloom-backed SBOM generators (git, hf)
+│   └── tests/                  pytest suite + SBOM and SARIF fixtures
 ├── scripts/
 │   ├── oci-launch.sh           Retry-launch an Oracle Cloud A1 free VM (capacity loop)
 │   ├── oci-launch.env.example  Template for oci-launch.sh's local config
@@ -234,5 +240,7 @@ lumina/
 │   └── ui-smoke.mjs            Headless-browser smoke test of the frontend (see AGENTS.md)
 ├── docs/
 │   └── design.md               Architecture and design decisions
+├── DEMO.md                     Demo guide: set up, warm up, script, troubleshooting
+├── docker/                     Alternative deployment images (see INSTALL.md)
 └── INSTALL.md                  Free public-deployment guide
 ```

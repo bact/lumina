@@ -111,8 +111,8 @@ SPDX-License-Identifier: Apache-2.0
   /* ─────────────────────────────────────────────────────────
      TYPE -- size scale (1.125 minor third -- quiet, calm)
      ───────────────────────────────────────────────────────── */
-  --text-2xs:  10.5px;
-  --text-xs:   11.5px;
+  --text-2xs:  12px;   /* no text under 12 px (AGENTS.md) */
+  --text-xs:   12px;
   --text-sm:   13px;
   --text-base: 14.5px;
   --text-md:   16px;

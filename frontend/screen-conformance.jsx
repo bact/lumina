@@ -253,7 +253,7 @@ function ImportScreen() {
   const [result, setResult] = _useSC(null); // SbomCheckResponse
   const [errorMsg, setErrorMsg] = _useSC("");
   const [rechecking, setRechecking] = _useSC(false); // the running phase is a re-check
-  const [exampleNote, setExampleNote] = _useSC(""); // spoken when an example fills the form
+  const [chosenExample, setChosenExample] = _useSC(null); // the example that filled the form, while it still does
   const aliveRef = _useRef(true);
   _useEffect(() => () => { aliveRef.current = false; }, []);
 
@@ -310,6 +310,12 @@ function ImportScreen() {
     }
   }
 
+  // Said (and shown) while the form still holds what the example put there.
+  const exampleReady = chosenExample && standardList.standards && standardList.standards.some(r => r.id === chosenExample.standard && r.ready);
+  const exampleNote = chosenExample && url === chosenExample.url && (!exampleReady || standardId === chosenExample.standard)
+    ? `Example chosen: ${chosenExample.label} (${chosenExample.note}). The URL field now holds ${chosenExample.url}` +
+      (exampleReady ? ` and ${standardLabel(chosenExample.standard)} is selected.` : ".") : "";
+
   return (
     <ScreenFrame eyebrow={t("nav.generate")} title={t("screen.generate.title")}
       intro="Paste a Git repository URL or a Hugging Face Hub model URL. Lumina generates an SBOM for it (server-side, with Pitloom) and checks it against the minimum elements standard you pick. You can switch the standard afterwards without generating again.">
@@ -341,15 +347,14 @@ function ImportScreen() {
               setUrl(ex.url); setResult(null); setPhase("idle");
               const known = standardList.standards && standardList.standards.find(r => r.id === ex.standard);
               if (known && known.ready) setStandardId(ex.standard);
-              setExampleNote(`Example chosen: ${ex.label}. The URL field now holds ${ex.url}` +
-                (known && known.ready ? ` and ${standardLabel(ex.standard)} is selected.` : "."));
+              setChosenExample(ex);
             }}>
             {ex.label}
           </Button>
         ))}
       </div>
 
-      <div role="status" className="sr-only">{exampleNote}</div>
+      <div role="status" style={exampleNote ? { fontSize: 12.5, color: "var(--ink-3)" } : undefined}>{exampleNote}</div>
       <ResultAnnouncer result={phase === "done" ? result : null} />
 
       {phase === "running" && (

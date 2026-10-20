@@ -421,7 +421,7 @@ check((await page.getByPlaceholder(/github/).inputValue()).startsWith("https://h
   && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
   "Generate & check: the model example fills the URL and picks G7 SBOM for AI");
 check(await page.getByRole("group", { name: "Try an example:" }).count() === 1
-  && (await page.locator("[role=status].sr-only").allInnerTexts()).some(t => t.includes("Example chosen: Safetensors model with a dataset") && t.includes("G7 SBOM for AI")),
+  && (await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("Example chosen: Safetensors model with a dataset") && t.includes("G7 SBOM for AI")),
   "Generate & check: the examples are a named group and the choice is announced");
 await page.getByRole("button", { name: "Safetensors model with 14.7B parameters" }).click();
 check(await page.getByPlaceholder(/github/).inputValue() === "https://huggingface.co/microsoft/phi-4"
@@ -541,6 +541,18 @@ await page.evaluate(() => { location.hash = "#sbom-L12345"; });
 await page.waitForSelector('.sbom-line--hit[data-line="12345"]', { timeout: 5000 }).catch(() => {});
 check(await lineVisible(12345, '"key12345"'), "big source: a #sbom-L12345 hash jumps to line 12345");
 
+// Every Generate example: fills its URL, picks its standard, says so (visibly), and the note goes when the URL is edited.
+const demoExamples = await page.evaluate(() => DEMO_EXAMPLES);
+for (const ex of demoExamples) {
+  await page.getByRole("button", { name: ex.label, exact: true }).click();
+  const said = (await page.locator("[role=status]").allInnerTexts()).some(t => t.includes(`Example chosen: ${ex.label} (${ex.note})`) && t.includes(ex.url));
+  check(await page.getByPlaceholder(/github/).inputValue() === ex.url
+      && await page.getByRole("radio", { name: LABELS[ex.standard] }).getAttribute("aria-checked") === "true" && said,
+    `Generate & check: the example ${ex.label} fills the URL, picks its standard and says so`);
+}
+await page.getByPlaceholder(/github/).fill("https://github.com/o/r");
+check(!(await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("Example chosen")), "Generate & check: the example note goes when the URL is edited");
+
 // Upload SBOM
 await nav("Upload SBOM");
 await chipsMatchApi("Upload SBOM");
@@ -574,6 +586,25 @@ check((await page.locator("[role=status]").allInnerTexts()).some(t => t.includes
     && await page.getByText("qwen2.5-0.5b-instruct-gguf.spdx3.json").first().isVisible(),
   "Upload SBOM: an older, slower example load does not replace a newer choice");
 await page.unroute("**/examples/phi-4.spdx3.json");
+// A file chosen from disk while an example is still loading is not overwritten when it arrives.
+await page.route("**/examples/phi-4.spdx3.json", async r => { await new Promise(res => setTimeout(res, 700)); await r.continue(); });
+await page.getByRole("button", { name: "Safetensors model with 14.7B parameters", exact: true }).click();
+await page.setInputFiles("#sbom-file", { name: "mine.spdx.json", mimeType: "application/json", buffer: Buffer.from("{}") });
+await page.waitForTimeout(1200);
+check(await page.getByText("mine.spdx.json").first().isVisible() && !(await page.getByText("phi-4.spdx3.json").first().isVisible().catch(() => false)),
+  "Upload SBOM: a file chosen from disk while an example loads is kept");
+await page.unroute("**/examples/phi-4.spdx3.json");
+// The note never describes a choice that has changed; Clear returns focus to Choose.
+const noteShown = async () => (await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("Example chosen"));
+await page.getByRole("button", { name: "GGUF model with 630M parameters", exact: true }).click();
+await page.waitForSelector("text=Example chosen: GGUF model", { timeout: 5000 }).catch(() => {});
+check(await page.evaluate(() => document.getElementById("sbom-file").value === ""), "Upload SBOM: the file input forgets its value when an example sets the file");
+await page.getByRole("radio", { name: LABELS.ntia }).click();
+check(!(await noteShown()), "Upload SBOM: the example note goes when the standard is changed");
+await page.getByRole("button", { name: "GGUF model with 630M parameters", exact: true }).click();
+await page.waitForSelector("text=Example chosen: GGUF model", { timeout: 5000 }).catch(() => {});
+await page.getByRole("button", { name: "Clear", exact: true }).click();
+check(!(await noteShown()) && await page.evaluate(() => document.activeElement.id) === "sbom-file-choose", "Upload SBOM: Clear removes the example note and returns focus to Choose SBOM file");
 const sentBodies = [];
 page.on("request", q => { if (q.url().endsWith("/api/v1/sbom/check")) sentBodies.push(q.postData() || ""); });
 await page.getByRole("button", { name: "Container image with an SPDX 2 SBOM", exact: true }).click();
@@ -595,7 +626,7 @@ body = await text();
 check(body.includes("SBOM document") && body.includes("Components") && body.includes("Doc creator")
     && body.includes("1 present · 1 missing · 0 not applicable · 1 not checked")
     && body.includes("0 present · 1 missing · 1 not applicable · 0 not checked · 1 optional not provided")
-    && body.includes("FIELDS CHECKED") && !body.includes("erdict"),
+    && body.includes("RULES CHECKED") && !body.includes("erdict"),
   "Upload SBOM: BSI shows its DOC and COMP clusters with per-rule counts");
 check(/not provided/i.test(body) && body.includes("OPTIONAL PROVIDED") && body.includes("0 of 1"),
   "Upload SBOM: an optional rule is Not provided, apart from Missing");
@@ -612,7 +643,7 @@ await page.getByRole("radio", { name: LABELS.g7ai }).click();
 await page.getByRole("button", { name: "Check SBOM" }).click();
 await page.waitForSelector("text=could not be checked", { timeout: 5000 }).catch(() => {});
 body = await text();
-check(body.includes("The SBOM could not be checked") && body.includes("spdx.parsing-error") && !body.includes("Fields checked"),
+check(body.includes("The SBOM could not be checked") && body.includes("spdx.parsing-error") && !body.includes("Rules checked"),
   "Upload SBOM: an unreadable SBOM shows no counts, only why");
 await shot("5b-upload-unreadable");
 
@@ -628,7 +659,7 @@ for (const [name, reason] of [
   await page.getByRole("button", { name: "Check SBOM" }).click();
   await page.waitForSelector("text=Nothing was checked", { timeout: 5000 }).catch(() => {});
   const banner = await text();
-  check(banner.includes("Nothing was checked") && banner.includes(reason) && !banner.includes("Fields checked"),
+  check(banner.includes("Nothing was checked") && banner.includes(reason) && !banner.includes("Rules checked"),
     `Upload SBOM: the nothing-checked banner gives the reason for ${name}`);
   check((await page.locator("[role=status].sr-only").allInnerTexts()).some(t => t === `Check finished. Nothing was checked. ${reason}`),
     `Upload SBOM: the nothing-checked reason is announced for ${name}`);
@@ -659,7 +690,7 @@ check(await page.inputValue("#sarif-text") === "" && await page.evaluate(() => d
 // A file chosen with the picker leaves the pasted text in place.
 await page.fill("#sarif-text", "pasted text");
 await page.setInputFiles("#sarif-file", { name: "own.sarif.json", mimeType: "application/json", buffer: Buffer.from("{}") });
-check(await page.inputValue("#sarif-text") === "pasted text" && (await text()).includes("the text you pasted is kept"),
+check(await page.inputValue("#sarif-text") === "pasted text" && (await text()).includes("the text in the box is kept"),
   "Import SARIF: choosing a file keeps the pasted text, and the label says so");
 await page.getByRole("button", { name: "Clear", exact: true }).click();
 check(await page.inputValue("#sarif-text") === "pasted text" && !(await page.locator("#sarif-text").isDisabled()),
@@ -785,7 +816,7 @@ await page.getByRole("option", { name: /^English/ }).click();
 await page.setInputFiles("#sbom-file", { name: "bsi.spdx.json", mimeType: "application/json", buffer: Buffer.from("{}") });
 await page.getByRole("radio", { name: LABELS.bsi }).click();
 await page.getByRole("button", { name: "Check SBOM" }).click();
-await page.waitForSelector("text=Fields checked", { timeout: 5000 }).catch(() => {});
+await page.waitForSelector("text=Rules checked", { timeout: 5000 }).catch(() => {});
 // The skip link over the rule list: hidden until focused, then jumps past the list.
 const skipRules = page.getByRole("link", { name: "Skip the rule list" });
 check(await skipRules.count() === 1 && (await skipRules.boundingBox()).width <= 1, "Skip the rule list: one link, hidden until it has focus");
