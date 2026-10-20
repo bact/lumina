@@ -97,8 +97,12 @@ parameter count the Hub or the file states.
 | Project with ONNX and CRFsuite models (about 12 s) | `https://github.com/PyThaiNLP/pythainlp` | G7 SBOM for AI | 21 of 38; three ONNX and five CRFsuite models |
 | Project with no AI model | `https://github.com/pallets/flask` | NTIA, then BSI TR-03183-2 | NTIA 6 of 7; BSI 6 of 13, 2 optional not provided |
 
-These counts were measured on 2026-10-19; a changed upstream repository or Hub
-card can move them by a rule or two. A different count is not a failure; a
+These counts were measured on 2026-10-19 and 2026-10-20; a changed upstream
+repository or Hub card can move them by a rule or two. A model's "judged by"
+note appears for every Hub model above, and four of them (Granite, the 303M
+classifier, OpenJAI and the GGUF model) show a notification "1 component(s) are
+not connected to the SBOM root": the base model's package has no link into the
+root. That is a note, not a failure. A different count is not a failure; a
 crash, a hang or a red error banner is.
 
 ## 4. A six-minute demo script
@@ -124,8 +128,8 @@ and the SARIF log the checker made from it for the G7 SBOM for AI standard.
      system-level rules read the model.
    - *Show more* on a rule lists the SBOM elements behind it, and *Show in SBOM*
      jumps to those lines in the *SBOM source* tab.
-2. **Switch the standard.** With the result showing, click *NTIA*, *CISA 2026*,
-   *FSCT 2024* or *BSI TR-03183-2*. The same SBOM is checked again at once, with
+2. **Switch the standard.** With the result showing, click *NTIA Minimum Elements*,
+   *CISA 2026 Minimum Elements*, *FSCT 2024 (CISA Framing)* or *BSI TR-03183-2*. The same SBOM is checked again at once, with
    nothing uploaded again. Each standard asks for different things, and the page
    says which of its rules were not checked.
 3. **Import SARIF.** Click the example *Safetensors model with 80K parameters (G7)*: the
@@ -133,30 +137,31 @@ and the SARIF log the checker made from it for the G7 SBOM for AI standard.
    the checker writes; Lumina shows the same result without running a check. (An
    imported log has no SBOM source tab and no per-rule evidence, because the log
    does not carry the SBOM text.)
-4. **Generate & check, a model with a dataset** (needs internet). Click *Model
-   with a dataset* (or paste its URL from the table above) and run. Lumina
-   generates the SBOM with Pitloom from the Hub metadata (no weights are
-   downloaded) and checks it. Point out the model's Apache-2.0 licence, the
-   dataset `squad` with its own licence (CC-BY-SA-4.0, read from the dataset's
-   card) and the `trainedOn` link between them. Open the *Generator log* tab to
-   show what the server did.
+4. **Generate & check, a model with a dataset** (needs internet). Click
+   *Safetensors model with a dataset* (or paste its URL from the table above),
+   then *Generate & check*. Lumina generates the SBOM with Pitloom from the Hub
+   metadata (no weights are downloaded) and checks it. Point out the model's
+   Apache-2.0 licence, the dataset `squad` with its own licence (CC-BY-SA-4.0,
+   read from the dataset's card) and the `trainedOn` link between them. Open the
+   *Generator log* tab to show what the server did.
    Then click *Safetensors model with 14.7B parameters* (`microsoft/phi-4`): a
-   model with no dataset. Its parameter count comes from the Safetensors summary on the Hub;
-   no weights are downloaded. The *Generator log* says so: it reads the Hub
+   model with no dataset. Its parameter count comes from the Safetensors summary
+   on the Hub; no weights are downloaded. The *Generator log* says so: it reads the Hub
    metadata and downloads no model files.
 5. **A project that ships a fastText model.** Click *Project with a fastText
-   model*. Pitloom finds the model file and hashes it (SHA-256 and SHA-512). Its
+   model*, then *Generate & check*. Pitloom finds the model file and hashes it (SHA-256 and SHA-512). Its
    name is just "model": the file name is all the file states, and the SBOM says
    so. The System producer rule is *Missing* while one line inside it says the
    project has a producer: the rule judges every root package, and the model
    has none.
-6. **A project that ships ONNX models.** Click *Project with ONNX and CRFsuite models*.
-   Slowest step (about 12 seconds). Three ONNX models carry a version and a
+6. **A project that ships ONNX and CRFsuite models.** Click *Project with ONNX
+   and CRFsuite models*, then *Generate & check*. Slowest step (about 12 seconds). Three ONNX models carry a version and a
    parameter count read from the files; five CRFsuite models carry less, because
    that format states less. The SBOM records what each file states and nothing
    more.
-7. **A plain Python project.** Click *Project with no AI model* (flask), then *NTIA*,
-   then *BSI TR-03183-2*. BSI shows optional elements apart from *Missing*
+7. **A project with no AI model.** Click *Project with no AI model* (flask; it
+   picks *NTIA Minimum Elements*), then *Generate & check*, then click *BSI
+   TR-03183-2* to check the same SBOM again. BSI shows optional elements apart from *Missing*
    ("Not provided"): lacking them is not a gap.
 8. **Errors are shown, not hidden.** Upload a text file, or one over 10 MiB
    (`head -c 11000000 /dev/zero > big.json`): the page shows the server's

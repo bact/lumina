@@ -47,6 +47,7 @@ lumina/
 │   ├── colors-and-type.css     Design tokens
 │   ├── assets/                 Logo SVGs
 │   ├── examples/               Real SBOM and SARIF files the example buttons load
+│   ├── vendor/                 React, Babel, Lucide, highlight.js (no CDN; see vendor/README.md)
 │   └── *.jsx / *.js            Shell, shared components, screens
 ├── backend/
 │   ├── Dockerfile
