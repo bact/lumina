@@ -18,7 +18,7 @@ from app.sbom_source import GraphIndex, json_lines, load_sbom
 
 ROOT = Path(__file__).parent
 SBOMS = sorted((ROOT / "fixtures" / "sbom").glob("spdx3_*.json")) + sorted(
-    (ROOT.parent.parent / "demo").glob("*.spdx3.json")
+    (ROOT.parent.parent / "frontend" / "examples").glob("*.spdx3.json")
 )
 SPDX3_CONTEXT = "https://spdx.org/rdf/3.0.1/spdx-context.jsonld"
 
