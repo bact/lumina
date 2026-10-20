@@ -375,7 +375,7 @@ JSON SBOM, per-rule `evidence`; Mode 1 also adds `generation_log`; Mode 3 sets
     metadata via the HF API; it does **not** download model files, so the host
     stays light on disk and bandwidth. HF auth is optional: without a token the
     Hub allows fewer requests; `HF_TOKEN` raises the limit.
-  Both record Lumina as a tool, not a creator, in the SBOM's creation info.
+  Both record Lumina as the SBOM's author (a software agent in `createdBy`) and Pitloom as the tool (`createdUsing`); Lumina is never the scanned project's supplier.
 - **Sync model:** asynchronous via the job queue (see
   [Background job execution](#background-job-execution)). Stage 0/1 runs the
   job in-process; Stage 2 can move it to a worker without changing this

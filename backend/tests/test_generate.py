@@ -67,11 +67,11 @@ def test_private_url_escape_hatch(monkeypatch: pytest.MonkeyPatch) -> None:
     _ensure_public_http_url("http://127.0.0.1/repo.git")
 
 
-def test_creation_info_names_lumina_as_a_tool_not_a_creator() -> None:
-    """Pitloom makes the first creator the project's supplier; Lumina is not."""
+def test_creation_info_names_lumina_as_the_author_and_leaves_pitloom_the_tool() -> None:
+    """Lumina ran Pitloom: Lumina is the author (a software agent), Pitloom the tool."""
     meta = creation_info()
-    assert [t.name for t in meta.tools] == ["Lumina"]
-    assert not meta.creators
+    assert [(c.name, c.type) for c in meta.creators] == [("Lumina", "software-agent")]
+    assert meta.tools is None  # Pitloom's default: the tool "Pitloom"
 
 
 def test_hf_generator_writes_a_valid_aibom(tmp_path: Path) -> None:
@@ -206,7 +206,7 @@ def test_clone_does_not_follow_a_redirect(tmp_path: Path) -> None:
     assert not hits
 
 
-def test_a_scanned_project_does_not_get_lumina_as_its_supplier(tmp_path: Path) -> None:
+def test_lumina_is_the_author_of_a_scanned_project_not_its_supplier(tmp_path: Path) -> None:
     """Regression: the supplier must come from the project, which states none."""
     project = tmp_path / "p"
     project.mkdir()
@@ -218,7 +218,10 @@ def test_a_scanned_project_does_not_get_lumina_as_its_supplier(tmp_path: Path) -
     graph = json.loads(out.read_text(encoding="utf-8"))["@graph"]
     demo = next(e for e in graph if e.get("name") == "demo")
     assert "suppliedBy" not in demo
-    assert "Lumina" not in {e.get("name") for e in graph if e["type"] != "Tool"}
+    by_id = {e["spdxId"]: e for e in graph if "spdxId" in e}
+    info = next(e for e in graph if e["type"] == "CreationInfo")
+    assert [(by_id[i]["type"], by_id[i]["name"]) for i in info["createdBy"]] == [("SoftwareAgent", "Lumina")]
+    assert [by_id[i]["name"] for i in info["createdUsing"]] == ["Pitloom"]
 
 
 def test_pitloom_warnings_reach_the_user_as_notifications(
