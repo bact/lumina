@@ -26,8 +26,6 @@ uploading it again.
 
 ---
 
-For a demo on a new machine, see [DEMO.md](DEMO.md).
-
 ## Quick start with Docker
 
 **Prerequisites:** Docker and Docker Compose (v2).
@@ -140,8 +138,7 @@ api     → http://localhost:8000
 ```
 
 SBOM generation needs no separate worker or Redis at this stage; a worker +
-Redis are introduced only if load grows. See
-[docs/design.md](docs/design.md#background-job-execution) for the staged plan.
+Redis are introduced only if load grows.
 
 ---
 
@@ -194,8 +191,6 @@ supports it; the UI lists what `GET /api/v1/standards` returns. See
 **Roadmap:** EU CRA, EO 14028, FDA PMP, and ISO/IEC 5230 are planned; none is
 in the API yet.
 
-See [docs/design.md](docs/design.md) for the full architecture.
-
 [checker]: https://github.com/bact/ntia-conformance-checker
 [sarif]: https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html
 [bom]: https://bact.github.io/bom/
@@ -212,7 +207,7 @@ lumina/
 │   ├── Dockerfile              Multi-stage: dev (config only) / prod (self-contained)
 │   ├── prod.conf               Prod: root /app, frontend only
 │   └── dev.conf                Dev: root /workspace/frontend (bind-mounted frontend/)
-├── frontend/                   Static frontend (see frontend/readme.md)
+├── frontend/                   Static frontend (see AGENTS.md)
 │   ├── index.html              Entry point + router
 │   ├── colors-and-type.css     Design tokens
 │   ├── assets/                 Logo SVGs
@@ -232,7 +227,5 @@ lumina/
 │   ├── oci-launch.env.example  Template for oci-launch.sh's local config
 │   ├── cloud-init.sh           First-boot script: installs Docker on the VM
 │   └── ui-smoke.mjs            Headless-browser smoke test of the frontend (see AGENTS.md)
-├── docs/
-│   └── design.md               Architecture and design decisions
 └── INSTALL.md                  Free public-deployment guide
 ```

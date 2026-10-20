@@ -10,8 +10,6 @@ SPDX-License-Identifier: CC0-1.0
 Lumina runs as a Docker container (or two). Pick the option that fits your
 situation, then follow its section end-to-end.
 
-> Setting up a demo on a new machine? Follow [DEMO.md](DEMO.md).
-
 ## Deployment options
 
 | Option | Platform | Cost | Always-on | Config in |
@@ -518,9 +516,8 @@ When load grows and the in-process queue is no longer enough, the upgrade path i
 3. Nothing else changes — the HTTP contract, the frontend polling loop, the
    generators, and the conformance pipeline are all untouched.
 
-See [`docs/design.md` — Background job execution](docs/design.md#background-job-execution)
-for the full staged-backends design, the RQ vs Taskiq comparison, and
-guidance on when to pick each.
+The staged-backends design, the RQ vs Taskiq comparison and guidance on when to
+pick each are in the project's internal design notes.
 
 ---
 

@@ -7,7 +7,7 @@ Takes an SBOM (uploaded, or generated from a Git or Hugging Face URL) or a
 SARIF log, and shows per rule of the chosen standard whether the SBOM has
 the property the rule asks for.
 
-Full design rationale: `docs/design.md`.
+Full design rationale: `working-docs/design.md`.
 Frontend: `frontend/` (design tokens and assets live here too).
 
 The UI shows only real data from the backend: no sample or invented data,
@@ -21,7 +21,7 @@ anywhere. A screen that has nothing to show from the API shows nothing.
 | - | - |
 | Frontend | Static HTML/CSS/JS (React 18 + Babel in-browser, no build step) |
 | API | FastAPI (Python 3.14) |
-| Background jobs | In-process `asyncio` queue (`backend/app/jobs.py`); no broker. An RQ/Taskiq swap is planned for Stage 2 — see `docs/design.md` |
+| Background jobs | In-process `asyncio` queue (`backend/app/jobs.py`); no broker. An RQ/Taskiq swap is planned for Stage 2 — see `working-docs/design.md` |
 | SBOM generation | Pitloom (Git checkout or Hugging Face Hub URL) |
 | Dev environment | Docker Compose (`docker compose up` — auto-loads override.yml) |
 
@@ -36,13 +36,12 @@ lumina/
 ├── docker-compose.yml          Base compose (nginx target: prod; api with --reload)
 ├── docker-compose.override.yml Dev overrides — auto-loaded; nginx target: dev,
 │                               mounts frontend/ at /workspace/frontend
-├── .dockerignore               Keeps caches/git/docs out of Docker build context
-├── DEMO.md                     Demo guide: set up, warm up, script, troubleshooting
+├── .dockerignore               Keeps caches/git/working-docs out of Docker build context
 ├── proxy/                      Reverse-proxy service (nginx)
 │   ├── Dockerfile              Multi-stage: dev (config only) / prod (self-contained)
 │   ├── prod.conf               Prod: root /app (frontend baked in)
 │   └── dev.conf                Dev: root /workspace/frontend (bind mount)
-├── frontend/                   Static frontend (see frontend/readme.md)
+├── frontend/                   Static frontend (see working-docs/frontend.md)
 │   ├── index.html              Entry point + router
 │   ├── colors-and-type.css     Design tokens
 │   ├── assets/                 Logo SVGs
@@ -67,10 +66,25 @@ lumina/
 │   ├── hfspaces/               Hugging Face Spaces single-file Dockerfile
 │   └── standalone/             Single-container image (Cloud Run)
 ├── scripts/                    OCI VM launch + cloud-init helpers; ui-smoke.mjs
-├── docs/
-│   └── design.md               Architecture and design decisions
+├── working-docs/               Internal docs (see "Documentation" below)
+│   ├── design.md               Architecture and design decisions
+│   ├── demo.md                 Demo guide: set up, warm up, script, troubleshooting
+│   └── frontend.md             Frontend notes: screens, examples, conventions
 └── INSTALL.md                  Free public-deployment guide (3 options)
 ```
+
+---
+
+## Documentation
+
+- User-facing docs are `README.md` and `INSTALL.md` only. They never link into
+  `working-docs/`; name a PR or issue number instead.
+- Development and other non-user-facing docs (design, demo guide, frontend
+  notes, audits, plans) live in `working-docs/`. Their content can change
+  without notice. Standalone docs there carry `Created` and `Last-Modified`
+  dates (`YYYY-MM-DD`) in their front matter.
+- Filenames are lowercase, hyphen-separated; a topic that outgrows three files
+  gets a same-named subfolder with a "See also" pointer near the top.
 
 ---
 

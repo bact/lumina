@@ -21,7 +21,7 @@ scaling stages.  Only the *backend* changes:
   in-memory dict.  Blocking work is offloaded with ``asyncio.to_thread`` and a
   semaphore caps concurrency.  Jobs are lost on restart (accepted).
 * **Stage 2 (on load growth):** an ``RQ`` / ``Taskiq`` backend implementing this
-  same interface, run as a separate worker process.  See ``docs/design.md``.
+  same interface, run as a separate worker process.  See ``working-docs/design.md``.
 
 To keep that future swap free, **jobs are written as if they already run in a
 separate worker**: a top-level named function, JSON-serialisable arguments, a

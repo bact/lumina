@@ -1,4 +1,6 @@
 ---
+Created: 2026-05-26
+Last-Modified: 2026-10-20
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -36,7 +38,7 @@ passes it to the web UI.
 
 ## Web UI
 
-Static React pages in `frontend/` (see [`frontend/readme.md`](../frontend/readme.md)),
+Static React pages in `frontend/` (see [`working-docs/frontend.md`](frontend.md)),
 one per input mode plus About:
 
 | Screen | Input mode | Endpoint |

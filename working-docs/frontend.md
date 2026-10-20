@@ -1,4 +1,6 @@
 <!--
+Created: 2026-05-26
+Last-Modified: 2026-10-20
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -6,6 +8,8 @@ SPDX-License-Identifier: CC0-1.0
 -->
 
 # Lumina frontend
+
+See also: [design.md](design.md) (architecture), [demo.md](demo.md) (demo guide). Paths below are relative to `frontend/`.
 
 Static web frontend for the Lumina SBOM conformance checker: React 18 and
 Babel run in the browser, so there is no build step. nginx serves it and
