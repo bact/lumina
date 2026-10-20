@@ -79,13 +79,14 @@ Then run the check again.
 ## 3. Warm it up (the day before, on the demo network)
 
 Run each once from the page. This confirms the URL works from that machine and
-fills caches. The page has "Try an example" buttons for these five: each fills
+fills caches. The page has "Try an example" buttons for these six: each fills
 the URL and picks the standard named below.
 
 | Step | URL | Standard | Expect |
 | :--- | :-- | :------- | :----- |
 | Model with a dataset | `https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad` | G7 SBOM for AI | 27 of 56 rules present; model Apache-2.0, dataset `squad` CC-BY-SA-4.0 |
 | Model with Safetensors weights | `https://huggingface.co/microsoft/phi-4` | G7 SBOM for AI | 23 of 38 present; no dataset listed; parameter count read from the Hub's Safetensors summary; "judged by `phi-4`" |
+| Large Mistral model | `https://huggingface.co/mistralai/Mistral-Small-4-119B-2603` | G7 SBOM for AI | 22 of 38 present; no dataset listed; model Apache-2.0; "judged by `Mistral-Small-4-119B-2603`" |
 | Project with a fastText model | `https://github.com/bact/sentimentdemo` | G7 SBOM for AI | 22 of 38 |
 | Project with ONNX and CRFsuite models (about 12 s) | `https://github.com/PyThaiNLP/pythainlp` | G7 SBOM for AI | 21 of 38; three ONNX and five CRFsuite models |
 | Plain Python project | `https://github.com/pallets/flask` | NTIA, then BSI TR-03183-2 | NTIA 6 of 7; BSI 6 of 13, 2 optional not provided |
@@ -206,8 +207,8 @@ address), so use Docker for the page.
 - Tested in a clean Python 3.14 environment (the same `pip install -r
   requirements.txt` the image runs): the install, all five standards through
   the API, SARIF import, and the Git-URL flow against a local Git server.
-- The five demo URLs were run for real (four on 2026-10-19, `microsoft/phi-4` on
-  2026-10-20) and gave the counts in step 3.
+- The six demo URLs were run for real (four on 2026-10-19, `microsoft/phi-4` and
+  the Mistral model on 2026-10-20) and gave the counts in step 3.
 - The web page was exercised with a headless browser against mocked and real
   API responses (see `scripts/ui-smoke.mjs`).
 - The Docker images themselves were **not built** on the machine where this

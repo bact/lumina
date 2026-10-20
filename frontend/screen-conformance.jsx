@@ -64,6 +64,8 @@ const DEMO_EXAMPLES = [
     url: "https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad" },
   { label: "Model with Safetensors weights", note: "Hugging Face", standard: "g7ai",
     url: "https://huggingface.co/microsoft/phi-4" },
+  { label: "Large Mistral model", note: "Hugging Face", standard: "g7ai",
+    url: "https://huggingface.co/mistralai/Mistral-Small-4-119B-2603" },
   { label: "Project with a fastText model", note: "GitHub", standard: "g7ai",
     url: "https://github.com/bact/sentimentdemo" },
   { label: "Project with ONNX models", note: "GitHub, about 12 s", standard: "g7ai",
