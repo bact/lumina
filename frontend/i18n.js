@@ -6,8 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 */
 // Lumina frontend -- i18n
 //
-// Scope: the app shell only (skip link, language picker, navigation, the main
-// landmark's label). Screen content is English. Each catalogue below has every
+// Scope: the app shell (skip link, language picker, navigation, the main
+// landmark's label) and each screen's heading. The rest of a screen is English. Each catalogue below has every
 // shell key; t() falls back to English for a key a catalogue lacks.
 //
 // Exposes window.LUMINA_I18N with:
@@ -52,6 +52,12 @@ window.LUMINA_I18N = (() => {
     "nav.about":            "About",
 
     "main.label":           "{screen} screen",
+
+    "screen.generate.title": "Check a repository or model",
+    "screen.upload.title":   "Check an SBOM file",
+    "screen.sarif.title":    "Read a SARIF conformance log",
+    "screen.about.titleBefore": "What ",
+    "screen.about.titleAfter":  " is.",
   };
 
   const STRINGS = {
@@ -70,6 +76,11 @@ window.LUMINA_I18N = (() => {
       "nav.sarif":            "SARIF importieren",
       "nav.about":            "Über",
       "main.label":           "Ansicht {screen}",
+      "screen.generate.title": "Repository oder Modell prüfen",
+      "screen.upload.title":   "SBOM-Datei prüfen",
+      "screen.sarif.title":    "SARIF-Konformitätsprotokoll lesen",
+      "screen.about.titleBefore": "Was ",
+      "screen.about.titleAfter":  " ist.",
     },
     fr: {
       "topbar.skipToContent": "Passer au contenu principal",
@@ -85,6 +96,11 @@ window.LUMINA_I18N = (() => {
       "nav.sarif":            "Importer du SARIF",
       "nav.about":            "À propos",
       "main.label":           "Écran {screen}",
+      "screen.generate.title": "Vérifier un dépôt ou un modèle",
+      "screen.upload.title":   "Vérifier un fichier SBOM",
+      "screen.sarif.title":    "Lire un journal de conformité SARIF",
+      "screen.about.titleBefore": "Qu'est-ce que ",
+      "screen.about.titleAfter":  " ?",
     },
     ga: {
       "topbar.skipToContent": "Léim go dtí an príomhábhar",
@@ -100,6 +116,11 @@ window.LUMINA_I18N = (() => {
       "nav.sarif":            "Iompórtáil SARIF",
       "nav.about":            "Maidir leis",
       "main.label":           "Scáileán {screen}",
+      "screen.generate.title": "Seiceáil stór nó samhail",
+      "screen.upload.title":   "Seiceáil comhad SBOM",
+      "screen.sarif.title":    "Léigh logchomhad comhlíonta SARIF",
+      "screen.about.titleBefore": "Cad é ",
+      "screen.about.titleAfter":  "?",
     },
     ja: {
       "topbar.skipToContent": "メインコンテンツへスキップ",
@@ -115,6 +136,11 @@ window.LUMINA_I18N = (() => {
       "nav.sarif":            "SARIF をインポート",
       "nav.about":            "このアプリについて",
       "main.label":           "{screen} 画面",
+      "screen.generate.title": "リポジトリまたはモデルをチェック",
+      "screen.upload.title":   "SBOM ファイルをチェック",
+      "screen.sarif.title":    "SARIF 適合性ログを読み込む",
+      "screen.about.titleBefore": "",
+      "screen.about.titleAfter":  " とは",
     },
     th: {
       "topbar.skipToContent": "ข้ามไปยังเนื้อหาหลัก",
@@ -130,6 +156,11 @@ window.LUMINA_I18N = (() => {
       "nav.sarif":            "นำเข้า SARIF",
       "nav.about":            "เกี่ยวกับ",
       "main.label":           "หน้าจอ {screen}",
+      "screen.generate.title": "ตรวจสอบรีโพซิทอรีหรือโมเดล",
+      "screen.upload.title":   "ตรวจสอบไฟล์ SBOM",
+      "screen.sarif.title":    "อ่านบันทึกความสอดคล้อง SARIF",
+      "screen.about.titleBefore": "",
+      "screen.about.titleAfter":  " คืออะไร",
     },
   };
 
@@ -152,7 +183,7 @@ window.LUMINA_I18N = (() => {
   }
   function t(key, vars) {
     const lookup = STRINGS[current] && STRINGS[current][key];
-    const str = lookup || STRINGS.en[key] || key;
+    const str = lookup !== undefined ? lookup : (STRINGS.en[key] ?? key);
     if (!vars) return str;
     return str.replace(/\{(\w+)\}/g, (_, k) => (vars[k] != null ? String(vars[k]) : ""));
   }
