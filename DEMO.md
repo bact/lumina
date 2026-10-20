@@ -99,7 +99,7 @@ crash, a hang or a red error banner is.
 ## 4. A six-minute demo script
 
 The repository carries real example files in
-[`frontend/examples/`](frontend/examples/), served by the page itself: five
+[`frontend/examples/`](frontend/examples/), served by the page itself: four
 SBOMs on *Upload SBOM* and four SARIF logs on *Import SARIF*, each a "Try an
 example" button (see [frontend/readme.md](frontend/readme.md) for how each was
 made). The first is a small SBOM Pitloom generated for a tiny Safetensors model,
@@ -107,8 +107,8 @@ and the SARIF log the checker made from it for the G7 SBOM for AI standard.
 
 1. **Upload SBOM.** Click the example *Tiny model with Safetensors weights* (it
    picks *G7 SBOM for AI*), then *Check SBOM*. The other examples are a model
-   with Safetensors weights (`phi-4`), a model with GGUF weights, a project with
-   a fastText model, and a project with an SPDX 2 SBOM (NTIA). Lumina shows the
+   with Safetensors weights (`phi-4`), a model with GGUF weights, and a container
+   image with an SPDX 2 SBOM (NTIA). Lumina shows the
    rules by cluster (Metadata, System-level properties, Models, Dataset
    properties, and so on), each with the value the
    SBOM holds. Point out:

@@ -20,7 +20,7 @@ refused request shows the server's own error `detail`.
 | Screen | API | What it does |
 | - | - | - |
 | **Generate & check** (default) | `POST /api/v1/artifact/check`, then `GET /api/v1/jobs/{job_id}` | Paste a Git repository or Hugging Face Hub URL; the server generates an SPDX 3 SBOM with Pitloom and checks it. Polls the job every 2.5 s. |
-| **Upload SBOM** | `POST /api/v1/sbom/check` (multipart `file` + `standard`) | Check an SBOM file you have, or one of the five example SBOMs. |
+| **Upload SBOM** | `POST /api/v1/sbom/check` (multipart `file` + `standard`) | Check an SBOM file you have, or one of the four example SBOMs. |
 | **Import SARIF** | `POST /api/v1/sarif/import` (the SARIF JSON as the body) | Read a SARIF 2.1.0 log from a file, pasted text or one of the four example logs; nothing is re-checked. |
 | **About** | `GET /api/v1/standards` | Dependencies, licence, and the standards the API lists with what each check covers. |
 
@@ -43,16 +43,18 @@ A button fetches `/examples/<file>` and selects it as if it were chosen from
 disk (what was chosen, with the example's note, stays on screen and is
 announced; of two quick choices the newer wins), so the check that follows is the ordinary upload or import. None is
 edited by hand; `scripts/ui-smoke.mjs` checks that each listed file exists and
-is an SPDX document or a SARIF 2.1.0 log.
+is an SPDX document or a SARIF 2.1.0 log. An example holds no personal data (no
+person's name or email address): a project SBOM carries its authors' addresses,
+so none is included.
 
 | File | How it was made |
 | - | - |
 | `phi-tiny-random.spdx3.json` | `loom model` on a tiny Safetensors model |
-| `phi-4.spdx3.json`, `qwen2.5-0.5b-instruct-gguf.spdx3.json`, `sentimentdemo.spdx3.json` | the SBOM Lumina's *Generate & check* returned on 2026-10-20 for `huggingface.co/microsoft/phi-4`, `huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF` and `github.com/bact/sentimentdemo` (Pitloom 0.20.2) |
-| `spdx-2.3-spec-example.spdx.json` | the SPDX 2.3 specification's own example (`spdx/spdx-spec`, branch `support/2.3`, `examples/SPDXJSONExample-v2.3.spdx.json`) |
+| `phi-4.spdx3.json`, `qwen2.5-0.5b-instruct-gguf.spdx3.json` | the SBOM Lumina's *Generate & check* returned on 2026-10-20 for `huggingface.co/microsoft/phi-4` and `huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF` (Pitloom 0.20.2) |
+| `chainguard-image.spdx.json` | an SPDX 2.3 JSON SBOM that apko wrote for a Chainguard container image, copied unchanged from the checker's test data (`tests/data/SPDXSBOMExampleTests/chainguard.spdx.json`) |
 | `*.sarif.json` | `sbomcheck -s <spdx3\|spdx2> -c <g7ai\|ntia> -r sarif -o <file>` on the SBOM of the same name (checker pinned in `backend/requirements.txt`) |
 
-The Hub and GitHub SBOMs are one run each, dated 2026-10-20 (their `created` time
+The Hub SBOMs are one run each, dated 2026-10-20 (their `created` time
 is real and does not change when the demo is rebuilt); the button's note says so.
 To refresh one, rerun the command or URL above and replace the file. A file
 that is not a real tool output does not belong here.

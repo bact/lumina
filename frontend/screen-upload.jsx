@@ -50,10 +50,8 @@ const EXAMPLE_SBOMS = [
     note: "microsoft/phi-4, made by Pitloom from the Hub metadata on 2026-10-20" },
   { label: "Model with GGUF weights", file: "qwen2.5-0.5b-instruct-gguf.spdx3.json", standard: "g7ai",
     note: "Qwen2.5-0.5B-Instruct-GGUF, made by Pitloom from the Hub metadata on 2026-10-20" },
-  { label: "Project with a fastText model", file: "sentimentdemo.spdx3.json", standard: "g7ai",
-    note: "bact/sentimentdemo, made by Pitloom on 2026-10-20" },
-  { label: "Project with an SPDX 2 SBOM", file: "spdx-2.3-spec-example.spdx.json", standard: "ntia",
-    note: "the SPDX 2.3 specification's own example" },
+  { label: "Container image with an SPDX 2 SBOM", file: "chainguard-image.spdx.json", standard: "ntia",
+    note: "an SBOM in SPDX 2 JSON, made by apko for a Chainguard container image" },
 ];
 
 const EXAMPLE_SARIFS = [
@@ -61,10 +59,10 @@ const EXAMPLE_SARIFS = [
     note: "G7 SBOM for AI result for the tiny test model's SBOM" },
   { label: "Model with Safetensors weights (G7)", file: "phi-4.g7ai.sarif.json",
     note: "G7 SBOM for AI result for the microsoft/phi-4 SBOM" },
-  { label: "Project with a fastText model (NTIA)", file: "sentimentdemo.ntia.sarif.json",
-    note: "NTIA result for the bact/sentimentdemo SBOM" },
-  { label: "Project with an SPDX 2 SBOM (NTIA)", file: "spdx-2.3-spec-example.ntia.sarif.json",
-    note: "NTIA result for the SPDX 2.3 specification example" },
+  { label: "Model with Safetensors weights (NTIA)", file: "phi-4.ntia.sarif.json",
+    note: "NTIA result for the same SBOM" },
+  { label: "Container image with an SPDX 2 SBOM (NTIA)", file: "chainguard-image.ntia.sarif.json",
+    note: "NTIA result for the Chainguard container image SBOM" },
 ];
 
 // A row of buttons; `onPick(file, example)` gets the example as a File and

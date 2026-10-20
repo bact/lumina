@@ -377,296 +377,7 @@
           ]
         }
       },
-      "results": [
-        {
-          "ruleId": "BOM-NTIA2021-DF-001",
-          "level": "error",
-          "message": {
-            "text": "Component 'fasttext-community' is missing component supplier."
-          },
-          "locations": [
-            {
-              "logicalLocations": [
-                {
-                  "name": "fasttext-community",
-                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#Package-2",
-                  "kind": "package"
-                }
-              ],
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "sentimentdemo.spdx3.json",
-                  "index": 0
-                }
-              }
-            }
-          ]
-        },
-        {
-          "ruleId": "BOM-NTIA2021-DF-001",
-          "level": "error",
-          "message": {
-            "text": "Component 'model' is missing component supplier."
-          },
-          "locations": [
-            {
-              "logicalLocations": [
-                {
-                  "name": "model",
-                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#AIPackage-model-1",
-                  "kind": "package"
-                }
-              ],
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "sentimentdemo.spdx3.json",
-                  "index": 0
-                }
-              }
-            }
-          ]
-        },
-        {
-          "ruleId": "BOM-NTIA2021-DF-001",
-          "level": "error",
-          "message": {
-            "text": "Component 'mypy' is missing component supplier."
-          },
-          "locations": [
-            {
-              "logicalLocations": [
-                {
-                  "name": "mypy",
-                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#Package-7",
-                  "kind": "package"
-                }
-              ],
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "sentimentdemo.spdx3.json",
-                  "index": 0
-                }
-              }
-            }
-          ]
-        },
-        {
-          "ruleId": "BOM-NTIA2021-DF-001",
-          "level": "error",
-          "message": {
-            "text": "Component 'newmm-tokenizer' is missing component supplier."
-          },
-          "locations": [
-            {
-              "logicalLocations": [
-                {
-                  "name": "newmm-tokenizer",
-                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#Package-3",
-                  "kind": "package"
-                }
-              ],
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "sentimentdemo.spdx3.json",
-                  "index": 0
-                }
-              }
-            }
-          ]
-        },
-        {
-          "ruleId": "BOM-NTIA2021-DF-001",
-          "level": "error",
-          "message": {
-            "text": "Component 'numpy' is missing component supplier."
-          },
-          "locations": [
-            {
-              "logicalLocations": [
-                {
-                  "name": "numpy",
-                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#Package-4",
-                  "kind": "package"
-                }
-              ],
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "sentimentdemo.spdx3.json",
-                  "index": 0
-                }
-              }
-            }
-          ]
-        },
-        {
-          "ruleId": "BOM-NTIA2021-DF-001",
-          "level": "error",
-          "message": {
-            "text": "Component 'pitloom' is missing component supplier."
-          },
-          "locations": [
-            {
-              "logicalLocations": [
-                {
-                  "name": "pitloom",
-                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#Package-5",
-                  "kind": "package"
-                }
-              ],
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "sentimentdemo.spdx3.json",
-                  "index": 0
-                }
-              }
-            }
-          ]
-        },
-        {
-          "ruleId": "BOM-NTIA2021-DF-001",
-          "level": "error",
-          "message": {
-            "text": "Component 'pylint' is missing component supplier."
-          },
-          "locations": [
-            {
-              "logicalLocations": [
-                {
-                  "name": "pylint",
-                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#Package-8",
-                  "kind": "package"
-                }
-              ],
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "sentimentdemo.spdx3.json",
-                  "index": 0
-                }
-              }
-            }
-          ]
-        },
-        {
-          "ruleId": "BOM-NTIA2021-DF-001",
-          "level": "error",
-          "message": {
-            "text": "Component 'pytest' is missing component supplier."
-          },
-          "locations": [
-            {
-              "logicalLocations": [
-                {
-                  "name": "pytest",
-                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#Package-9",
-                  "kind": "package"
-                }
-              ],
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "sentimentdemo.spdx3.json",
-                  "index": 0
-                }
-              }
-            }
-          ]
-        },
-        {
-          "ruleId": "BOM-NTIA2021-DF-001",
-          "level": "error",
-          "message": {
-            "text": "Component 'scikit-learn' is missing component supplier."
-          },
-          "locations": [
-            {
-              "logicalLocations": [
-                {
-                  "name": "scikit-learn",
-                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#Package-10",
-                  "kind": "package"
-                }
-              ],
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "sentimentdemo.spdx3.json",
-                  "index": 0
-                }
-              }
-            }
-          ]
-        },
-        {
-          "ruleId": "BOM-NTIA2021-DF-001",
-          "level": "error",
-          "message": {
-            "text": "Component 'sentimentdemo' is missing component supplier."
-          },
-          "locations": [
-            {
-              "logicalLocations": [
-                {
-                  "name": "sentimentdemo",
-                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#Package-1",
-                  "kind": "package"
-                }
-              ],
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "sentimentdemo.spdx3.json",
-                  "index": 0
-                }
-              }
-            }
-          ]
-        },
-        {
-          "ruleId": "BOM-NTIA2021-DF-001",
-          "level": "error",
-          "message": {
-            "text": "Component 'th-simple-preprocessor' is missing component supplier."
-          },
-          "locations": [
-            {
-              "logicalLocations": [
-                {
-                  "name": "th-simple-preprocessor",
-                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#Package-6",
-                  "kind": "package"
-                }
-              ],
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "sentimentdemo.spdx3.json",
-                  "index": 0
-                }
-              }
-            }
-          ]
-        },
-        {
-          "ruleId": "BOM-NTIA2021-DF-003",
-          "level": "error",
-          "message": {
-            "text": "Component 'model' is missing component version."
-          },
-          "locations": [
-            {
-              "logicalLocations": [
-                {
-                  "name": "model",
-                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#AIPackage-model-1",
-                  "kind": "package"
-                }
-              ],
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "sentimentdemo.spdx3.json",
-                  "index": 0
-                }
-              }
-            }
-          ]
-        }
-      ],
+      "results": [],
       "taxonomies": [
         {
           "name": "ntia-minimum-elements",
@@ -718,21 +429,31 @@
       "invocations": [
         {
           "executionSuccessful": true,
-          "toolExecutionNotifications": []
+          "toolExecutionNotifications": [
+            {
+              "level": "warning",
+              "message": {
+                "text": "2 component(s) are not connected to the SBOM root and were not evaluated."
+              },
+              "descriptor": {
+                "id": "spdx.floating-component"
+              }
+            }
+          ]
         }
       ],
       "properties": {
-        "sbomSpec": "spdx3",
-        "sbomName": "",
+        "sbomSpec": "spdx2",
+        "sbomName": "sbom-sha256:f60f5740fefb47ac3120e2f752819b16947ce9085ef30ed49e3a71bb272cd0b7",
         "complianceStandard": "ntia",
         "maturityTarget": 0,
-        "conformant": false,
+        "conformant": true,
         "componentsEvaluated": true,
         "ruleResults": true,
         "ruleOutcomes": {
-          "BOM-NTIA2021-DF-001": "missing",
+          "BOM-NTIA2021-DF-001": "present",
           "BOM-NTIA2021-DF-002": "present",
-          "BOM-NTIA2021-DF-003": "missing",
+          "BOM-NTIA2021-DF-003": "present",
           "BOM-NTIA2021-DF-004": "present",
           "BOM-NTIA2021-DF-005": "present",
           "BOM-NTIA2021-DF-006": "present",
@@ -743,7 +464,7 @@
       "artifacts": [
         {
           "location": {
-            "uri": "sentimentdemo.spdx3.json"
+            "uri": "chainguard-image.spdx.json"
           }
         }
       ]

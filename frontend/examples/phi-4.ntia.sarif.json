@@ -379,23 +379,22 @@
       },
       "results": [
         {
-          "ruleId": "BOM-NTIA2021-DF-001",
+          "ruleId": "BOM-NTIA2021-DF-005",
           "level": "error",
           "message": {
-            "text": "Component 'Saxon' is missing component supplier."
+            "text": "SBOM document is missing dependency relationships."
           },
           "locations": [
             {
               "logicalLocations": [
                 {
-                  "name": "Saxon",
-                  "fullyQualifiedName": "SPDXRef-Saxon",
-                  "kind": "package"
+                  "name": "document",
+                  "kind": "module"
                 }
               ],
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "spdx-2.3-spec-example.spdx.json",
+                  "uri": "phi-4.spdx3.json",
                   "index": 0
                 }
               }
@@ -454,33 +453,23 @@
       "invocations": [
         {
           "executionSuccessful": true,
-          "toolExecutionNotifications": [
-            {
-              "level": "warning",
-              "message": {
-                "text": "2 component(s) are not connected to the SBOM root and were not evaluated."
-              },
-              "descriptor": {
-                "id": "spdx.floating-component"
-              }
-            }
-          ]
+          "toolExecutionNotifications": []
         }
       ],
       "properties": {
-        "sbomSpec": "spdx2",
-        "sbomName": "SPDX-Tools-v2.0",
+        "sbomSpec": "spdx3",
+        "sbomName": "",
         "complianceStandard": "ntia",
         "maturityTarget": 0,
         "conformant": false,
         "componentsEvaluated": true,
         "ruleResults": true,
         "ruleOutcomes": {
-          "BOM-NTIA2021-DF-001": "missing",
+          "BOM-NTIA2021-DF-001": "present",
           "BOM-NTIA2021-DF-002": "present",
           "BOM-NTIA2021-DF-003": "present",
           "BOM-NTIA2021-DF-004": "present",
-          "BOM-NTIA2021-DF-005": "present",
+          "BOM-NTIA2021-DF-005": "missing",
           "BOM-NTIA2021-DF-006": "present",
           "BOM-NTIA2021-DF-007": "present"
         },
@@ -489,7 +478,7 @@
       "artifacts": [
         {
           "location": {
-            "uri": "spdx-2.3-spec-example.spdx.json"
+            "uri": "phi-4.spdx3.json"
           }
         }
       ]

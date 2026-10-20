@@ -536,6 +536,11 @@ await nav("Upload SBOM");
 await chipsMatchApi("Upload SBOM");
 await noSampleData("Upload SBOM");
 await shot("3-upload");
+// No example holds an email address (AGENTS.md: no personal data in fixtures).
+for (const f of fs.readdirSync(path.join(root, "examples"))) {
+  const found = fs.readFileSync(path.join(root, "examples", f), "utf8").match(/[\w.+-]+@[\w-]+\.[A-Za-z]{2,}/g);
+  check(!found, `Examples: ${f} holds no email address${found ? ` (${found[0]})` : ""}`);
+}
 // Example SBOMs: each listed file exists and is a real SBOM; choosing one
 // selects it as a file and, when the standard is ready, picks its standard.
 const sbomExamples = await page.evaluate(() => EXAMPLE_SBOMS);
@@ -561,10 +566,10 @@ check((await page.locator("[role=status]").allInnerTexts()).some(t => t.includes
 await page.unroute("**/examples/phi-4.spdx3.json");
 const sentBodies = [];
 page.on("request", q => { if (q.url().endsWith("/api/v1/sbom/check")) sentBodies.push(q.postData() || ""); });
-await page.getByRole("button", { name: "Project with an SPDX 2 SBOM", exact: true }).click();
+await page.getByRole("button", { name: "Container image with an SPDX 2 SBOM", exact: true }).click();
 await page.getByRole("button", { name: "Check SBOM" }).click();
 await page.waitForTimeout(500);
-check(sentBodies.length === 1 && sentBodies[0].includes('filename="spdx-2.3-spec-example.spdx.json"') && sentBodies[0].includes("SPDX-2.3"),
+check(sentBodies.length === 1 && sentBodies[0].includes('filename="chainguard-image.spdx.json"') && sentBodies[0].includes("SPDX-2.3"),
   "Upload SBOM: an example is uploaded as its real file");
 await page.getByRole("button", { name: "Clear" }).click();
 await page.setInputFiles("#sbom-file", { name: "big.spdx.json", mimeType: "application/json", buffer: Buffer.from("{}") });
@@ -643,8 +648,8 @@ await page.getByRole("button", { name: "Clear" }).click();
 check(await page.inputValue("#sarif-text") === "pasted text" && !(await page.locator("#sarif-text").isDisabled()),
   "Import SARIF: the pasted text is back when the file is cleared");
 await page.fill("#sarif-text", "");
-await page.getByRole("button", { name: "Project with a fastText model (NTIA)", exact: true }).click();
-await page.waitForSelector("text=sentimentdemo.ntia.sarif.json", { timeout: 5000 }).catch(() => {});
+await page.getByRole("button", { name: "Model with Safetensors weights (NTIA)", exact: true }).click();
+await page.waitForSelector("text=phi-4.ntia.sarif.json", { timeout: 5000 }).catch(() => {});
 const sentLogs = [];
 page.on("request", q => { if (q.url().endsWith("/api/v1/sarif/import")) sentLogs.push(q.postData() || ""); });
 await page.getByRole("button", { name: "Import SARIF" }).last().click();
