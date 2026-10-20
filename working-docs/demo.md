@@ -1,4 +1,6 @@
 ---
+Created: 2026-10-18
+Last-Modified: 2026-10-20
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -11,7 +13,7 @@ Step by step, from an empty machine to a working demo: set it up, warm it up
 the day before, run the demo script, and what to do when something fails.
 Lumina is the web page that shows what the conformance checker found in an
 SBOM. For the full deployment options (VM, Hugging Face Spaces, Cloud Run) see
-[INSTALL.md](INSTALL.md).
+[INSTALL.md](../INSTALL.md).
 
 ## 1. What you need
 
@@ -110,9 +112,9 @@ crash, a hang or a red error banner is.
 ## 4. A six-minute demo script
 
 The repository carries real example files in
-[`frontend/examples/`](frontend/examples/), served by the page itself: four
+[`frontend/examples/`](../frontend/examples/), served by the page itself: four
 SBOMs on *Upload SBOM* and four SARIF logs on *Import SARIF*, each a "Try an
-example" card (see [frontend/readme.md](frontend/readme.md) for how each was
+example" card (see [frontend.md](frontend.md) for how each was
 made). The first is a small SBOM Pitloom generated for a tiny Safetensors model,
 and the SARIF log the checker made from it for the G7 SBOM for AI standard.
 

@@ -47,7 +47,7 @@ function FilePicker({ id, label, accept, file, onChange, disabled }) {
 }
 
 // ─── Example files ──────────────────────────────────────────────────────
-// Real files in frontend/examples/ (see frontend/readme.md for how each was
+// Real files in frontend/examples/ (see working-docs/frontend.md for how each was
 // made). Choosing one picks it as if the visitor had chosen it from disk, so
 // the check that follows is the ordinary upload or import.
 const EXAMPLE_SBOMS = [

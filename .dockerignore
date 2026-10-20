@@ -28,7 +28,7 @@
 **/node_modules
 
 # Docs and meta (not needed in any image)
-docs
+working-docs
 README.md
 AGENTS.md
 LICENSE

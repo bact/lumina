@@ -62,7 +62,7 @@ const STANDARD_INFO = {
 // Preselected on the check screens when the API lists it as ready.
 const DEFAULT_STANDARD = "g7ai";
 
-// Example URLs for the Generate & check screen (the demo script, DEMO.md).
+// Example URLs for the Generate & check screen (the demo script, working-docs/demo.md).
 // Each fills the URL field and picks the standard the demo uses for it; the
 // result is still whatever the server generates and checks. `subject` is the
 // card's text (example-list.jsx); `note` adds what the card does not say.
