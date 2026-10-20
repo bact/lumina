@@ -558,7 +558,8 @@ The three supported deployment options (A: VM with Docker Compose, B: Hugging
 Face Spaces, C: Google Cloud Run), their cost and their configuration folders
 under `docker/` are listed in
 [INSTALL.md](../INSTALL.md#deployment-options); step-by-step instructions are
-there too.  Design points only:
+there too.  Which option to pick: [deployment-options.md](deployment-options.md).
+Design points only:
 
 - Options B and C run one container per deployment, so they use a single-container
   image (nginx + uvicorn via supervisord).  `docker/standalone/` reads the `PORT`
