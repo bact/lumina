@@ -64,15 +64,15 @@ const DEMO_EXAMPLES = [
     url: "https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad" },
   { label: "Model with Safetensors weights", note: "Hugging Face", standard: "g7ai",
     url: "https://huggingface.co/microsoft/phi-4" },
-  { label: "Large Mistral model", note: "Hugging Face", standard: "g7ai",
+  { label: "Model with 119B parameters", note: "Hugging Face", standard: "g7ai",
     url: "https://huggingface.co/mistralai/Mistral-Small-4-119B-2603" },
-  { label: "Small GGUF model", note: "Hugging Face", standard: "g7ai",
+  { label: "Model with GGUF weights", note: "Hugging Face", standard: "g7ai",
     url: "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF" },
   { label: "Project with a fastText model", note: "GitHub", standard: "g7ai",
     url: "https://github.com/bact/sentimentdemo" },
   { label: "Project with ONNX models", note: "GitHub, about 12 s", standard: "g7ai",
     url: "https://github.com/PyThaiNLP/pythainlp" },
-  { label: "Plain Python project", note: "GitHub", standard: "ntia",
+  { label: "Project with no AI model", note: "GitHub", standard: "ntia",
     url: "https://github.com/pallets/flask" },
 ];
 

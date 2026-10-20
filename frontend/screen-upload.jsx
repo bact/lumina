@@ -44,26 +44,26 @@ function FilePicker({ id, label, accept, file, onChange, disabled }) {
 // made). Choosing one picks it as if the visitor had chosen it from disk, so
 // the check that follows is the ordinary upload or import.
 const EXAMPLE_SBOMS = [
-  { label: "AI model (Safetensors)", file: "phi-tiny-random.spdx3.json", standard: "g7ai",
+  { label: "Tiny model with Safetensors weights", file: "phi-tiny-random.spdx3.json", standard: "g7ai",
     note: "made by Pitloom from a tiny test model file" },
-  { label: "Hugging Face model", file: "phi-4.spdx3.json", standard: "g7ai",
+  { label: "Model with Safetensors weights", file: "phi-4.spdx3.json", standard: "g7ai",
     note: "microsoft/phi-4, made by Pitloom from the Hub metadata on 2026-10-20" },
-  { label: "GGUF model", file: "qwen2.5-0.5b-instruct-gguf.spdx3.json", standard: "g7ai",
+  { label: "Model with GGUF weights", file: "qwen2.5-0.5b-instruct-gguf.spdx3.json", standard: "g7ai",
     note: "Qwen2.5-0.5B-Instruct-GGUF, made by Pitloom from the Hub metadata on 2026-10-20" },
   { label: "Project with a fastText model", file: "sentimentdemo.spdx3.json", standard: "g7ai",
     note: "bact/sentimentdemo, made by Pitloom on 2026-10-20" },
-  { label: "SPDX 2 SBOM", file: "spdx-2.3-spec-example.spdx.json", standard: "ntia",
+  { label: "Project with an SPDX 2 SBOM", file: "spdx-2.3-spec-example.spdx.json", standard: "ntia",
     note: "the SPDX 2.3 specification's own example" },
 ];
 
 const EXAMPLE_SARIFS = [
-  { label: "G7: Safetensors model", file: "phi-tiny-random.g7ai.sarif.json",
+  { label: "Tiny model with Safetensors weights (G7)", file: "phi-tiny-random.g7ai.sarif.json",
     note: "G7 SBOM for AI result for the tiny test model's SBOM" },
-  { label: "G7: Hugging Face model", file: "phi-4.g7ai.sarif.json",
+  { label: "Model with Safetensors weights (G7)", file: "phi-4.g7ai.sarif.json",
     note: "G7 SBOM for AI result for the microsoft/phi-4 SBOM" },
-  { label: "NTIA: Python project", file: "sentimentdemo.ntia.sarif.json",
+  { label: "Project with a fastText model (NTIA)", file: "sentimentdemo.ntia.sarif.json",
     note: "NTIA result for the bact/sentimentdemo SBOM" },
-  { label: "NTIA: SPDX 2 SBOM", file: "spdx-2.3-spec-example.ntia.sarif.json",
+  { label: "Project with an SPDX 2 SBOM (NTIA)", file: "spdx-2.3-spec-example.ntia.sarif.json",
     note: "NTIA result for the SPDX 2.3 specification example" },
 ];
 

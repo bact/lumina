@@ -412,7 +412,7 @@ await chipsMatchApi("Generate & check");
 await noSampleData("Generate & check");
 await shot("1-generate");
 // The example buttons fill the URL and pick the demo's standard.
-await page.getByRole("button", { name: "Plain Python project" }).click();
+await page.getByRole("button", { name: "Project with no AI model" }).click();
 check(await page.getByPlaceholder(/github/).inputValue() === "https://github.com/pallets/flask"
   && await page.getByRole("radio", { name: "NTIA Minimum Elements" }).getAttribute("aria-checked") === "true",
   "Generate & check: an example fills the URL and picks its standard");
@@ -427,11 +427,11 @@ await page.getByRole("button", { name: "Model with Safetensors weights" }).click
 check(await page.getByPlaceholder(/github/).inputValue() === "https://huggingface.co/microsoft/phi-4"
   && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
   "Generate & check: the Safetensors model example fills the URL and picks G7 SBOM for AI");
-await page.getByRole("button", { name: "Large Mistral model" }).click();
+await page.getByRole("button", { name: "Model with 119B parameters" }).click();
 check(await page.getByPlaceholder(/github/).inputValue() === "https://huggingface.co/mistralai/Mistral-Small-4-119B-2603"
   && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
   "Generate & check: the Mistral model example fills the URL and picks G7 SBOM for AI");
-await page.getByRole("button", { name: "Small GGUF model" }).click();
+await page.getByRole("button", { name: "Model with GGUF weights" }).click();
 check(await page.getByPlaceholder(/github/).inputValue() === "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF"
   && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
   "Generate & check: the GGUF model example fills the URL and picks G7 SBOM for AI");
@@ -551,17 +551,17 @@ for (const ex of sbomExamples) {
 }
 // Two quick choices: the slower, older load must not replace the newer one.
 await page.route("**/examples/phi-4.spdx3.json", async r => { await new Promise(res => setTimeout(res, 700)); await r.continue(); });
-await page.getByRole("button", { name: "Hugging Face model", exact: true }).click();
-await page.getByRole("button", { name: "GGUF model", exact: true }).click();
+await page.getByRole("button", { name: "Model with Safetensors weights", exact: true }).click();
+await page.getByRole("button", { name: "Model with GGUF weights", exact: true }).click();
 await page.waitForTimeout(1200);
-check((await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("Example chosen: GGUF model"))
-    && !(await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("Example chosen: Hugging Face model"))
+check((await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("Example chosen: Model with GGUF weights"))
+    && !(await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("Example chosen: Model with Safetensors weights"))
     && await page.getByText("qwen2.5-0.5b-instruct-gguf.spdx3.json").first().isVisible(),
   "Upload SBOM: an older, slower example load does not replace a newer choice");
 await page.unroute("**/examples/phi-4.spdx3.json");
 const sentBodies = [];
 page.on("request", q => { if (q.url().endsWith("/api/v1/sbom/check")) sentBodies.push(q.postData() || ""); });
-await page.getByRole("button", { name: "SPDX 2 SBOM", exact: true }).click();
+await page.getByRole("button", { name: "Project with an SPDX 2 SBOM", exact: true }).click();
 await page.getByRole("button", { name: "Check SBOM" }).click();
 await page.waitForTimeout(500);
 check(sentBodies.length === 1 && sentBodies[0].includes('filename="spdx-2.3-spec-example.spdx.json"') && sentBodies[0].includes("SPDX-2.3"),
@@ -635,7 +635,7 @@ for (const ex of sarifExamples) {
 }
 await page.getByRole("button", { name: "Clear" }).click();
 await page.fill("#sarif-text", "pasted text");
-await page.getByRole("button", { name: "G7: Hugging Face model", exact: true }).click();
+await page.getByRole("button", { name: "Model with Safetensors weights (G7)", exact: true }).click();
 await page.waitForSelector("text=phi-4.g7ai.sarif.json", { timeout: 5000 }).catch(() => {});
 check(await page.inputValue("#sarif-text") === "pasted text" && (await text()).includes("the text you pasted is kept"),
   "Import SARIF: choosing an example keeps the pasted text, and the label says so");
@@ -643,7 +643,7 @@ await page.getByRole("button", { name: "Clear" }).click();
 check(await page.inputValue("#sarif-text") === "pasted text" && !(await page.locator("#sarif-text").isDisabled()),
   "Import SARIF: the pasted text is back when the file is cleared");
 await page.fill("#sarif-text", "");
-await page.getByRole("button", { name: "NTIA: Python project", exact: true }).click();
+await page.getByRole("button", { name: "Project with a fastText model (NTIA)", exact: true }).click();
 await page.waitForSelector("text=sentimentdemo.ntia.sarif.json", { timeout: 5000 }).catch(() => {});
 const sentLogs = [];
 page.on("request", q => { if (q.url().endsWith("/api/v1/sarif/import")) sentLogs.push(q.postData() || ""); });
