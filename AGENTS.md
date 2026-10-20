@@ -38,7 +38,6 @@ lumina/
 │                               mounts frontend/ at /workspace/frontend
 ├── .dockerignore               Keeps caches/git/docs out of Docker build context
 ├── DEMO.md                     Demo guide: set up, warm up, script, troubleshooting
-├── demo/                       Real demo files: an SBOM and its G7 AI SARIF report
 ├── proxy/                      Reverse-proxy service (nginx)
 │   ├── Dockerfile              Multi-stage: dev (config only) / prod (self-contained)
 │   ├── prod.conf               Prod: root /app (frontend baked in)
@@ -47,6 +46,7 @@ lumina/
 │   ├── index.html              Entry point + router
 │   ├── colors-and-type.css     Design tokens
 │   ├── assets/                 Logo SVGs
+│   ├── examples/               Real SBOM and SARIF files the example buttons load
 │   └── *.jsx / *.js            Shell, shared components, screens
 ├── backend/
 │   ├── Dockerfile

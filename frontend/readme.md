@@ -20,8 +20,8 @@ refused request shows the server's own error `detail`.
 | Screen | API | What it does |
 | - | - | - |
 | **Generate & check** (default) | `POST /api/v1/artifact/check`, then `GET /api/v1/jobs/{job_id}` | Paste a Git repository or Hugging Face Hub URL; the server generates an SPDX 3 SBOM with Pitloom and checks it. Polls the job every 2.5 s. |
-| **Upload SBOM** | `POST /api/v1/sbom/check` (multipart `file` + `standard`) | Check an SBOM file you have. |
-| **Import SARIF** | `POST /api/v1/sarif/import` (the SARIF JSON as the body) | Read a SARIF 2.1.0 log from a file or pasted text; nothing is re-checked. |
+| **Upload SBOM** | `POST /api/v1/sbom/check` (multipart `file` + `standard`) | Check an SBOM file you have, or one of the five example SBOMs. |
+| **Import SARIF** | `POST /api/v1/sarif/import` (the SARIF JSON as the body) | Read a SARIF 2.1.0 log from a file, pasted text or one of the four example logs; nothing is re-checked. |
 | **About** | `GET /api/v1/standards` | Dependencies, licence, and the standards the API lists with what each check covers. |
 
 The three check screens render the result with the same `ArtifactResult`
@@ -34,6 +34,25 @@ SPDX 2" for an SPDX 2 JSON SBOM under a standard whose `STANDARD_INFO` entry
 lists `sbomSpecs: ["spdx3"]`, else a generic line. It is announced too. The
 "judged by model" note appears only for G7 AI, and the *Unverified* tile only
 when that count is above 0.
+
+## Example files
+
+`examples/` holds real files the "Try an example" buttons on *Upload SBOM* and
+*Import SARIF* load (`EXAMPLE_SBOMS`, `EXAMPLE_SARIFS` in `screen-upload.jsx`).
+A button fetches `/examples/<file>` and selects it as if it were chosen from
+disk, so the check that follows is the ordinary upload or import. None is
+edited by hand; `scripts/ui-smoke.mjs` checks that each listed file exists and
+is an SPDX document or a SARIF 2.1.0 log.
+
+| File | How it was made |
+| - | - |
+| `phi-tiny-random.spdx3.json` | `loom model` on a tiny Safetensors model |
+| `phi-4.spdx3.json`, `qwen2.5-0.5b-instruct-gguf.spdx3.json`, `sentimentdemo.spdx3.json` | the SBOM Lumina's *Generate & check* returned on 2026-10-20 for `huggingface.co/microsoft/phi-4`, `huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF` and `github.com/bact/sentimentdemo` (Pitloom 0.20.2) |
+| `spdx-2.3-spec-example.spdx.json` | the SPDX 2.3 specification's own example (`spdx/spdx-spec`, branch `support/2.3`, `examples/SPDXJSONExample-v2.3.spdx.json`) |
+| `*.sarif.json` | `sbomcheck -s <spdx3\|spdx2> -c <g7ai\|ntia> -r sarif -o <file>` on the SBOM of the same name (checker pinned in `backend/requirements.txt`) |
+
+To refresh one, rerun the command or URL above and replace the file. A file
+that is not a real tool output does not belong here.
 
 ## Result view, evidence and SBOM source
 

@@ -1,0 +1,752 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "ntia-conformance-checker",
+          "version": "0.1.dev1141+g82a63b9ec",
+          "informationUri": "https://github.com/spdx/ntia-conformance-checker",
+          "rules": [
+            {
+              "id": "BOM-NTIA2021-DF-001",
+              "name": "NtiaComponentSupplierMissing",
+              "shortDescription": {
+                "text": "An SBOM component should have a supplier name."
+              },
+              "fullDescription": {
+                "text": "The SBOM must provide component supplier.  A result is emitted for each component, or for the document, where this is absent."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "helpUri": "https://www.ntia.gov/report/2021/minimum-elements-software-bill-materials-sbom",
+              "relationships": [
+                {
+                  "target": {
+                    "id": "data-fields",
+                    "toolComponent": {
+                      "name": "ntia-minimum-elements"
+                    }
+                  },
+                  "kinds": [
+                    "superset"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "IV",
+                    "toolComponent": {
+                      "name": "ntia-clauses"
+                    }
+                  },
+                  "kinds": [
+                    "superset"
+                  ]
+                }
+              ],
+              "properties": {
+                "slug": "ntia-component-supplier-missing",
+                "elementId": "supplier",
+                "specCategory": "data-fields",
+                "maturityLevel": 0,
+                "maturity": "required",
+                "provision": "requirement",
+                "conditional": false,
+                "status": "active",
+                "specClauseNumber": "IV",
+                "specClauseName": "Data Fields -- Supplier Name",
+                "oscalControlId": "bom-ntia2021-df-001"
+              }
+            },
+            {
+              "id": "BOM-NTIA2021-DF-002",
+              "name": "NtiaComponentNameMissing",
+              "shortDescription": {
+                "text": "An SBOM component should have a name."
+              },
+              "fullDescription": {
+                "text": "The SBOM must provide component name.  A result is emitted for each component, or for the document, where this is absent."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "helpUri": "https://www.ntia.gov/report/2021/minimum-elements-software-bill-materials-sbom",
+              "relationships": [
+                {
+                  "target": {
+                    "id": "data-fields",
+                    "toolComponent": {
+                      "name": "ntia-minimum-elements"
+                    }
+                  },
+                  "kinds": [
+                    "superset"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "IV",
+                    "toolComponent": {
+                      "name": "ntia-clauses"
+                    }
+                  },
+                  "kinds": [
+                    "superset"
+                  ]
+                }
+              ],
+              "properties": {
+                "slug": "ntia-component-name-missing",
+                "elementId": "name",
+                "specCategory": "data-fields",
+                "maturityLevel": 0,
+                "maturity": "required",
+                "provision": "requirement",
+                "conditional": false,
+                "status": "active",
+                "specClauseNumber": "IV",
+                "specClauseName": "Data Fields -- Component Name",
+                "oscalControlId": "bom-ntia2021-df-002"
+              }
+            },
+            {
+              "id": "BOM-NTIA2021-DF-003",
+              "name": "NtiaComponentVersionMissing",
+              "shortDescription": {
+                "text": "An SBOM component should have a version."
+              },
+              "fullDescription": {
+                "text": "The SBOM must provide component version.  A result is emitted for each component, or for the document, where this is absent."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "helpUri": "https://www.ntia.gov/report/2021/minimum-elements-software-bill-materials-sbom",
+              "relationships": [
+                {
+                  "target": {
+                    "id": "data-fields",
+                    "toolComponent": {
+                      "name": "ntia-minimum-elements"
+                    }
+                  },
+                  "kinds": [
+                    "superset"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "IV",
+                    "toolComponent": {
+                      "name": "ntia-clauses"
+                    }
+                  },
+                  "kinds": [
+                    "superset"
+                  ]
+                }
+              ],
+              "properties": {
+                "slug": "ntia-component-version-missing",
+                "elementId": "version",
+                "specCategory": "data-fields",
+                "maturityLevel": 0,
+                "maturity": "required",
+                "provision": "requirement",
+                "conditional": false,
+                "status": "active",
+                "specClauseNumber": "IV",
+                "specClauseName": "Data Fields -- Version of the Component",
+                "oscalControlId": "bom-ntia2021-df-003"
+              }
+            },
+            {
+              "id": "BOM-NTIA2021-DF-004",
+              "name": "NtiaComponentIdentifierMissing",
+              "shortDescription": {
+                "text": "An SBOM component should have a unique identifier."
+              },
+              "fullDescription": {
+                "text": "The SBOM must provide component identifier.  A result is emitted for each component, or for the document, where this is absent."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "helpUri": "https://www.ntia.gov/report/2021/minimum-elements-software-bill-materials-sbom",
+              "relationships": [
+                {
+                  "target": {
+                    "id": "data-fields",
+                    "toolComponent": {
+                      "name": "ntia-minimum-elements"
+                    }
+                  },
+                  "kinds": [
+                    "superset"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "IV",
+                    "toolComponent": {
+                      "name": "ntia-clauses"
+                    }
+                  },
+                  "kinds": [
+                    "superset"
+                  ]
+                }
+              ],
+              "properties": {
+                "slug": "ntia-component-identifier-missing",
+                "elementId": "unique_identifier",
+                "specCategory": "data-fields",
+                "maturityLevel": 0,
+                "maturity": "required",
+                "provision": "requirement",
+                "conditional": false,
+                "status": "active",
+                "specClauseNumber": "IV",
+                "specClauseName": "Data Fields -- Other Unique Identifiers",
+                "oscalControlId": "bom-ntia2021-df-004"
+              }
+            },
+            {
+              "id": "BOM-NTIA2021-DF-005",
+              "name": "NtiaDependencyRelationshipsMissing",
+              "shortDescription": {
+                "text": "An SBOM should declare dependency relationships."
+              },
+              "fullDescription": {
+                "text": "The SBOM must provide dependency relationships.  A result is emitted for each component, or for the document, where this is absent."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "helpUri": "https://www.ntia.gov/report/2021/minimum-elements-software-bill-materials-sbom",
+              "relationships": [
+                {
+                  "target": {
+                    "id": "data-fields",
+                    "toolComponent": {
+                      "name": "ntia-minimum-elements"
+                    }
+                  },
+                  "kinds": [
+                    "superset"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "IV",
+                    "toolComponent": {
+                      "name": "ntia-clauses"
+                    }
+                  },
+                  "kinds": [
+                    "superset"
+                  ]
+                }
+              ],
+              "properties": {
+                "slug": "ntia-dependency-relationships-missing",
+                "elementId": "dependency_relationship",
+                "specCategory": "data-fields",
+                "maturityLevel": 0,
+                "maturity": "required",
+                "provision": "requirement",
+                "conditional": false,
+                "status": "active",
+                "specClauseNumber": "IV",
+                "specClauseName": "Data Fields -- Dependency Relationship",
+                "oscalControlId": "bom-ntia2021-df-005"
+              }
+            },
+            {
+              "id": "BOM-NTIA2021-DF-006",
+              "name": "NtiaSbomAuthorMissing",
+              "shortDescription": {
+                "text": "An SBOM should have an author name."
+              },
+              "fullDescription": {
+                "text": "The SBOM must provide SBOM author.  A result is emitted for each component, or for the document, where this is absent."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "helpUri": "https://www.ntia.gov/report/2021/minimum-elements-software-bill-materials-sbom",
+              "relationships": [
+                {
+                  "target": {
+                    "id": "data-fields",
+                    "toolComponent": {
+                      "name": "ntia-minimum-elements"
+                    }
+                  },
+                  "kinds": [
+                    "superset"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "IV",
+                    "toolComponent": {
+                      "name": "ntia-clauses"
+                    }
+                  },
+                  "kinds": [
+                    "superset"
+                  ]
+                }
+              ],
+              "properties": {
+                "slug": "ntia-sbom-author-missing",
+                "elementId": "author",
+                "specCategory": "data-fields",
+                "maturityLevel": 0,
+                "maturity": "required",
+                "provision": "requirement",
+                "conditional": false,
+                "status": "active",
+                "specClauseNumber": "IV",
+                "specClauseName": "Data Fields -- Author of SBOM Data",
+                "oscalControlId": "bom-ntia2021-df-006"
+              }
+            },
+            {
+              "id": "BOM-NTIA2021-DF-007",
+              "name": "NtiaSbomTimestampMissing",
+              "shortDescription": {
+                "text": "An SBOM should have a creation timestamp."
+              },
+              "fullDescription": {
+                "text": "The SBOM must provide SBOM creation timestamp.  A result is emitted for each component, or for the document, where this is absent."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "helpUri": "https://www.ntia.gov/report/2021/minimum-elements-software-bill-materials-sbom",
+              "relationships": [
+                {
+                  "target": {
+                    "id": "data-fields",
+                    "toolComponent": {
+                      "name": "ntia-minimum-elements"
+                    }
+                  },
+                  "kinds": [
+                    "superset"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "IV",
+                    "toolComponent": {
+                      "name": "ntia-clauses"
+                    }
+                  },
+                  "kinds": [
+                    "superset"
+                  ]
+                }
+              ],
+              "properties": {
+                "slug": "ntia-sbom-timestamp-missing",
+                "elementId": "timestamp",
+                "specCategory": "data-fields",
+                "maturityLevel": 0,
+                "maturity": "required",
+                "provision": "requirement",
+                "conditional": false,
+                "status": "active",
+                "specClauseNumber": "IV",
+                "specClauseName": "Data Fields -- Timestamp",
+                "oscalControlId": "bom-ntia2021-df-007"
+              }
+            }
+          ],
+          "supportedTaxonomies": [
+            {
+              "name": "ntia-minimum-elements"
+            },
+            {
+              "name": "ntia-clauses"
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "BOM-NTIA2021-DF-001",
+          "level": "error",
+          "message": {
+            "text": "Component 'fasttext-community' is missing component supplier."
+          },
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "name": "fasttext-community",
+                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#Package-2",
+                  "kind": "package"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "sentimentdemo.spdx3.json",
+                  "index": 0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "BOM-NTIA2021-DF-001",
+          "level": "error",
+          "message": {
+            "text": "Component 'model' is missing component supplier."
+          },
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "name": "model",
+                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#AIPackage-model-1",
+                  "kind": "package"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "sentimentdemo.spdx3.json",
+                  "index": 0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "BOM-NTIA2021-DF-001",
+          "level": "error",
+          "message": {
+            "text": "Component 'mypy' is missing component supplier."
+          },
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "name": "mypy",
+                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#Package-7",
+                  "kind": "package"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "sentimentdemo.spdx3.json",
+                  "index": 0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "BOM-NTIA2021-DF-001",
+          "level": "error",
+          "message": {
+            "text": "Component 'newmm-tokenizer' is missing component supplier."
+          },
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "name": "newmm-tokenizer",
+                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#Package-3",
+                  "kind": "package"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "sentimentdemo.spdx3.json",
+                  "index": 0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "BOM-NTIA2021-DF-001",
+          "level": "error",
+          "message": {
+            "text": "Component 'numpy' is missing component supplier."
+          },
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "name": "numpy",
+                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#Package-4",
+                  "kind": "package"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "sentimentdemo.spdx3.json",
+                  "index": 0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "BOM-NTIA2021-DF-001",
+          "level": "error",
+          "message": {
+            "text": "Component 'pitloom' is missing component supplier."
+          },
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "name": "pitloom",
+                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#Package-5",
+                  "kind": "package"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "sentimentdemo.spdx3.json",
+                  "index": 0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "BOM-NTIA2021-DF-001",
+          "level": "error",
+          "message": {
+            "text": "Component 'pylint' is missing component supplier."
+          },
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "name": "pylint",
+                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#Package-8",
+                  "kind": "package"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "sentimentdemo.spdx3.json",
+                  "index": 0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "BOM-NTIA2021-DF-001",
+          "level": "error",
+          "message": {
+            "text": "Component 'pytest' is missing component supplier."
+          },
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "name": "pytest",
+                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#Package-9",
+                  "kind": "package"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "sentimentdemo.spdx3.json",
+                  "index": 0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "BOM-NTIA2021-DF-001",
+          "level": "error",
+          "message": {
+            "text": "Component 'scikit-learn' is missing component supplier."
+          },
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "name": "scikit-learn",
+                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#Package-10",
+                  "kind": "package"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "sentimentdemo.spdx3.json",
+                  "index": 0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "BOM-NTIA2021-DF-001",
+          "level": "error",
+          "message": {
+            "text": "Component 'sentimentdemo' is missing component supplier."
+          },
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "name": "sentimentdemo",
+                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#Package-1",
+                  "kind": "package"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "sentimentdemo.spdx3.json",
+                  "index": 0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "BOM-NTIA2021-DF-001",
+          "level": "error",
+          "message": {
+            "text": "Component 'th-simple-preprocessor' is missing component supplier."
+          },
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "name": "th-simple-preprocessor",
+                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#Package-6",
+                  "kind": "package"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "sentimentdemo.spdx3.json",
+                  "index": 0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "BOM-NTIA2021-DF-003",
+          "level": "error",
+          "message": {
+            "text": "Component 'model' is missing component version."
+          },
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "name": "model",
+                  "fullyQualifiedName": "https://spdx.org/spdxdocs/sentimentdemo-0c73a1a4-623d-5ddf-8f8f-a6285082eb74#AIPackage-model-1",
+                  "kind": "package"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "sentimentdemo.spdx3.json",
+                  "index": 0
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "taxonomies": [
+        {
+          "name": "ntia-minimum-elements",
+          "informationUri": "https://www.ntia.gov/report/2021/minimum-elements-software-bill-materials-sbom",
+          "shortDescription": {
+            "text": "The set of 2021 NTIA SBOM Minimum Elements categories (clusters / groups) this checker emits rules for."
+          },
+          "taxa": [
+            {
+              "id": "data-fields",
+              "name": "Data Fields",
+              "shortDescription": {
+                "text": "Baseline information about each component that should be tracked."
+              }
+            },
+            {
+              "id": "automation-support",
+              "name": "Automation Support",
+              "shortDescription": {
+                "text": "Support for automation including machine-readable formats."
+              }
+            },
+            {
+              "id": "practices-and-processes",
+              "name": "Practices and Processes",
+              "shortDescription": {
+                "text": "Operational practices for SBOM creation, exchange, and consumption."
+              }
+            }
+          ]
+        },
+        {
+          "name": "ntia-clauses",
+          "informationUri": "https://www.ntia.gov/report/2021/minimum-elements-software-bill-materials-sbom",
+          "shortDescription": {
+            "text": "Individual clauses of 2021 NTIA SBOM Minimum Elements; each taxon id is a literal spec clause number."
+          },
+          "taxa": [
+            {
+              "id": "IV",
+              "name": "Data Fields -- Supplier Name",
+              "shortDescription": {
+                "text": "2021 NTIA SBOM Minimum Elements clause IV: Data Fields -- Supplier Name."
+              }
+            }
+          ]
+        }
+      ],
+      "invocations": [
+        {
+          "executionSuccessful": true,
+          "toolExecutionNotifications": []
+        }
+      ],
+      "properties": {
+        "sbomSpec": "spdx3",
+        "sbomName": "",
+        "complianceStandard": "ntia",
+        "maturityTarget": 0,
+        "conformant": false,
+        "componentsEvaluated": true,
+        "ruleResults": true,
+        "ruleOutcomes": {
+          "BOM-NTIA2021-DF-001": "missing",
+          "BOM-NTIA2021-DF-002": "present",
+          "BOM-NTIA2021-DF-003": "missing",
+          "BOM-NTIA2021-DF-004": "present",
+          "BOM-NTIA2021-DF-005": "present",
+          "BOM-NTIA2021-DF-006": "present",
+          "BOM-NTIA2021-DF-007": "present"
+        },
+        "systemJudgedByModel": null
+      },
+      "artifacts": [
+        {
+          "location": {
+            "uri": "sentimentdemo.spdx3.json"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -62,7 +62,7 @@ curl -s http://localhost/api/v1/standards    # ntia, bsi, g7ai, cisa2026, fsct20
 ```
 
 Open <http://localhost>. The four screens are *Generate & check*, *Upload SBOM*,
-*Import SARIF* and *About*. Upload `demo/phi-tiny-random.spdx3.json` with
+*Import SARIF* and *About*. Upload `frontend/examples/phi-tiny-random.spdx3.json` with
 *G7 SBOM for AI*: expect 38 rules checked, 13 present, 25 missing, and the note
 that the system was judged by `phi-tiny-random`.
 
@@ -98,12 +98,16 @@ crash, a hang or a red error banner is.
 
 ## 4. A six-minute demo script
 
-The repository carries two small, real files in [`demo/`](demo/): an SBOM that
-Pitloom generated for a tiny Safetensors model, and the SARIF report the checker
-made from it for the G7 SBOM for AI standard.
+The repository carries real example files in
+[`frontend/examples/`](frontend/examples/), served by the page itself: five
+SBOMs on *Upload SBOM* and four SARIF logs on *Import SARIF*, each a "Try an
+example" button (see [frontend/readme.md](frontend/readme.md) for how each was
+made). The first is a small SBOM Pitloom generated for a tiny Safetensors model,
+and the SARIF log the checker made from it for the G7 SBOM for AI standard.
 
-1. **Upload SBOM.** Choose `demo/phi-tiny-random.spdx3.json`, pick *G7 SBOM for
-   AI*, run. Lumina shows the rules by cluster (Metadata, System-level
+1. **Upload SBOM.** Click the example *AI model (Safetensors)* (it picks *G7 SBOM
+   for AI*), then *Check SBOM*. The other examples are a Hugging Face model, a
+   GGUF model, a project with a fastText model, and an SPDX 2 SBOM (NTIA). Lumina shows the rules by cluster (Metadata, System-level
    properties, Models, Dataset properties, and so on), each with the value the
    SBOM holds. Point out:
    - *Present* means the property exists, not that its value is right.
@@ -117,7 +121,7 @@ made from it for the G7 SBOM for AI standard.
    *FSCT 2024* or *BSI TR-03183-2*. The same SBOM is checked again at once, with
    nothing uploaded again. Each standard asks for different things, and the page
    says which of its rules were not checked.
-3. **Import SARIF.** Choose `demo/phi-tiny-random.g7ai.sarif.json`. This is what
+3. **Import SARIF.** Click the example *G7: Safetensors model*, then *Import SARIF*. This is what
    the checker writes; Lumina shows the same result without running a check. (An
    imported log has no SBOM source tab and no per-rule evidence, because the log
    does not carry the SBOM text.)
@@ -183,7 +187,7 @@ sbomcheck -s spdx3 -c g7ai -r sarif -o model.g7ai.sarif.json model.spdx3.json
 | after updating, results look old | pip keeps an already installed package of the same version number even when the pinned commit changed: rebuild with `docker compose build --no-cache api`, or in a virtual environment run `pip install --force-reinstall --no-deps -r requirements.txt` for the two pinned lines |
 | an upload is refused as too large | the default cap is 10 MiB; raise `LUMINA_MAX_SBOM_BYTES` and nginx's `client_max_body_size` together |
 | switching the standard says "Could not switch the standard" | the SBOM was refused when sent again (for example over the size cap); the earlier result stays on screen |
-| nothing works | `docker compose down && docker compose up --build`; the files in `demo/` are the offline fallback |
+| nothing works | `docker compose down && docker compose up --build`; the files in `frontend/examples/` are the offline fallback |
 
 ## 7. The API alone, without Docker
 
@@ -196,7 +200,7 @@ pip install -r requirements.txt          # one to four minutes
 licenseid update                         # SPDX licence list; without it licence ids are not canonicalised
 uvicorn app.main:app --port 8000          # leave running; use a second terminal below
 # second terminal, from the repository root:
-cd backend && curl -s -F file=@../demo/phi-tiny-random.spdx3.json -F standard=g7ai \
+cd backend && curl -s -F file=@../frontend/examples/phi-tiny-random.spdx3.json -F standard=g7ai \
   http://localhost:8000/api/v1/sbom/check
 ```
 

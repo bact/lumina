@@ -228,7 +228,7 @@ async function mockApi(page) {
 }
 
 // ── Static server for frontend/ ──────────────────────────────────────────
-const TYPES = { ".html": "text/html", ".css": "text/css", ".svg": "image/svg+xml" };
+const TYPES = { ".html": "text/html", ".css": "text/css", ".svg": "image/svg+xml", ".json": "application/json" };
 const server = http.createServer((req, res) => {
   const rel = decodeURIComponent(req.url.split("?")[0]);
   const file = path.join(root, rel === "/" ? "index.html" : rel);
@@ -536,6 +536,27 @@ await nav("Upload SBOM");
 await chipsMatchApi("Upload SBOM");
 await noSampleData("Upload SBOM");
 await shot("3-upload");
+// Example SBOMs: each listed file exists and is a real SBOM; choosing one
+// selects it as a file and, when the standard is ready, picks its standard.
+const sbomExamples = await page.evaluate(() => EXAMPLE_SBOMS);
+for (const ex of sbomExamples) {
+  const doc = JSON.parse(fs.readFileSync(path.join(root, "examples", ex.file), "utf8"));
+  check(Boolean(doc.spdxVersion || doc["@graph"]), `Upload SBOM: example ${ex.file} is an SPDX document`);
+  await page.getByRole("button", { name: ex.label, exact: true }).click();
+  await page.waitForSelector(`text=${ex.file}`, { timeout: 5000 }).catch(() => {});
+  check(await page.getByText(ex.file, { exact: false }).first().isVisible()
+      && await page.getByRole("radio", { name: LABELS[ex.standard] }).getAttribute("aria-checked") === "true"
+      && (await page.locator("[role=status].sr-only").allInnerTexts()).some(t => t.includes(`Example chosen: ${ex.label}`) && t.includes(LABELS[ex.standard])),
+    `Upload SBOM: choosing the example ${ex.label} selects its file and standard, and says so`);
+}
+const sentBodies = [];
+page.on("request", q => { if (q.url().endsWith("/api/v1/sbom/check")) sentBodies.push(q.postData() || ""); });
+await page.getByRole("button", { name: "SPDX 2 SBOM", exact: true }).click();
+await page.getByRole("button", { name: "Check SBOM" }).click();
+await page.waitForTimeout(500);
+check(sentBodies.length === 1 && sentBodies[0].includes('filename="spdx-2.3-spec-example.spdx.json"') && sentBodies[0].includes("SPDX-2.3"),
+  "Upload SBOM: an example is uploaded as its real file");
+await page.getByRole("button", { name: "Clear" }).click();
 await page.setInputFiles("#sbom-file", { name: "big.spdx.json", mimeType: "application/json", buffer: Buffer.from("{}") });
 await page.getByRole("radio", { name: LABELS.ntia }).click();
 await page.getByRole("button", { name: "Check SBOM" }).click();
@@ -592,6 +613,22 @@ for (const [name, reason] of [
 await nav("Import SARIF");
 await noSampleData("Import SARIF");
 await shot("6-sarif");
+const sarifExamples = await page.evaluate(() => EXAMPLE_SARIFS);
+for (const ex of sarifExamples) {
+  const log = JSON.parse(fs.readFileSync(path.join(root, "examples", ex.file), "utf8"));
+  check(log.version === "2.1.0" && log.runs.length > 0, `Import SARIF: example ${ex.file} is a SARIF 2.1.0 log`);
+  await page.getByRole("button", { name: ex.label, exact: true }).click();
+  await page.waitForSelector(`text=${ex.file}`, { timeout: 5000 }).catch(() => {});
+  check(await page.getByText(ex.file, { exact: false }).first().isVisible()
+      && (await page.locator("[role=status].sr-only").allInnerTexts()).some(t => t.includes(`Example chosen: ${ex.label}`)),
+    `Import SARIF: choosing the example ${ex.label} selects its file, and says so`);
+}
+const sentLogs = [];
+page.on("request", q => { if (q.url().endsWith("/api/v1/sarif/import")) sentLogs.push(q.postData() || ""); });
+await page.getByRole("button", { name: "Import SARIF" }).last().click();
+await page.waitForTimeout(500);
+check(sentLogs.length === 1 && sentLogs[0].includes('"ruleId"'), "Import SARIF: an example is sent as its real log");
+await page.getByRole("button", { name: "Clear" }).click();
 await page.fill("#sarif-text", '{"version": "2.1.0", "runs": [{"results": [{"ruleId": "BOM-CISA2025-META-001"}]}]}');
 await page.getByRole("button", { name: "Import SARIF" }).last().click();
 await page.waitForSelector("text=Unsupported standard", { timeout: 5000 }).catch(() => {});
