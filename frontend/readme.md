@@ -135,7 +135,7 @@ still shown, by its code.
 
 Only the app shell is translated: the skip link, the language picker, the
 side navigation and the main landmark's label. Screen content is English. The
-picker offers only locales that have a catalogue (English, Deutsch, 日本語);
+picker offers only locales that have a catalogue (English, Deutsch, Français, Gaeilge, 日本語, ไทย);
 each catalogue has every shell key, and `t()` falls back to English for a key
 a catalogue lacks. `setLocale()` updates `<html lang>` and the choice is kept
 in `localStorage` when the browser allows it.

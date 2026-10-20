@@ -25,12 +25,12 @@ const { useState: _useStateA, useEffect: _useEffA, useRef: _useRefA } = React;
 //     so screen readers convey current state and afford navigation.
 //   - aria-haspopup / aria-expanded / aria-controls hook the listbox.
 //   - ESC closes and returns focus to the button; click-outside closes.
-//   - Each option carries lang="..." so AT speaks it in the right voice.
+//   - Each option's native name carries lang="..." and its English name lang="en", so AT speaks each in the right voice; the option's name is its visible text (WCAG 2.5.3).
 
 // English names alongside the native labels -- gives screen readers and
 // non-speakers a second anchor for each option. One entry per locale in
 // window.LUMINA_I18N.LOCALES.
-const LUMINA_LANG_ENGLISH = { en: "English", de: "German", ja: "Japanese" };
+const LUMINA_LANG_ENGLISH = { en: "English", de: "German", fr: "French", ga: "Irish", ja: "Japanese", th: "Thai" };
 
 function LanguageSwitcher() {
   const { locale, setLocale, t } = useLocale();
@@ -105,8 +105,6 @@ function LanguageSwitcher() {
                 role="option"
                 tabIndex={0}
                 aria-selected={sel}
-                lang={l.code}
-                aria-label={`${l.label} -- ${eng}`}
                 onClick={() => { setLocale(l.code); setOpen(false); buttonRef.current?.focus(); }}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setLocale(l.code); setOpen(false); buttonRef.current?.focus(); } }}
                 style={{
@@ -117,8 +115,10 @@ function LanguageSwitcher() {
                 onMouseEnter={(e) => { if (!sel) e.currentTarget.style.background = "var(--paper-2)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = sel ? "var(--paper-2)" : "transparent"; }}>
                 <div>
-                  <div style={{ fontSize: 13, color: "var(--ink)", fontWeight: sel ? 500 : 400 }}>{l.label}</div>
-                  <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 2, fontFamily: "var(--font-sans)" }}>{eng}</div>
+                  <div lang={l.code} style={{ fontSize: 13, color: "var(--ink)", fontWeight: sel ? 500 : 400 }}>{l.label}</div>
+                  {eng !== l.label && (
+                    <div lang="en" style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 2, fontFamily: "var(--font-sans)" }}>{eng}</div>
+                  )}
                 </div>
                 {sel && <Icon name="check" size={14} style={{ color: "var(--shu)" }} />}
               </div>
