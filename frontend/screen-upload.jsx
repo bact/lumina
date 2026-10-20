@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 */
 // Lumina frontend -- Upload SBOM (Mode 2) and Import SARIF (Mode 3) screens.
 //
-//   POST /api/v1/sbom/check    multipart: file + regulation -> SbomCheckResponse
+//   POST /api/v1/sbom/check    multipart: file + standard -> SbomCheckResponse
 //   POST /api/v1/sarif/import  SARIF 2.1.0 JSON body        -> SbomCheckResponse
 //
 // Both render the result with ArtifactResult (screen-conformance.jsx) and show
@@ -53,7 +53,20 @@ function useCheck() {
     }
   }
   const reset = () => { setPhase("idle"); setResult(null); setErrorMsg(""); };
-  return { phase, result, errorMsg, start, reset };
+  // Check the SBOM of `previous` again; if that fails, `previous` stays on
+  // screen with the reason above it. Returns whether the new check succeeded.
+  async function recheck(previous, request, failureText) {
+    setPhase("running"); setResult(null); setErrorMsg("");
+    try {
+      setResult(await request()); setPhase("done");
+      return true;
+    } catch (err) {
+      setResult(previous); setPhase("done");
+      setErrorMsg(`${failureText}\n${String(err.message || err)}`);
+      return false;
+    }
+  }
+  return { phase, result, errorMsg, start, reset, recheck };
 }
 
 function CheckOutcome({ check }) {
@@ -66,6 +79,7 @@ function CheckOutcome({ check }) {
         </div>
       )}
       {check.phase === "error" && <ErrorCard>{check.errorMsg}</ErrorCard>}
+      {check.phase === "done" && check.errorMsg && <ErrorCard title="Could not switch the standard">{check.errorMsg}</ErrorCard>}
       {check.phase === "done" && check.result && <ArtifactResult result={check.result} />}
     </>
   );
@@ -73,28 +87,40 @@ function CheckOutcome({ check }) {
 
 // ─── Upload SBOM ───────────────────────────────────────────────────────
 function UploadScreen() {
-  const regs = useRegulations();
-  const [regId, setRegId] = useSelectedRegulation(regs.regulations);
+  const standardList = useStandards();
+  const [standardId, setStandardId] = useSelectedStandard(standardList.standards);
   const [file, setFile] = _useSU(null);
   const check = useCheck();
   const running = check.phase === "running";
 
   function submit() {
-    if (!file || !regId) return;
+    if (!file || !standardId) return;
     const form = new FormData();
     form.append("file", file, file.name);
-    form.append("regulation", regId);
+    form.append("standard", standardId);
     check.start(() => postForResult("/api/v1/sbom/check", { body: form }));
   }
 
   return (
     <ScreenFrame eyebrow="Upload SBOM" title="Check an SBOM file"
-      intro="Choose an SPDX 2 or SPDX 3 SBOM file and a regulation. The server checks it with ntia-conformance-checker; the file is deleted after the check.">
-      <RegulationPicker state={regs} value={regId} onChange={(id) => { if (!running) { setRegId(id); check.reset(); } }} disabled={running} />
+      intro="Choose an SPDX 2 or SPDX 3 SBOM file and a minimum elements standard. The server checks it with ntia-conformance-checker; the file is deleted after the check. You can switch the standard afterwards without uploading again.">
+      <StandardPicker state={standardList} value={standardId} disabled={running}
+        onChange={(id) => {
+          if (running || id === standardId) return;
+          setStandardId(id);
+          // A finished result is checked again against the new standard from its
+          // own SBOM text; the file is not uploaded again.
+          if (check.phase === "done" && canRecheck(check.result)) {
+            const previous = check.result, previousId = standardId;
+            check.recheck(previous, () => recheckSbom(previous, id),
+              `Could not check this SBOM against ${standardLabel(id)}; the earlier result is shown.`)
+              .then(ok => { if (!ok) setStandardId(previousId); });
+          } else check.reset();
+        }} />
       <FilePicker id="sbom-file" label="Choose SBOM file" file={file} disabled={running}
         onChange={(f) => { setFile(f); check.reset(); }} />
       <div>
-        <Button variant="primary" icon={running ? "loader" : "play"} onClick={submit} disabled={running || !file || !regId}>
+        <Button variant="primary" icon={running ? "loader" : "play"} onClick={submit} disabled={running || !file || !standardId}>
           {running ? "Checking…" : "Check SBOM"}
         </Button>
       </div>
@@ -123,7 +149,7 @@ function SarifScreen() {
 
   return (
     <ScreenFrame eyebrow="Import SARIF" title="Read a SARIF conformance log"
-      intro="Choose or paste a SARIF 2.1.0 log made by a conformance checker. Nothing is re-checked: Lumina reads the log's results. The regulation is taken from the log's rule ids.">
+      intro="Choose or paste a SARIF 2.1.0 log made by a conformance checker. Nothing is re-checked: Lumina reads the log's results. The standard is taken from the log's rule ids.">
       <FilePicker id="sarif-file" label="Choose SARIF file" accept=".sarif,.json,application/json" file={file} disabled={running}
         onChange={(f) => { setFile(f); check.reset(); }} />
       <div>

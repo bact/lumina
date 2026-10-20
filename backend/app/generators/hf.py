@@ -7,8 +7,8 @@
 
 Pitloom reads HF metadata via the HF API and does **not** download model files,
 so the host stays light on disk and bandwidth.  ``model_source`` accepts a full
-URL, a URL with a tree path, or a bare model id.  HF auth is optional (lower quota
-without a token, acceptable for now).
+URL, a URL with a tree path, or a bare model id.  HF auth is optional: without a
+token the Hub allows fewer requests, and ``HF_TOKEN`` raises the limit.
 """
 
 from __future__ import annotations

@@ -4,7 +4,7 @@
 
 Lumina -- web-based SBOM (Software Bill of Materials) conformance checker.
 Takes an SBOM (uploaded, or generated from a Git or Hugging Face URL) or a
-SARIF log, and shows per rule of the chosen regulation whether the SBOM has
+SARIF log, and shows per rule of the chosen standard whether the SBOM has
 the property the rule asks for.
 
 Full design rationale: `docs/design.md`.
@@ -37,6 +37,8 @@ lumina/
 ├── docker-compose.override.yml Dev overrides — auto-loaded; nginx target: dev,
 │                               mounts frontend/ at /workspace/frontend
 ├── .dockerignore               Keeps caches/git/docs out of Docker build context
+├── DEMO.md                     Demo guide: set up, warm up, script, troubleshooting
+├── demo/                       Real demo files: an SBOM and its G7 AI SARIF report
 ├── proxy/                      Reverse-proxy service (nginx)
 │   ├── Dockerfile              Multi-stage: dev (config only) / prod (self-contained)
 │   ├── prod.conf               Prod: root /app (frontend baked in)
@@ -79,35 +81,41 @@ every check and `run_checker` in `backend/app/conformance.py` parses its SARIF.
 NTIA, G7 AI SBOM, CISA 2026, FSCT 2024 and BSI come from the checker, all
 with per-rule results. MOF is not supported (HTTP 501).
 
-**CHECKER_STANDARDS** in `backend/app/conformance.py` maps a Lumina regulation
-id to the checker's standard id; add a regulation there once the checker
+**CHECKER_STANDARDS** in `backend/app/conformance.py` maps a Lumina standard
+id to the checker's own standard id; add a standard there once the checker
 supports it.
 
 Do not change the `SbomCheckResponse` models (`ConformanceResult`, `RuleResult`,
-`FieldGap`, `CheckRun`, `Notification`) in `conformance.py` without updating
+`Evidence`, `FieldGap`, `CheckRun`, `Notification`, `SbomSource` in
+`conformance.py`; `LogLine` in `generation_log.py`) without updating
 the frontend that reads them (`ArtifactResult` in `frontend/result-view.jsx`,
 `RuleClusters` and `RuleEvidence` in `frontend/rule-evidence.jsx`,
 `SbomSource` in `frontend/sbom-source.jsx`, `GeneratorLog` in
 `frontend/generator-log.jsx`) and the mocked responses in
 `scripts/ui-smoke.mjs`.
 
-### Adding a regulation
+### Adding a standard
+
+(A *standard* is a minimum elements standard: NTIA, BSI TR-03183-2, G7 SBOM for
+AI, ... In code and the API it is `standard` / `standard_id`; the user-facing
+text spells it out as "minimum elements standard". The checker has its own
+standard ids; `CHECKER_STANDARDS` maps Lumina's to the checker's.)
 
 The long-term goal is to cover EU CRA, EO 14028, FDA PMP, ISO/IEC 5230, and
-more. The frontend lists exactly what `GET /api/v1/regulations` returns, so a
-regulation appears in the UI only once the backend knows it. To add one:
+more. The frontend lists exactly what `GET /api/v1/standards` returns, so a
+standard appears in the UI only once the backend knows it. To add one:
 
-1. Extend the `RegulationId` Literal and `CHECKER_STANDARDS` in
-   `backend/app/conformance.py`. `GET /api/v1/regulations` then lists it with
-   `ready: true`; an id in `RegulationId` but not in `CHECKER_STANDARDS` is
+1. Extend the `StandardId` Literal and `CHECKER_STANDARDS` in
+   `backend/app/conformance.py`. `GET /api/v1/standards` then lists it with
+   `ready: true`; an id in `StandardId` but not in `CHECKER_STANDARDS` is
    listed with `ready: false` and cannot be picked in the UI.
 2. Add its edition-keyed spec code (the `SPEC` + `YEAR` segment of its rule
-   ids, ontology form `BOM-[SPEC][YEAR]-...`) to `_SPEC_TO_REGULATION`, and the
-   checker's standard id to `_STANDARD_TO_REGULATION`, in
+   ids, ontology form `BOM-[SPEC][YEAR]-...`) to `_SPEC_TO_STANDARD`, and the
+   checker's standard id to `_CHECKER_TO_STANDARD`, in
    `backend/app/sarif_ingest.py`; both must name the exact edition.
 3. In `frontend/screen-conformance.jsx`, give it a label, a one-line
    description of what the check covers and a source link in
-   `IMPORT_REGULATIONS`, and name its rule clusters (the cluster segment of
+   `STANDARD_INFO`, and name its rule clusters (the cluster segment of
    its rule ids) in `RULE_CLUSTERS`. Without them the UI still works but shows
    the bare id and cluster codes.
 
@@ -154,8 +162,8 @@ regulation appears in the UI only once the backend knows it. To add one:
 - Icon set: Lucide, vendored in `frontend/vendor/` (1.5px stroke). Do not substitute other icon sets
   without updating the `Icon` component in `components.jsx`.
 - Show only what the API returns. Labels, descriptions and links for
-  regulation ids live in one table (`IMPORT_REGULATIONS`); never hard-code a
-  list of regulations, rules or results.
+  standard ids live in one table (`STANDARD_INFO`); never hard-code a
+  list of standards, rules or results.
 - Show a failed request's `detail` text (`apiErrorMessage` in
   `screen-conformance.jsx`); never replace it with a generic message.
 - Only the app shell is translated (`i18n.js`). Offer a locale in the picker
@@ -165,11 +173,15 @@ regulation appears in the UI only once the backend knows it. To add one:
 
 `scripts/ui-smoke.mjs` serves `frontend/`, mocks every `/api/` route, visits
 every side-nav screen in headless Chromium and fails on a page or console
-error, on an old sample-data string, when the regulation chips differ from the
-mocked `GET /api/v1/regulations`, when a refused request's `detail` is not
+error, on an old sample-data string, when the standard chips differ from the
+mocked `GET /api/v1/standards`, when a refused request's `detail` is not
 shown, when the per-rule BSI result lacks its DOC and COMP clusters and counts,
-when G7 SBOM for AI is not preselected, or when the SBOM download, rule
-evidence, Show in SBOM or the windowed 50,000-line source view break. It needs Node 18+ and
+when G7 SBOM for AI is not preselected, when the SBOM download, rule values and
+evidence, Show in SBOM, the Generator log tab or the windowed 50,000-line source
+view break, when switching the standard does not re-check the same SBOM (and keep
+the generator and its log), when a failed switch loses the earlier result, or when
+a finished check or a chosen example is not announced, or when the
+"Nothing was checked" banner does not give its reason. It needs Node 18+ and
 a `node_modules` directory (outside the repository; never commit it) with
 `playwright-core`. The page's scripts are vendored in `frontend/vendor/` (see
 its README), so the test uses no network and fails on a request to any other

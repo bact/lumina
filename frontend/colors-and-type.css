@@ -57,7 +57,7 @@ SPDX-License-Identifier: Apache-2.0
   --ochre-soft:   #F1E5C9;
   --ochre-ink:    #4F3A14;
 
-  --indigo:       #2F4A6B;  /* INFO / regulation pointer (rare use) */
+  --indigo:       #2F4A6B;  /* INFO / standard pointer (rare use) */
   --indigo-soft:  #DCE3EC;
   --indigo-ink:   #15263C;
 
@@ -377,6 +377,13 @@ a:hover { text-decoration-color: var(--shu); }
   margin: var(--s-2) 0 2px 124px; padding: 10px 12px;
   background: var(--paper); border: 1px solid var(--border-soft); border-radius: var(--r-2);
 }
+.rule-values { list-style: none; margin: 3px 0 0; padding: 0; font-size: 13px; line-height: 1.45; color: var(--ink); }
+.rule-values li {
+  overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+}
+.rule-values .rule-values-more { color: var(--ink-3); font-size: 12px; }
+.rule-details-note { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-2); max-width: 70ch; }
 .rule-details-empty { font-size: 12.5px; color: var(--ink-3); }
 .evidence + .evidence { border-top: 1px solid var(--border-soft); padding-top: var(--s-2); }
 .evidence-items { margin: 6px 0 0; display: flex; flex-direction: column; gap: 3px; }

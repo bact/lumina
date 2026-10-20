@@ -3,7 +3,7 @@
 # SPDX-FileType: SOURCE
 # SPDX-License-Identifier: Apache-2.0
 
-"""API tests: regulation support, upload cap and job submission."""
+"""API tests: standard support, upload cap and job submission."""
 
 from __future__ import annotations
 
@@ -25,11 +25,11 @@ def client_fixture() -> TestClient:
     return TestClient(main.app)
 
 
-def test_regulations_report_what_the_checker_supports(client: TestClient) -> None:
+def test_standards_report_what_the_checker_supports(client: TestClient) -> None:
     """Ntia, bsi, g7ai, cisa2026 and fsct2024 are ready; mof is not."""
     ready = {
         r["id"]: r["ready"]
-        for r in client.get("/api/v1/regulations").json()["regulations"]
+        for r in client.get("/api/v1/standards").json()["standards"]
     }
     assert ready == {
         "ntia": True,
@@ -47,7 +47,7 @@ def test_g7_upload_returns_per_rule_outcomes(client: TestClient) -> None:
         response = client.post(
             "/api/v1/sbom/check",
             files={"file": ("x.json", f)},
-            data={"regulation": "g7ai"},
+            data={"standard": "g7ai"},
         )
     assert response.status_code == 200
     assert len(response.json()["conformance"]["rules"]) == 81
@@ -60,7 +60,7 @@ def test_upload_returns_the_sbom_and_evidence(client: TestClient) -> None:
     response = client.post(
         "/api/v1/sbom/check",
         files={"file": ("dir\\my sbom.json", raw)},
-        data={"regulation": "ntia"},
+        data={"standard": "ntia"},
     )
     body = response.json()
     assert body["sbom"]["filename"] == "my sbom.json"
@@ -69,17 +69,17 @@ def test_upload_returns_the_sbom_and_evidence(client: TestClient) -> None:
     assert all(r["evidence"] for r in body["conformance"]["rules"])
 
 
-def test_unsupported_regulation_upload_is_501(client: TestClient) -> None:
+def test_unsupported_standard_upload_is_501(client: TestClient) -> None:
     """MOF is refused for an upload."""
     response = client.post(
         "/api/v1/sbom/check",
         files={"file": ("x.json", b"{}")},
-        data={"regulation": "mof"},
+        data={"standard": "mof"},
     )
     assert response.status_code == 501
 
 
-def test_unsupported_regulation_artifact_is_refused_before_any_work(
+def test_unsupported_standard_artifact_is_refused_before_any_work(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """MOF is refused at submit time: nothing is queued, nothing is cloned."""
@@ -87,7 +87,7 @@ def test_unsupported_regulation_artifact_is_refused_before_any_work(
     monkeypatch.setattr(main._jobs, "enqueue", lambda *a, **k: queued.append(k))  # pylint: disable=protected-access
     response = client.post(
         "/api/v1/artifact/check",
-        json={"artifact_url": "https://github.com/o/r", "regulation_id": "mof"},
+        json={"artifact_url": "https://github.com/o/r", "standard_id": "mof"},
     )
     assert response.status_code == 501
     assert not queued

@@ -22,8 +22,9 @@ Flow:
 4. The response carries the generated SBOM as ``sbom`` (read before the file
    is deleted) and, per rule, the evidence in it.
 5. What Pitloom logs at WARNING or above while it generates is added to the
-   result as ``pitloom.log`` notifications, and ``CheckRun.generator`` names
-   the Pitloom version.
+   result as ``pitloom.log`` notifications, ``CheckRun.generator`` names the
+   Pitloom version, and ``generation_log`` lists everything the generator side
+   did (:mod:`app.generation_log`).
 
 A generation failure is returned as a *degraded* response (zeroed conformance,
 ``execution_successful=False``, one ``error`` notification) rather than raised, so
@@ -49,16 +50,16 @@ from .conformance import (
     CheckRun,
     ConformanceResult,
     Notification,
-    RegulationId,
     SbomCheckResponse,
+    StandardId,
     run_checker,
 )
+from .generation_log import GenerationLog, hide_temp_dir, note, recording
 from .generators import (
     GenerationError,
     generate_from_git,
     generate_from_huggingface,
 )
-from .generation_log import GenerationLog, hide_temp_dir, note, recording
 from .sbom_source import load_sbom
 
 logger = logging.getLogger(__name__)
@@ -190,9 +191,9 @@ def _pitloom_version() -> str:
 
 
 def generate_and_check(
-    artifact_url: str, regulation_id: RegulationId = "ntia"
+    artifact_url: str, standard_id: StandardId = "ntia"
 ) -> SbomCheckResponse:
-    """Generate an SBOM for *artifact_url* and check it against *regulation_id*."""
+    """Generate an SBOM for *artifact_url* and check it against *standard_id*."""
     fd, sbom_path = tempfile.mkstemp(prefix="lumina-sbom-", suffix=".spdx3.json")
     os.close(fd)
     warnings: list[Notification] = []
@@ -212,7 +213,7 @@ def generate_and_check(
                 exc.message,
             )
             response = _failure_response(
-                regulation_id,
+                standard_id,
                 exc.descriptor_id,
                 hide_temp_dir(exc.message),
             )
@@ -220,7 +221,7 @@ def generate_and_check(
             return response
         with open(sbom_path, encoding="utf-8", errors="replace") as sbom_file:
             loaded = load_sbom(sbom_filename(artifact_url), sbom_file.read())
-        response = run_checker(sbom_path, regulation_id, loaded)
+        response = run_checker(sbom_path, standard_id, loaded)
         response.run.generator = f"pitloom {_pitloom_version()}"
         response.run.notifications.extend(warnings)
         response.generation_log = log.finish()
@@ -259,13 +260,13 @@ def _generate(artifact_url: str, sbom_path: str) -> None:
 
 
 def _failure_response(
-    regulation_id: RegulationId, descriptor_id: str, message: str
+    standard_id: StandardId, descriptor_id: str, message: str
 ) -> SbomCheckResponse:
     """A degraded response carrying the generation failure as a notification."""
     return SbomCheckResponse(
         # Lumina itself produced this (empty) result -- the external checker
         # never ran, so don't claim it as the source.
-        conformance=ConformanceResult.nothing_checked(regulation_id, "lumina-internal"),
+        conformance=ConformanceResult.nothing_checked(standard_id, "lumina-internal"),
         run=CheckRun(
             tool_name="lumina",
             execution_successful=False,

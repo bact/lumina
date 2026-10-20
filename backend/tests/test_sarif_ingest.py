@@ -29,7 +29,7 @@ def test_conformant_log_no_gaps() -> None:
     """A clean SARIF log yields zero gaps and full present/total counts."""
     response = parse_sarif(_load("conformant.sarif.json"))
     conf = response.conformance
-    assert conf.regulation_id == "ntia"
+    assert conf.standard_id == "ntia"
     assert conf.source == "ntia-conformance-checker"
     assert conf.missing == 0
     assert conf.gaps == []
@@ -176,7 +176,7 @@ def test_ontology_rule_ids_identify_the_standard() -> None:
     log = _load("ntia_ontology_ids.sarif.json")
     del log["runs"][0]["properties"]["complianceStandard"]  # fall back to the id
     conf = parse_sarif(log).conformance
-    assert conf.regulation_id == "ntia"
+    assert conf.standard_id == "ntia"
     assert conf.source == "ntia-conformance-checker"
     assert {g.field_key for g in conf.gaps} == {"supplier"}
 
@@ -184,7 +184,7 @@ def test_ontology_rule_ids_identify_the_standard() -> None:
 def test_counts_follow_rule_outcomes() -> None:
     """Every decided rule counts, sub-rules included; not-applicable ones do not."""
     conf = parse_sarif(_load("g7ai_missing_model_info.sarif.json")).conformance
-    assert conf.regulation_id == "g7ai"
+    assert conf.standard_id == "g7ai"
     assert (conf.total, conf.present, conf.missing) == (56, 50, 6)
     assert {g.field_key for g in conf.gaps} == {
         "model_hash_algorithm_missing",
@@ -299,11 +299,11 @@ def _log_of_rule(rule_id: str, standard: str | None) -> dict[str, Any]:
 def test_the_checkers_fsct3_id_is_fsct_2024() -> None:
     """The standard name the checker uses for FSCT 2024 is mapped, not NTIA."""
     log = _log_of_rule("BOM-FSCT2024-COMP-001", "fsct3")
-    assert parse_sarif(log).conformance.regulation_id == "fsct2024"
+    assert parse_sarif(log).conformance.standard_id == "fsct2024"
 
 
 @pytest.mark.parametrize(
-    ("rule_id", "regulation"),
+    ("rule_id", "standard"),
     [
         ("BOM-CISA2026-META-001", "cisa2026"),
         ("BOM-FSCT2024-COMP-001", "fsct2024"),
@@ -312,11 +312,11 @@ def test_the_checkers_fsct3_id_is_fsct_2024() -> None:
     ],
 )
 def test_rule_id_names_the_standard_with_its_edition(
-    rule_id: str, regulation: str
+    rule_id: str, standard: str
 ) -> None:
     """The edition is part of the id: only a supported edition is recognised."""
     log = _log_of_rule(rule_id, None)
-    assert parse_sarif(log).conformance.regulation_id == regulation
+    assert parse_sarif(log).conformance.standard_id == standard
 
 
 @pytest.mark.parametrize(
@@ -341,7 +341,7 @@ def test_rule_id_names_the_standard_with_its_edition(
 def test_unsupported_standard_is_reported_not_guessed(
     rule_id: str, standard: str | None
 ) -> None:
-    """No fallback to another regulation: the log is refused, naming the spec."""
+    """No fallback to another standard: the log is refused, naming the spec."""
     with pytest.raises(SarifIngestError, match="Unsupported standard"):
         parse_sarif(_log_of_rule(rule_id, standard))
 

@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 # ── Output schema ─────────────────────────────────────────────────────────
 
-RegulationId = Literal["ntia", "bsi", "g7ai", "cisa2026", "fsct2024", "mof"]
+StandardId = Literal["ntia", "bsi", "g7ai", "cisa2026", "fsct2024", "mof"]
 FieldLevel = Literal["missing", "unverified"]
 CheckerSource = Literal[
     "ntia-conformance-checker",
@@ -101,12 +101,20 @@ class RuleResult(BaseModel):
     for an SPDX 3 JSON SBOM checked by Lumina."""
     evidence_more: int = 0
     """How many more evidence entries were left out."""
+    applies_to: str = ""
+    """The checker's kind of element the rule judges (``system``, ``ai_model``,
+    ``dataset``, ``component``); empty for a document-level rule, or when the
+    rule's sub-checks judge several kinds.  Set with the evidence."""
+    combine: str = ""
+    """How the rule combines its elements or sub-checks: empty (every judged
+    element must have the property), ``any-of`` or ``all-of`` (a composite
+    rule over its sub-rules), or ``self-only``.  Set with the evidence."""
 
 
 class ConformanceResult(BaseModel):
     """What the checker found: conformance gaps and counts."""
 
-    regulation_id: RegulationId
+    standard_id: StandardId
     source: CheckerSource
     total: int
     present: int
@@ -126,11 +134,11 @@ class ConformanceResult(BaseModel):
 
     @classmethod
     def nothing_checked(
-        cls, regulation_id: RegulationId, source: CheckerSource
+        cls, standard_id: StandardId, source: CheckerSource
     ) -> ConformanceResult:
         """A result with no counts and no findings: nothing was checked."""
         return cls(
-            regulation_id=regulation_id,
+            standard_id=standard_id,
             source=source,
             total=0,
             present=0,
@@ -231,9 +239,9 @@ class SbomCheckResponse(BaseModel):
 
 # ── Checker ───────────────────────────────────────────────────────────────
 
-# Lumina regulation id -> ntia-conformance-checker standard id.
-# A regulation missing here is not supported by the checker.
-CHECKER_STANDARDS: dict[RegulationId, str] = {
+# Lumina standard id -> ntia-conformance-checker standard id.
+# A standard missing here is not supported by the checker.
+CHECKER_STANDARDS: dict[StandardId, str] = {
     "ntia": "ntia",
     "bsi": "bsi",
     "g7ai": "g7ai",
@@ -243,9 +251,9 @@ CHECKER_STANDARDS: dict[RegulationId, str] = {
 
 
 def run_checker(
-    sbom_path: str, regulation_id: RegulationId, loaded: LoadedSbom | None = None
+    sbom_path: str, standard_id: StandardId, loaded: LoadedSbom | None = None
 ) -> SbomCheckResponse:
-    """Check *sbom_path* against *regulation_id* with ntia-conformance-checker.
+    """Check *sbom_path* against *standard_id* with ntia-conformance-checker.
 
     The checker's SARIF log (without the embedded SBOM) is parsed by
     :func:`sarif_ingest.parse_sarif`, the same parser as ``POST /api/v1/sarif/import``.
@@ -256,13 +264,14 @@ def run_checker(
     never fails the check).
 
     Raises:
-        NotImplementedError: the checker does not support *regulation_id*.
+        NotImplementedError: the checker does not support *standard_id*.
         ValueError: the SPDX version of the SBOM cannot be determined.
     """
-    standard = CHECKER_STANDARDS.get(regulation_id)
-    if standard is None:
+    checker_standard = CHECKER_STANDARDS.get(standard_id)
+    if checker_standard is None:
         raise NotImplementedError(
-            f"Regulation '{regulation_id}' is not supported by ntia-conformance-checker."
+            f"Minimum elements standard '{standard_id}' is not supported by "
+            "ntia-conformance-checker."
         )
     # Imported here to keep app start-up light and to avoid a cycle with sarif_ingest.
     # pylint: disable=import-outside-toplevel,cyclic-import
@@ -276,7 +285,7 @@ def run_checker(
     if version is None:
         raise ValueError("Could not determine the SPDX version of the SBOM.")
     sbom_spec = "spdx3" if version[0] == 3 else "spdx2"
-    checker = SbomChecker(sbom_path, compliance=standard, sbom_spec=sbom_spec)
+    checker = SbomChecker(sbom_path, compliance=checker_standard, sbom_spec=sbom_spec)
     response = parse_sarif(checker.output_sarif(embed_sbom=False))
     if loaded is not None:
         response.sbom = loaded.source

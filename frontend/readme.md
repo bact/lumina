@@ -11,8 +11,8 @@ Static web frontend for the Lumina SBOM conformance checker: React 18 and
 Babel run in the browser, so there is no build step. nginx serves it and
 proxies `/api/` to the backend; every screen needs that API.
 
-The UI shows only what the API returns. The regulation list comes from
-`GET /api/v1/regulations`, every result is an `SbomCheckResponse`, and a
+The UI shows only what the API returns. The standard list comes from
+`GET /api/v1/standards`, every result is an `SbomCheckResponse`, and a
 refused request shows the server's own error `detail`.
 
 ## Screens
@@ -20,15 +20,18 @@ refused request shows the server's own error `detail`.
 | Screen | API | What it does |
 | - | - | - |
 | **Generate & check** (default) | `POST /api/v1/artifact/check`, then `GET /api/v1/jobs/{job_id}` | Paste a Git repository or Hugging Face Hub URL; the server generates an SPDX 3 SBOM with Pitloom and checks it. Polls the job every 2.5 s. |
-| **Upload SBOM** | `POST /api/v1/sbom/check` (multipart `file` + `regulation`) | Check an SBOM file you have. |
+| **Upload SBOM** | `POST /api/v1/sbom/check` (multipart `file` + `standard`) | Check an SBOM file you have. |
 | **Import SARIF** | `POST /api/v1/sarif/import` (the SARIF JSON as the body) | Read a SARIF 2.1.0 log from a file or pasted text; nothing is re-checked. |
-| **About** | `GET /api/v1/regulations` | Dependencies, licence, and the regulations the API lists with what each check covers. |
+| **About** | `GET /api/v1/standards` | Dependencies, licence, and the standards the API lists with what each check covers. |
 
 The three check screens render the result with the same `ArtifactResult`
 view: counts, per-rule outcomes grouped by cluster, gaps and run notifications.
 It shows no counts, and says why, when the SBOM could not be checked
 (`execution_successful` is false) and when no rule applies
-(`sbom.nothing-applies`). The
+(`sbom.nothing-applies`): the banner gives the reason, the checker's own message
+when it says why, else "<standard> is checked on SPDX 3 SBOMs only; this SBOM is
+SPDX 2" for an SPDX 2 JSON SBOM under a standard whose `STANDARD_INFO` entry
+lists `sbomSpecs: ["spdx3"]`, else a generic line. It is announced too. The
 "judged by model" note appears only for G7 AI, and the *Unverified* tile only
 when that count is above 0.
 
@@ -39,11 +42,18 @@ When the response carries the checked SBOM (`sbom`: `filename`, `format`,
 
 - **Download SBOM** next to the tabs: saves `sbom.text` (the original bytes)
   as `sbom.filename` through a Blob URL, so it works offline.
-- **Tabs** "Result" | "SBOM source" (WAI-ARIA tabs: arrow keys, Home, End).
+- **Tabs** "Result" | "SBOM source" (WAI-ARIA tabs: arrow keys, Home, End), plus
+  "Generator log" when the response carries `generation_log` (a generated SBOM,
+  or a failed generation, which has no SBOM source tab).
+- **Rule rows** show, under the title, the value the SBOM holds for the
+  element (up to three, from the `items` of the elements that have it; prefixed
+  with the element's name when the rule judged several), so the default view
+  needs no click. A hint such as "1 of 2 root packages lacks it" and, in the
+  details, a plain sentence say why a rule is Present or Missing.
 - **Rule details**: each rule row has a *Show more / Show less* button
   (`aria-expanded`) and the result an *Expand all / Collapse all* button. The
-  details list `rule.evidence`: element name, id and type, *Found* or
-  *Absent*, and its `items` (key: value), then "and N more" for
+  details list `rule.evidence`: element name, id and type, *Has it* or
+  *Lacks it*, and its `items` (key: value), then "and N more" for
   `evidence_more`. A rule without evidence says so.
 - **SBOM source**: `sbom.display` with line numbers, indent guides and JSON highlighting (highlight.js, JSON grammar only, vendored)
   (keys, strings, numbers, literals, punctuation; `--syntax-*` tokens), done
@@ -59,19 +69,23 @@ When the response carries the checked SBOM (`sbom`: `filename`, `format`,
   in the same session jumps too). *Back to result* returns to the rule's
   toggle.
 
-A response without `sbom` (older servers, a SARIF log with no JSON SBOM)
-shows the result alone: no tabs, no download, no rule toggles.
+A response with neither `sbom` nor `generation_log` (a SARIF log with no JSON
+SBOM) shows the result alone: no tabs, no download, no rule toggles.
 
-## Regulations
+## Minimum elements standards
 
-The regulation chips list exactly what `GET /api/v1/regulations` returns, in
-its order. A regulation with `ready: false` is shown but cannot be selected.
-*G7 SBOM for AI* (`DEFAULT_REGULATION`, `g7ai`) is preselected when the API
+(*Standard* means a minimum elements standard; the UI spells that out.)
+The standard chips list exactly what `GET /api/v1/standards` returns, in
+its order. An entry with `ready: false` is shown but cannot be selected. Picking another
+standard while a result with `sbom.text` is shown checks that SBOM again
+(`recheckSbom`, `POST /api/v1/sbom/check`) with no new generation or upload, and
+keeps the generator, its log and warnings of the first run.
+*G7 SBOM for AI* (`DEFAULT_STANDARD`, `g7ai`) is preselected when the API
 lists it as ready; otherwise the first ready one is.
 Labels, a one-line description of what each check covers, and a source link
-come from one table, `IMPORT_REGULATIONS` in `screen-conformance.jsx`; an id
+come from one table, `STANDARD_INFO` in `screen-conformance.jsx`; an id
 missing from it is shown by its id. `RULE_CLUSTERS` in the same file names and
-orders the rule clusters of each regulation; a cluster missing from it is
+orders the rule clusters of each standard; a cluster missing from it is
 still shown, by its code.
 
 ## Files
@@ -82,15 +96,16 @@ still shown, by its code.
 | `colors-and-type.css` | Design tokens: CSS variables for colours, typography, spacing, motion. |
 | `assets/` | Logo SVGs. |
 | `i18n.js` | `window.LUMINA_I18N`: locales, catalogues, `t()`. |
-| `components.jsx` | `Icon`, `Logo`, `Button`, `StatusChip`, `RegTag`, `Card`, `MarginNote`, `TextField`, `Eyebrow`, `Mono`, `SummaryTile`, `ErrorCard`, `useLocale`. |
+| `components.jsx` | `Icon`, `Logo`, `Button`, `StatusChip`, `StandardTag`, `Card`, `MarginNote`, `TextField`, `Eyebrow`, `Mono`, `SummaryTile`, `ErrorCard`, `useLocale`. |
 | `app-shell.jsx` | `TopBar` (logo, `LanguageSwitcher`), `SideNav` and `NAV_SECTIONS`, the side-nav items. |
-| `screen-conformance.jsx` | `IMPORT_REGULATIONS`, `DEFAULT_REGULATION`, `RULE_CLUSTERS`, the API helpers (`apiErrorMessage`, `postForResult`, `useRegulations`), `RegulationPicker`, `ScreenFrame` and the Generate & check screen (`ImportScreen`). |
+| `screen-conformance.jsx` | `STANDARD_INFO`, `DEFAULT_STANDARD`, `RULE_CLUSTERS`, the API helpers (`apiErrorMessage`, `postForResult`, `useStandards`), `StandardPicker`, `ScreenFrame` and the Generate & check screen (`ImportScreen`). |
 | `sbom-source.jsx` | `SbomSource` (windowed, highlighted source view), `DownloadSbomButton`, `downloadSbom`, the per-line highlight.js to React conversion. |
 | `generator-log.jsx` | `GeneratorLog`: the "Generator log" tab (`generation_log`, monospace, copy button), shown for a generated SBOM or a failed generation. |
 | `rule-evidence.jsx` | `RuleClusters` (per-rule outcomes by cluster, with the details toggles) and `RuleEvidence`. |
 | `result-view.jsx` | `ArtifactResult` (tabs, download, Show in SBOM wiring), `ResultTabs`, `RunLine`. |
 | `screen-upload.jsx` | Upload SBOM (`UploadScreen`) and Import SARIF (`SarifScreen`). |
 | `screen-about.jsx` | About (`AboutScreen`). |
+| `vendor/` | React, React DOM, Babel, Lucide and highlight.js (JSON grammar), each with its licence; see `vendor/README.md`. |
 
 ## Internationalization
 
@@ -111,10 +126,14 @@ Built against WCAG 2.2 AA:
 - **Keyboard:** every interactive element is a `<button>` or carries
   `role="button"` / `role="radio"` with Enter/Space handlers. The language
   popover closes on Esc and returns focus to its button.
-- **Regulation picker:** a `radiogroup`; an unsupported regulation is a radio
+- **Standard picker:** a `radiogroup` named "Minimum elements standard"; an unsupported one is a radio
   with `aria-disabled="true"`, out of the tab order.
 - **Errors and progress:** an error card has `role="alert"`; the working
-  message has `role="status"`.
+  message has `role="status"`, and a finished check, a copied log or source and
+  an example that filled the form are announced through live regions
+  (`ResultAnnouncer` and the screens' own `role="status"` regions).
+- **Names:** a control with visible text has an accessible name containing it
+  (WCAG 2.5.3); tab, tabpanel, `aria-controls` and `aria-labelledby` ids exist.
 - **Decorative icons and dots:** `aria-hidden="true"`; status is always text
   plus colour, never colour alone.
 - **Focus indicator:** a 2px ink outline plus shu glow on `:focus-visible`.

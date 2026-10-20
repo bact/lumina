@@ -11,7 +11,7 @@ requirements ontology (``https://bact.github.io/bom/``):
     BOM-[SPEC][YEAR]-[CATEGORY]-[NNN][.M]
 
 * ``SPEC`` + ``YEAR`` name the standard (``NTIA2021``, ``G7AI2026``); the two
-  together drive ``ConformanceResult.regulation_id`` when
+  together drive ``ConformanceResult.standard_id`` when
   ``run.properties.complianceStandard`` is absent. An edition Lumina does not
   support is refused with :class:`SarifIngestError`, never read as another.
 * ``CATEGORY`` is a short category code (``DF``, ``META``, ``COMP``, ...); it is
@@ -45,18 +45,18 @@ from .conformance import (
     FieldGap,
     Notification,
     NotificationLevel,
-    RegulationId,
     RuleOutcome,
     RuleResult,
     SbomCheckResponse,
     SbomSource,
+    StandardId,
 )
 from .sbom_source import load_sbom
 
 # Map the SPEC segment of a rule id, uppercased and whole (``CISA2026`` keeps
-# its year: another edition is another document) -> Lumina regulation id.
-# Extend when a new edition or RegulationId literal is supported.
-_SPEC_TO_REGULATION: dict[str, RegulationId] = {
+# its year: another edition is another document) -> Lumina standard id.
+# Extend when a new edition or StandardId literal is supported.
+_SPEC_TO_STANDARD: dict[str, StandardId] = {
     "NTIA2021": "ntia",
     "BSI2025": "bsi",
     "G7AI2026": "g7ai",
@@ -65,9 +65,9 @@ _SPEC_TO_REGULATION: dict[str, RegulationId] = {
 }
 
 # Map ntia-conformance-checker ``complianceStandard`` (the spec id) to a
-# RegulationId.  Preferred over rule-id inference because it survives
+# StandardId.  Preferred over rule-id inference because it survives
 # heterogeneous rule sets.
-_STANDARD_TO_REGULATION: dict[str, RegulationId] = {
+_CHECKER_TO_STANDARD: dict[str, StandardId] = {
     "ntia": "ntia",
     "bsi": "bsi",
     "g7ai": "g7ai",
@@ -150,7 +150,7 @@ def _field_key_from_rule(rule: dict[str, Any] | None, rule_id: str) -> str:
     if isinstance(slug, str) and slug:
         head, sep, tail = slug.partition("-")
         # Strip a known spec prefix if present, else keep the slug verbatim.
-        if sep and head.lower() in _STANDARD_TO_REGULATION:
+        if sep and head.lower() in _CHECKER_TO_STANDARD:
             return tail.replace("-", "_")
         return slug.replace("-", "_")
 
@@ -234,8 +234,8 @@ def _all_rule_ids(run: dict[str, Any], rule_index: dict[str, Any]) -> list[str]:
     return sorted(ids - {""})
 
 
-def _infer_regulation_id(standard_hint: str, rule_ids: list[str]) -> RegulationId:
-    """Pick a ``RegulationId`` from the SARIF log.
+def _infer_standard_id(standard_hint: str, rule_ids: list[str]) -> StandardId:
+    """Pick a ``StandardId`` from the SARIF log.
 
     1. ``run.properties.complianceStandard``, when present, must name a known
        standard, and every rule id must be of that standard and edition.
@@ -246,19 +246,19 @@ def _infer_regulation_id(standard_hint: str, rule_ids: list[str]) -> RegulationI
     """
     specs = {rule_id: _spec_of(rule_id) for rule_id in rule_ids}
     if standard_hint:
-        if standard_hint not in _STANDARD_TO_REGULATION:
+        if standard_hint not in _CHECKER_TO_STANDARD:
             raise SarifIngestError(
                 f"Unsupported standard: complianceStandard {standard_hint!r}"
             )
-        regulation = _STANDARD_TO_REGULATION[standard_hint]
+        standard = _CHECKER_TO_STANDARD[standard_hint]
         for rule_id, spec_code in specs.items():
-            if _SPEC_TO_REGULATION.get(spec_code) != regulation:
+            if _SPEC_TO_STANDARD.get(spec_code) != standard:
                 raise SarifIngestError(
                     f"Unsupported standard: complianceStandard {standard_hint!r} "
                     f"contradicts rule id {rule_id!r}"
                 )
-        return regulation
-    found = {_SPEC_TO_REGULATION.get(code) for code in specs.values()}
+        return standard
+    found = {_SPEC_TO_STANDARD.get(code) for code in specs.values()}
     if len(found) == 1 and None not in found:
         return next(iter(found))  # type: ignore[arg-type]
     codes = sorted({code or "?" for code in specs.values()})
@@ -422,14 +422,14 @@ def _build_conformance_result(
 
     properties = run.get("properties") or {}
     standard_hint = str(properties.get("complianceStandard") or "")
-    regulation_id = _infer_regulation_id(standard_hint, _all_rule_ids(run, rule_index))
+    standard_id = _infer_standard_id(standard_hint, _all_rule_ids(run, rule_index))
 
     results = run.get("results") or []
     outcomes = properties.get("ruleOutcomes")
     if not _notifications_from_invocations(run)[1]:
         # The checker could not read the SBOM: its per-rule "missing" results
         # are not findings, so none is reported.
-        return ConformanceResult.nothing_checked(regulation_id, source)
+        return ConformanceResult.nothing_checked(standard_id, source)
     optional = _optional_rule_ids(rule_index)
     counts = (
         _count_outcomes(outcomes, optional)
@@ -437,7 +437,7 @@ def _build_conformance_result(
         else _count_findings(results, optional)
     )
     return ConformanceResult(
-        regulation_id=regulation_id,
+        standard_id=standard_id,
         source=source,
         total=counts.total,
         present=counts.present,

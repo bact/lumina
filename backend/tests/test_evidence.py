@@ -19,9 +19,9 @@ from app import evidence
 from app.conformance import (
     CHECKER_STANDARDS,
     EvidenceItem,
-    RegulationId,
     RuleResult,
     SbomCheckResponse,
+    StandardId,
     run_checker,
 )
 from app.evidence import rules
@@ -34,9 +34,9 @@ SPDX3 = [DEMO, *sorted(SBOM_DIR.glob("spdx3_*.json"))]
 SPDX3_CONTEXT = "https://spdx.org/rdf/3.0.1/spdx-context.jsonld"
 
 
-def _check(path: Path, regulation: RegulationId) -> SbomCheckResponse:
+def _check(path: Path, standard: StandardId) -> SbomCheckResponse:
     loaded = load_sbom(path.name, path.read_text(encoding="utf-8"))
-    return run_checker(str(path), regulation, loaded)
+    return run_checker(str(path), standard, loaded)
 
 
 def _rules(response: SbomCheckResponse) -> dict[str, RuleResult]:
@@ -111,15 +111,15 @@ def test_not_decided_rules_have_no_evidence(g7_demo: dict[str, RuleResult]) -> N
     assert all(not r.evidence for r in undecided)
 
 
-@pytest.mark.parametrize("regulation", sorted(CHECKER_STANDARDS))
+@pytest.mark.parametrize("standard", sorted(CHECKER_STANDARDS))
 @pytest.mark.parametrize("path", SPDX3, ids=lambda p: p.name)
 def test_every_decided_rule_has_evidence_that_points_at_the_sbom(
-    path: Path, regulation: RegulationId
+    path: Path, standard: StandardId
 ) -> None:
     """On every SPDX 3 fixture and standard: every present rule has found
     evidence, every missing rule absent evidence first, and every line points
     at its element or item in the display."""
-    response = _check(path, regulation)
+    response = _check(path, standard)
     assert response.sbom is not None
     lines = response.sbom.display.split("\n")
     for rule in response.conformance.rules:
@@ -159,7 +159,7 @@ _NO_CREATOR = "spdx3_bsi_missing_creator.json"
 
 
 @pytest.mark.parametrize(
-    ("path", "regulation", "rule_id", "element_type", "key"),
+    ("path", "standard", "rule_id", "element_type", "key"),
     [
         (_BSI_OK, "bsi", "BOM-BSI2025-DOC-001", "CreationInfo", "createdBy"),
         (_BSI_OK, "bsi", "BOM-BSI2025-COMP-007", "software_Package", "verifiedUsing"),
@@ -171,11 +171,11 @@ _NO_CREATOR = "spdx3_bsi_missing_creator.json"
     ids=["contact", "hash-via", "download-via", "licence", "tool-absent", "type-absent"],
 )
 def test_bsi_and_cisa_evidence(
-    path: str, regulation: RegulationId, rule_id: str, element_type: str, key: str | None
+    path: str, standard: StandardId, rule_id: str, element_type: str, key: str | None
 ) -> None:
     """BSI contacts, hashes and downloads through a distribution artefact and
     licences; CISA document-level gaps on the creation info or document."""
-    (entry,) = _rules(_check(SBOM_DIR / path, regulation))[rule_id].evidence
+    (entry,) = _rules(_check(SBOM_DIR / path, standard))[rule_id].evidence
     assert entry.element_type == element_type
     assert [i.key for i in entry.items] == ([key] if key else [])
     assert entry.status == ("found" if key else "absent")
@@ -286,3 +286,21 @@ def test_evidence_is_skipped_past_its_time_budget(
         response = _check(DEMO, "g7ai")
     assert all(not r.evidence for r in response.conformance.rules)
     assert "EvidenceTimeout" in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("rule_id", "applies_to", "combine"),
+    [
+        ("BOM-G7AI2026-SLP-001", "system", ""),
+        ("BOM-G7AI2026-SLP-008", "system", "any-of"),
+        ("BOM-G7AI2026-MDL-003", "ai_model", ""),
+        ("BOM-G7AI2026-MDL-012", "ai_model", "self-only"),
+        ("BOM-G7AI2026-MD-009", "", ""),
+    ],
+)
+def test_rules_say_what_they_judge_and_how(
+    g7_demo: dict[str, RuleResult], rule_id: str, applies_to: str, combine: str
+) -> None:
+    """A rule names the kind of element it judges and how it combines them, so
+    the UI can explain a Missing rule that lists an element that has the property."""
+    assert (g7_demo[rule_id].applies_to, g7_demo[rule_id].combine) == (applies_to, combine)

@@ -7,7 +7,7 @@
 // /api/ route, visits every side-nav screen in headless Chromium and asserts:
 //   - no page errors and no console errors;
 //   - none of the old sample-data strings appear;
-//   - the regulation chips equal the mocked GET /api/v1/regulations response
+//   - the standard chips equal the mocked GET /api/v1/standards response
 //     (same ids, same order, ready=false not selectable);
 //   - refused requests (413, 422, 501) show the server's `detail` text;
 //   - a per-rule BSI result shows its DOC and COMP clusters with their counts;
@@ -50,9 +50,9 @@ const outDir = path.resolve(process.argv[2] || path.join(os.tmpdir(), "lumina-ui
 fs.mkdirSync(outDir, { recursive: true });
 
 // ── Mocked API ───────────────────────────────────────────────────────────
-// The regulation list includes an id the frontend has no label for: the UI
+// The standard list includes an id the frontend has no label for: the UI
 // must show it by id and must not hide or add any entry.
-const REGULATIONS = [
+const STANDARDS = [
   { id: "ntia", ready: true }, { id: "bsi", ready: true }, { id: "g7ai", ready: true },
   { id: "cisa2026", ready: true }, { id: "fsct2024", ready: true }, { id: "mof", ready: false },
   { id: "xyz2030", ready: false },
@@ -84,9 +84,14 @@ const PKG_BLOCK = blockOf(SBOM.display, '"spdxId": "https://example.org/mock/pkg
 const VERSION_LINE = lineOf(SBOM.display, '"software_packageVersion"');
 const PKG_EVIDENCE = { element_id: "https://example.org/mock/pkg", element_type: "software_Package", element_name: "mock-pkg", ...PKG_BLOCK };
 const NTIA_EVIDENCE = {
-  "Component supplier": { evidence: [{ ...PKG_EVIDENCE, status: "absent", items: [] }], evidence_more: 3 },
+  "Component supplier": { evidence: [{ ...PKG_EVIDENCE, status: "absent", items: [] }], evidence_more: 3, applies_to: "component" },
   "Component version": { evidence: [{ ...PKG_EVIDENCE, status: "found",
-    items: [{ key: "software_packageVersion", value: "1.0", line: VERSION_LINE }] }], evidence_more: 0 },
+    items: [{ key: "software_packageVersion", value: "1.0", line: VERSION_LINE }] }], evidence_more: 0, applies_to: "component" },
+  // One judged element has the property and one lacks it: the rule is Missing.
+  "Component identifier": { evidence: [{ ...PKG_EVIDENCE, status: "absent", items: [] },
+    { ...PKG_EVIDENCE, element_name: "mock-model", element_type: "ai_AIPackage", status: "found",
+      items: [{ key: "software_packageUrl", value: "pkg:generic/mock", line: VERSION_LINE }] }], evidence_more: 0, applies_to: "system" },
+  "Dependency relationships": { evidence: [], evidence_more: 0, applies_to: "system", combine: "any-of" },
 };
 // 50,000 lines: line n (2..49,999) is `  "key<n>": "value <n>",`.
 const BIG_LINES = 50000;
@@ -97,12 +102,12 @@ const posted = [];
 const TOOL = { tool_name: "ntia-conformance-checker", tool_version: "0.0.0-mock" };
 const NTIA_RESULT = {
   conformance: {
-    regulation_id: "ntia", source: "ntia-conformance-checker", total: 7, present: 6, missing: 1, unverified: 0,
+    standard_id: "ntia", source: "ntia-conformance-checker", total: 7, present: 6, missing: 1, unverified: 0,
     gaps: [{ component_id: "SPDXRef-Package", field_key: "supplier", level: "missing", note: "Component 'glibc' is missing component supplier." }],
     rules: ["Component supplier", "Component name", "Component version", "Component identifier",
       "Dependency relationships", "SBOM author", "SBOM timestamp"].map((title, i) => ({
       rule_id: `BOM-NTIA2021-DF-00${i + 1}`, cluster: "DF", title, provision: "requirement",
-      outcome: i === 0 ? "missing" : "present",
+      outcome: i === 0 || title === "Component identifier" ? "missing" : "present",
       ...(NTIA_EVIDENCE[title] || { evidence: [], evidence_more: 0 }),
     })),
     system_judged_by_model: null,
@@ -120,7 +125,7 @@ const NTIA_RESULT = {
   ],
 };
 const GEN_FAILED_RESULT = {
-  conformance: { regulation_id: "g7ai", source: "lumina-internal", total: 0, present: 0, missing: 0, unverified: 0, gaps: [], rules: [], system_judged_by_model: null },
+  conformance: { standard_id: "g7ai", source: "lumina-internal", total: 0, present: 0, missing: 0, unverified: 0, gaps: [], rules: [], system_judged_by_model: null },
   run: { tool_name: "lumina", tool_version: "", generator: "", execution_successful: false, notifications: [{
     level: "error", descriptor_id: "git.clone-failed", message: "fatal: repository not found" }] },
   embedded_sbom: null,
@@ -129,13 +134,35 @@ const GEN_FAILED_RESULT = {
     { source: "lumina", level: "error", message: "[git.clone-failed] fatal: repository not found", elapsed_ms: 410 },
   ],
 };
+// The same SBOM checked against another standard (what POST /sbom/check returns
+// for a re-check): no generator, no log -- the page must carry those over.
+const RECHECK_RESULT = {
+  conformance: { standard_id: "cisa2026", source: "ntia-conformance-checker", total: 1, present: 1, missing: 0, unverified: 0, gaps: [],
+    rules: [{ rule_id: "BOM-CISA2026-META-001", cluster: "META", title: "Recheck mock rule", provision: "requirement", outcome: "present", evidence: [], evidence_more: 0 }],
+    system_judged_by_model: null },
+  run: { ...TOOL, generator: "", execution_successful: true, notifications: [] },
+  embedded_sbom: null,
+  sbom: SBOM,
+};
+const rechecks = [];
+// A standard that covers SPDX 3 only, given an SPDX 2 SBOM: nothing is checked.
+const spdx2Result = (message) => ({
+  conformance: { standard_id: "g7ai", source: "ntia-conformance-checker", total: 0, present: 0, missing: 0, unverified: 0, gaps: [],
+    rules: [{ rule_id: "BOM-G7AI2026-MD-001", cluster: "MD", title: "SBOM author", provision: "requirement", outcome: "not-applicable", evidence: [], evidence_more: 0 }],
+    system_judged_by_model: null },
+  run: { ...TOOL, generator: "", execution_successful: true, notifications: [{ level: "warning", message, descriptor_id: "sbom.nothing-applies" }] },
+  embedded_sbom: null,
+  sbom: { ...SBOM, filename: "old.spdx.json", format: "spdx2-json" },
+});
+const SPDX2_GENERIC = spdx2Result("No requirement of G7 SBOM for AI applies.");
+const SPDX2_SPECIFIC = spdx2Result("G7 SBOM for AI: checked on SPDX 3 SBOMs only; this SBOM is SPDX 2, so no rule was checked.");
 const BIG_RESULT = { ...NTIA_RESULT,
   conformance: { ...NTIA_RESULT.conformance, rules: NTIA_RESULT.conformance.rules.map((r, i) => (i !== 1 ? { ...r, evidence: [] }
     : { ...r, evidence: [{ status: "found", element_id: "document", element_type: "SpdxDocument", element_name: null,
       line: 1, end_line: BIG_LINES, items: [{ key: "key40000", value: "value 40000", line: 40000 }] }] })) },
   sbom: BIG_SBOM };
 const BSI_RESULT = {
-  conformance: { regulation_id: "bsi", source: "ntia-conformance-checker", total: 3, present: 1, missing: 2, unverified: 0, optional_present: 0, optional_missing: 1,
+  conformance: { standard_id: "bsi", source: "ntia-conformance-checker", total: 3, present: 1, missing: 2, unverified: 0, optional_present: 0, optional_missing: 1,
     gaps: [{ component_id: "document", field_key: "BOM-BSI2025-DOC-001", level: "missing", note: "Doc creator is missing." }],
     rules: [
       { rule_id: "BOM-BSI2025-DOC-001", cluster: "DOC", title: "Doc creator", provision: "requirement", outcome: "missing" },
@@ -151,14 +178,14 @@ const BSI_RESULT = {
   sbom: { ...SBOM, filename: "upload.spdx3.json" },
 };
 const UNREADABLE_RESULT = {
-  conformance: { regulation_id: "g7ai", source: "ntia-conformance-checker", total: 0, present: 0, missing: 0, unverified: 0, gaps: [], rules: [], system_judged_by_model: null },
+  conformance: { standard_id: "g7ai", source: "ntia-conformance-checker", total: 0, present: 0, missing: 0, unverified: 0, gaps: [], rules: [], system_judged_by_model: null },
   run: { ...TOOL, generator: "", execution_successful: false, notifications: [{
     level: "error", descriptor_id: "spdx.parsing-error", message: "The SBOM could not be read." }] },
   embedded_sbom: null,
 };
 // A rule in a cluster the frontend has no name for must still be shown.
 const SARIF_RESULT = {
-  conformance: { regulation_id: "g7ai", source: "external-sarif", total: 2, present: 1, missing: 1, unverified: 0,
+  conformance: { standard_id: "g7ai", source: "external-sarif", total: 2, present: 1, missing: 1, unverified: 0,
     gaps: [{ component_id: "document", field_key: "BOM-G7AI2026-MDL-001", level: "missing", note: "Model name is missing." }],
     rules: [
       { rule_id: "BOM-G7AI2026-MD-001", cluster: "MD", title: "SBOM author", provision: "requirement", outcome: "present" },
@@ -172,10 +199,10 @@ const SARIF_RESULT = {
 };
 const DETAIL_413 = "SBOM is larger than 10485760 bytes.";
 const DETAIL_422 = "Unsupported standard: no single supported standard in rule id spec(s) ['CISA2025']";
-const DETAIL_501 = "Regulation 'cisa2026' is not supported by ntia-conformance-checker.";
+const DETAIL_501 = "Minimum elements standard 'cisa2026' is not supported by ntia-conformance-checker.";
 
 async function mockApi(page) {
-  await page.route("**/api/v1/regulations", r => r.fulfill({ json: { regulations: REGULATIONS } }));
+  await page.route("**/api/v1/standards", r => r.fulfill({ json: { standards: STANDARDS } }));
   await page.route("**/api/v1/artifact/check", r => {
     const body = JSON.parse(r.request().postData() || "{}");
     posted.push(body);
@@ -187,8 +214,11 @@ async function mockApi(page) {
   await page.route("**/api/v1/jobs/job-2", r => r.fulfill({ json: { status: "done", result: BIG_RESULT } }));
   await page.route("**/api/v1/sbom/check", r => {
     const raw = r.request().postData() || "";
-    if (/name="regulation"\r\n\r\nbsi/.test(raw)) return r.fulfill({ json: BSI_RESULT });
-    if (/name="regulation"\r\n\r\ng7ai/.test(raw)) return r.fulfill({ json: UNREADABLE_RESULT });
+    if (raw.includes('filename="old.spdx.json"')) return r.fulfill({ json: SPDX2_GENERIC });
+    if (raw.includes('filename="old-note.spdx.json"')) return r.fulfill({ json: SPDX2_SPECIFIC });
+    if (/name="standard"\r\n\r\ncisa2026/.test(raw)) { rechecks.push(raw); return r.fulfill({ json: RECHECK_RESULT }); }
+    if (/name="standard"\r\n\r\nbsi/.test(raw)) return r.fulfill({ json: BSI_RESULT });
+    if (/name="standard"\r\n\r\ng7ai/.test(raw)) return r.fulfill({ json: UNREADABLE_RESULT });
     return r.fulfill({ status: 413, json: { detail: DETAIL_413 } });
   });
   await page.route("**/api/v1/sarif/import", r => {
@@ -251,17 +281,17 @@ async function noSampleData(where) {
 }
 
 async function chipsMatchApi(where) {
-  await page.waitForSelector('[role=radiogroup][aria-label="Regulation"] [role=radio]');
-  const chips = await page.$$eval('[role=radiogroup][aria-label="Regulation"] [role=radio]',
+  await page.waitForSelector('[role=radiogroup][aria-label="Minimum elements standard"] [role=radio]');
+  const chips = await page.$$eval('[role=radiogroup][aria-label="Minimum elements standard"] [role=radio]',
     els => els.map(e => ({ text: e.textContent, disabled: e.getAttribute("aria-disabled") === "true" })));
-  const expected = REGULATIONS.map(r => ({ label: LABELS[r.id] || r.id, disabled: !r.ready }));
+  const expected = STANDARDS.map(r => ({ label: LABELS[r.id] || r.id, disabled: !r.ready }));
   check(chips.length === expected.length && chips.every((c, i) => c.text.startsWith(expected[i].label) && c.disabled === expected[i].disabled),
-    `${where}: regulation chips equal the API list ${JSON.stringify(chips.map(c => c.text))}`);
+    `${where}: standard chips equal the API list ${JSON.stringify(chips.map(c => c.text))}`);
   const checked = await page.$$eval('[role=radio][aria-checked="true"]', els => els.map(e => e.textContent));
   check(checked.length === 1 && checked[0] === LABELS.g7ai, `${where}: G7 SBOM for AI is preselected`);
   await page.getByRole("radio", { name: /Model Openness Framework/ }).click({ force: true });
   const after = await page.$$eval('[role=radio][aria-checked="true"]', els => els.map(e => e.textContent));
-  check(after[0] === LABELS.g7ai, `${where}: an unsupported regulation cannot be selected`);
+  check(after[0] === LABELS.g7ai, `${where}: an unsupported standard cannot be selected`);
 }
 
 // The Download SBOM button saves `sbom.text` under `sbom.filename`.
@@ -290,17 +320,31 @@ async function evidenceAndSource(where) {
   await downloads(where, SBOM.filename, SBOM.text);
   const tabs = await page.$$eval("[role=tablist] [role=tab]", els => els.map(e => [e.textContent, e.getAttribute("aria-selected")]));
   check(JSON.stringify(tabs) === JSON.stringify([["Result", "true"], ["SBOM source", "false"], ["Generator log", "false"]]), `${where}: Result | SBOM source | Generator log tabs ${JSON.stringify(tabs)}`);
+  // The default view already shows the value an element carries, before any click.
+  const rowValues = async (title) => page.locator(".rule-row", { hasText: title }).first().locator(".rule-values li").allInnerTexts();
+  check(JSON.stringify(await rowValues("Component version")) === JSON.stringify(["1.0"]),
+    `${where}: the row shows the version value without opening the details`);
+  check(JSON.stringify(await rowValues("Component identifier")) === JSON.stringify(["mock-model: pkg:generic/mock"]),
+    `${where}: a Missing rule with two elements shows the value of the one that has it, with its name`);
+  check((await rowValues("Component supplier")).length === 0, `${where}: a rule with nothing found shows no value`);
+  check(await page.locator(".rule-values").first().getAttribute("aria-label") !== null, `${where}: the values list has an accessible name`);
   const toggle = page.getByRole("button", { name: "Show more: Component version" });
   await toggle.click();
   let body = await text();
   check(await page.getByRole("button", { name: "Show less: Component version" }).getAttribute("aria-expanded") === "true"
-      && body.includes("software_packageVersion") && body.includes("mock-pkg") && body.includes("software_Package") && body.includes("Found"),
+      && body.includes("software_packageVersion") && body.includes("mock-pkg") && body.includes("software_Package") && body.includes("Has it"),
     `${where}: Show more shows the rule's evidence`);
   await page.getByRole("button", { name: "Expand all" }).click();
   body = await text();
   const states = await page.$$eval("button[aria-controls^=rule-details-]", els => els.map(e => e.getAttribute("aria-expanded")));
   check(states.length === 7 && states.every(s => s === "true") && body.includes("No evidence available for this rule")
-      && body.includes("and 3 more") && body.includes("Absent"), `${where}: Expand all opens every rule, empty ones say so`);
+      && body.includes("and 3 more") && body.includes("Lacks it"), `${where}: Expand all opens every rule, empty ones say so`);
+  // A Missing rule whose elements split: the row says so, and the details say why.
+  check(body.includes("1 of 2 root packages lacks it"), `${where}: the rule row says how many elements lack the property`);
+  check(body.includes("Judged on the system: each root package the SBOM describes: 2 root packages. 1 has the property and 1 lacks it. A rule is Present only when every judged element has the property, so one that lacks it makes the rule Missing."),
+    `${where}: the details explain why the rule is Missing`);
+  check(body.includes("A composite element: it is Present when at least one of its sub-elements is."), `${where}: an any-of rule says how it combines`);
+  check(!/Found|Absent/.test(await page.locator(".evidence").allInnerTexts().then(t => t.join(" "))), `${where}: element labels are not the rule verdict words`);
   await shot("2b-generate-expanded");
   await page.getByRole("button", { name: "Collapse all" }).click();
   check((await page.$$eval("button[aria-controls^=rule-details-]", els => els.map(e => e.getAttribute("aria-expanded")))).every(s => s === "false"),
@@ -368,7 +412,7 @@ await page.waitForSelector("text=Data fields", { timeout: 10000 }).catch(() => {
 let body = await text();
 check(body.includes("Data fields") && body.includes("Component supplier") && body.includes("pitloom 0.0.0-mock"),
   "Generate & check: the job result renders with rules and generator");
-check(posted.at(-1).regulation_id === "g7ai", "Generate & check: the default request names g7ai");
+check(posted.at(-1).standard_id === "g7ai", "Generate & check: the default request names g7ai");
 await shot("2-generate-result");
 await evidenceAndSource("Generate & check");
 
@@ -391,6 +435,33 @@ const logFont = await page.locator(".gen-log-msg").first().evaluate(e => getComp
 check(/mono/i.test(logFont), `Generate & check: the log is in a monospace font (${logFont})`);
 await shot("2f-generator-log");
 await page.getByRole("tab", { name: "Result" }).click();
+
+// Switching the standard checks the same SBOM again: nothing is generated again,
+// the SBOM text is what goes to the server, and what the generator did stays.
+const artifactPosts = posted.length;
+await page.getByRole("radio", { name: LABELS.cisa2026 }).click();
+await page.waitForSelector("text=Recheck mock rule", { timeout: 10000 }).catch(() => {});
+check(posted.length === artifactPosts && rechecks.length === 1, "switch standard: no new generation job, one re-check request");
+check(rechecks.length === 1 && rechecks[0].includes('filename="r.spdx3.json"') && rechecks[0].includes("mock-pkg"),
+  "switch standard: the re-check sends the SBOM text under its own file name");
+body = await text();
+check(body.includes("Recheck mock rule") && body.includes("pitloom 0.0.0-mock") && body.includes("Mock Pitloom warning."),
+  "switch standard: the new result shows, with the generator and its warning carried over");
+check(await page.getByRole("tab", { name: "Generator log" }).count() === 1
+  && await page.getByRole("radio", { name: LABELS.cisa2026 }).getAttribute("aria-checked") === "true",
+  "switch standard: the Generator log tab stays and the chosen standard is selected");
+check((await page.locator("[role=status].sr-only").allInnerTexts()).some(t => /^Check finished: 1 present and 0 missing of 1 rules checked\.$/.test(t)),
+  "switch standard: the new result is announced");
+await shot("2g-switched-standard");
+// A switch that fails (the mock refuses it with 413, as for an SBOM over the size
+// limit) keeps the earlier result and standard and says why.
+await page.getByRole("radio", { name: LABELS.fsct2024 }).click();
+await page.waitForSelector("text=Could not switch the standard", { timeout: 10000 }).catch(() => {});
+body = await text();
+check(body.includes("Could not switch the standard") && body.includes(DETAIL_413) && body.includes("Recheck mock rule")
+  && await page.getByRole("radio", { name: LABELS.cisa2026 }).getAttribute("aria-checked") === "true"
+  && await page.getByRole("radio", { name: LABELS.fsct2024 }).getAttribute("aria-checked") === "false",
+  "switch standard: a failed switch keeps the earlier result and standard and shows the reason");
 
 // A failed generation still shows why, in the log.
 await page.getByPlaceholder(/github/).fill("https://github.com/o/gone");
@@ -452,6 +523,12 @@ check(/not provided/i.test(body) && body.includes("OPTIONAL PROVIDED") && body.i
 await downloads("Upload SBOM", "upload.spdx3.json", SBOM.text);
 check(await page.getByRole("tab", { name: "Generator log" }).count() === 0, "Upload SBOM: no Generator log tab (nothing was generated)");
 await shot("5-upload-bsi-rules");
+// Switching the standard on the Upload page checks the shown SBOM again without a new upload.
+rechecks.length = 0;
+await page.getByRole("radio", { name: LABELS.cisa2026 }).click();
+await page.waitForSelector("text=Recheck mock rule", { timeout: 10000 }).catch(() => {});
+check(rechecks.length === 1 && rechecks[0].includes('filename="upload.spdx3.json"') && (await text()).includes("Recheck mock rule"),
+  "Upload SBOM: switching the standard re-checks the same SBOM from its text");
 await page.getByRole("radio", { name: LABELS.g7ai }).click();
 await page.getByRole("button", { name: "Check SBOM" }).click();
 await page.waitForSelector("text=could not be checked", { timeout: 5000 }).catch(() => {});
@@ -459,6 +536,24 @@ body = await text();
 check(body.includes("The SBOM could not be checked") && body.includes("spdx.parsing-error") && !body.includes("Fields checked"),
   "Upload SBOM: an unreadable SBOM shows no counts, only why");
 await shot("5b-upload-unreadable");
+
+// Nothing was checked: the banner says why. An SPDX 2 SBOM under a standard that
+// covers SPDX 3 only gets that reason even from a checker that only says the
+// generic "no requirement applies"; a checker that says why is quoted as it is.
+for (const [name, reason] of [
+  ["old.spdx.json", "G7 SBOM for AI is checked on SPDX 3 SBOMs only; this SBOM is SPDX 2."],
+  ["old-note.spdx.json", "G7 SBOM for AI: checked on SPDX 3 SBOMs only; this SBOM is SPDX 2, so no rule was checked."],
+]) {
+  await page.setInputFiles("#sbom-file", { name, mimeType: "application/json", buffer: Buffer.from("{}") });
+  await page.getByRole("radio", { name: LABELS.g7ai }).click();
+  await page.getByRole("button", { name: "Check SBOM" }).click();
+  await page.waitForSelector("text=Nothing was checked", { timeout: 5000 }).catch(() => {});
+  const banner = await text();
+  check(banner.includes("Nothing was checked") && banner.includes(reason) && !banner.includes("Fields checked"),
+    `Upload SBOM: the nothing-checked banner gives the reason for ${name}`);
+  check((await page.locator("[role=status].sr-only").allInnerTexts()).some(t => t === `Check finished. Nothing was checked. ${reason}`),
+    `Upload SBOM: the nothing-checked reason is announced for ${name}`);
+}
 
 // Import SARIF
 await nav("Import SARIF");
@@ -485,7 +580,7 @@ await nav("About");
 await page.waitForSelector("text=Model Openness Framework");
 body = await text();
 check(/present means the property exists, not that its value is right/i.test(body), "About: states what present means");
-check(REGULATIONS.every(r => body.includes(r.id)), "About: lists every regulation the API returns");
+check(STANDARDS.every(r => body.includes(r.id)), "About: lists every standard the API returns");
 await noSampleData("About");
 await shot("9-about");
 

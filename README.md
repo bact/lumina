@@ -9,7 +9,7 @@ SPDX-License-Identifier: CC0-1.0
 
 A web-based Software Bill of Materials (SBOM) conformance checker.
 
-Lumina checks an SBOM against a regulation's minimum elements and shows, rule
+Lumina checks an SBOM against a minimum elements standard and shows, rule
 by rule, whether the SBOM has the property each rule asks for -- so the answer
 to *"are we conformant?"* stops being a folder of PDFs. Bring an SBOM file, a
 SARIF log from a checker, or a Git or Hugging Face URL for Lumina to generate
@@ -17,7 +17,12 @@ an SBOM from. The checks themselves are run by
 [ntia-conformance-checker][checker].
 
 The web UI has four screens: *Generate & check* (a URL), *Upload SBOM*,
-*Import SARIF* and *About*. It shows only what the API returns.
+*Import SARIF* and *About*. It shows only what the API returns: per rule, the
+value the SBOM holds and the SBOM elements behind it with a link to their lines
+in the SBOM source, the SBOM itself (download and highlighted source), and, for
+a generated SBOM, the generator's log. With a result on screen, picking another
+minimum elements standard checks the same SBOM again without generating or
+uploading it again.
 
 ---
 
@@ -143,18 +148,18 @@ Redis are introduced only if load grows. See
 ## Conformance checking
 
 Lumina does no checking itself. [ntia-conformance-checker][checker] runs every
-check, and Lumina turns its [SARIF][sarif] log into a field-level result: which
-requirements the SBOM has a property for, and which it lacks (`present` means the
+check, and Lumina turns its [SARIF][sarif] log into a rule-level result: which
+rules the SBOM has a property for, and which it lacks (`present` means the
 property exists, not that its value is right). The checker detects SPDX
 2 or 3 from the file.
 
-| Regulation | Checker standard | Result |
+| Minimum elements standard | Checker standard | Result |
 | - | - | - |
-| NTIA Minimum Elements (2021) | `ntia` | per-requirement gaps |
-| G7 SBOM for AI Minimum Elements (2026) | `g7ai` | per-requirement gaps; partial coverage, SPDX 3 only |
-| CISA 2026 Minimum Elements | `cisa2026` | per-requirement gaps; partial coverage, SPDX 3 only |
-| FSCT 2024 (CISA Framing) | `fsct3` (API id `fsct2024`) | per-requirement gaps; partial coverage |
-| BSI TR-03183-2 v2.1 | `bsi` | per-requirement gaps; partial coverage, SPDX 3 only |
+| NTIA Minimum Elements (2021) | `ntia` | per-rule results; SPDX 2 and 3 |
+| G7 SBOM for AI Minimum Elements (2026) | `g7ai` | per-rule results; partial coverage, SPDX 3 only |
+| CISA 2026 Minimum Elements | `cisa2026` | per-rule results; partial coverage, SPDX 3 only |
+| FSCT 2024 (CISA Framing) | `fsct3` (API id `fsct2024`) | per-rule results; partial coverage; SPDX 2 and 3 |
+| BSI TR-03183-2 v2.1 | `bsi` | per-rule results; partial coverage, SPDX 3 only; optional elements counted apart |
 | MOF | none | not supported; the API returns HTTP 501 |
 
 Requirement ids are the [SBOM requirements ontology][bom] ids, for example
@@ -164,7 +169,7 @@ Requirement ids are the [SBOM requirements ontology][bom] ids, for example
 
 | Endpoint | Purpose |
 | - | - |
-| `GET /api/v1/regulations` | Regulations Lumina knows, with `ready` set when the checker supports them |
+| `GET /api/v1/standards` | Standards Lumina knows, with `ready` set when the checker supports them |
 | `POST /api/v1/sbom/check` | Upload an SBOM (SPDX 2 or 3; up to 10 MiB by default) and check it; the result carries the SBOM and per-rule evidence |
 | `POST /api/v1/artifact/check` | Generate an SBOM from a Git or Hugging Face URL, then check it (background job); the result carries the generated SBOM, per-rule evidence and the generator log |
 | `GET /api/v1/jobs/{job_id}` | Status and result of a background job |
@@ -177,14 +182,14 @@ generated file for download and a pretty-printed copy with line numbers; for an
 imported SARIF log, the embedded SBOM when it is JSON). For an SPDX 3 JSON
 SBOM each rule also carries `evidence`: the elements that have, or lack, what
 the rule asks for, with their lines in the SBOM. A refused request (413 too large, 422 unreadable or unsupported, 501
-unsupported regulation) carries the reason in `detail`.
+unsupported standard) carries the reason in `detail`.
 
-### Adding a regulation
+### Adding a standard
 
-Add it to `RegulationId` and `CHECKER_STANDARDS` in
+Add it to `StandardId` and `CHECKER_STANDARDS` in
 [`backend/app/conformance.py`](backend/app/conformance.py) once the checker
-supports it; the UI lists what `GET /api/v1/regulations` returns. See
-[AGENTS.md](AGENTS.md#adding-a-regulation) for the SARIF and UI steps.
+supports it; the UI lists what `GET /api/v1/standards` returns. See
+[AGENTS.md](AGENTS.md#adding-a-standard) for the SARIF and UI steps.
 
 **Roadmap:** EU CRA, EO 14028, FDA PMP, and ISO/IEC 5230 are planned; none is
 in the API yet.

@@ -8,7 +8,7 @@ SPDX-License-Identifier: CC0-1.0
 # Lumina design
 
 Lumina is a web-based software bill of materials (SBOM) conformance checker.
-For a chosen regulation it shows, rule by rule, whether the SBOM has the
+For a chosen minimum elements standard it shows, rule by rule, whether the SBOM has the
 property each rule asks for. "Present" means the property exists, not that its
 value is right. The web UI shows only what the API returns; it has no sample
 or fixture data.
@@ -44,16 +44,20 @@ one per input mode plus About:
 | *Generate & check* (default) | [Mode 1](#mode-1--artefact-url-sbom-generation) | `POST /api/v1/artifact/check`, then `GET /api/v1/jobs/{job_id}` |
 | *Upload SBOM* | [Mode 2](#mode-2--sbom-upload) | `POST /api/v1/sbom/check` |
 | *Import SARIF* | [Mode 3](#mode-3--sarif-import) | `POST /api/v1/sarif/import` |
-| *About* | — | `GET /api/v1/regulations` |
+| *About* | — | `GET /api/v1/standards` |
 
-The regulation picker lists exactly what `GET /api/v1/regulations` returns; a
-regulation with `ready: false` is shown but cannot be picked. One result view
+The standard picker lists exactly what `GET /api/v1/standards` returns (the UI
+spells *standard* out as *minimum elements standard*); an entry with `ready: false` is shown but cannot be picked. With a
+finished result in hand, picking another standard checks the same SBOM again
+from the `sbom.text` the first response returned, through `POST /sbom/check`:
+nothing is cloned, generated or uploaded again, and the generator, its log and
+its warnings stay with the new result. One result view
 renders every `SbomCheckResponse`; it shows no counts when the SBOM could not
 be checked or when no rule applies (`sbom.nothing-applies`). A refused request shows the server's `detail`.
 
 ## Conformance checking architecture
 
-The API knows six regulation ids (`RegulationId` in
+The API knows six standard ids (`StandardId` in
 [`backend/app/conformance.py`](../backend/app/conformance.py)): `ntia` (NTIA
 Minimum Elements), `bsi` (BSI TR-03183-2), `g7ai` (G7 SBOM for AI Minimum
 Elements), `cisa2026` (CISA 2026 Minimum Elements), `fsct2024` (FSCT 2024, the
@@ -61,12 +65,13 @@ CISA Framing document) and `mof` (Model Openness Framework). The checker
 supports all but MOF.
 
 **Current checker support:**
-`ntia-conformance-checker` covers **NTIA Minimum Elements** and, partially,
-**G7 AI SBOM**, **CISA 2026 Minimum Elements** and **BSI TR-03183-2 v2.1** (all
-SPDX 3 only; rules the checker does not check, such as elements SPDX 3.0.1
-cannot show, are reported as out of scope) and **FSCT 2024** (the checker's
-`fsct3`). **MOF** is not
-implemented in the checker.
+`ntia-conformance-checker` checks **NTIA Minimum Elements** and **FSCT 2024**
+(the checker's `fsct3`) on SPDX 2 and 3, and **G7 SBOM for AI**, **CISA 2026
+Minimum Elements** and **BSI TR-03183-2 v2.1** on SPDX 3 only (on an SPDX 2
+SBOM they apply no rule: nothing is checked). Each is reported as per-rule
+results. Where the checker covers a standard only in part, the rules it does
+not check, such as elements SPDX 3.0.1 cannot show, are listed as out of scope,
+never as missing. **MOF** is not implemented in the checker.
 
 **Design principle:** the backend must present a single, uniform
 `ConformanceResult` schema to the API regardless of which checker
@@ -92,9 +97,11 @@ SbomCheckResponse
                                       # when the producer chose to embed
   sbom          : SbomSource?         # the SBOM checked (upload or generated),
                                       # or an embedded SBOM whose text is JSON
+  generation_log: list[LogLine]?      # what the generator did; generated SBOMs
+                                      # only (see "Generator log")
 
 ConformanceResult                     # what was found
-  regulation_id : str                 # "ntia" | "bsi" | "g7ai" | "cisa2026"
+  standard_id   : str                 # "ntia" | "bsi" | "g7ai" | "cisa2026"
                                       # | "fsct2024" | "mof"
   source        : str                 # "ntia-conformance-checker"
                                       # | "lumina-internal" | "external-sarif"
@@ -116,6 +123,10 @@ RuleResult
                                       # | "not-applicable" | "out-of-scope"
   evidence      : list[Evidence]      # at most 20; SPDX 3 JSON checks only
   evidence_more : int                 # entries left out of evidence
+  applies_to    : str                 # kind of element judged: "system" |
+                                      # "ai_model" | "dataset" | "component" | ""
+  combine       : str                 # "" (every judged element must have it)
+                                      # | "any-of" | "all-of" | "self-only"
 
 Evidence                              # where the SBOM shows the outcome
   status        : "found" | "absent"
@@ -138,6 +149,12 @@ SbomSource
   display       : str                 # pretty JSON (indent 2) for a JSON
                                       # object, else text
   line_count    : int                 # "\n"-separated lines of display
+
+LogLine
+  source        : "lumina" | "git" | "pitloom"
+  level         : "info" | "warning" | "error"
+  message       : str
+  elapsed_ms    : int                 # since the generation started
 
 FieldGap
   component_id  : str
@@ -185,7 +202,7 @@ and no gap is reported.
 | Id | From | Meaning |
 | :- | :--- | :------ |
 | `spdx.parsing-error`, `spdx.validation-message`, `spdx.floating-component`, `spdx.unknown-pointer` | checker | The SBOM could not be read, failed validation, or has elements not connected to its root or pointers to missing elements |
-| `sbom.nothing-applies` | checker | No rule of the regulation applies to this SBOM |
+| `sbom.nothing-applies` | checker | No rule of the standard applies to this SBOM; a newer checker says why in the message (the standard is checked on SPDX 3 only and the SBOM is SPDX 2) |
 | `sarif.no-rule-outcomes` | Lumina | The log has no `ruleOutcomes`; only missing rules are counted |
 | `pitloom.log` | Lumina, Mode 1 | A WARNING-or-above record Pitloom logged while generating |
 | `pitloom.generation-failed`, `pitloom.url-unsupported` | Lumina, Mode 1 | Pitloom failed, or the URL has no host |
@@ -211,7 +228,11 @@ SBOM whose text is JSON, without evidence.
   entries come first.
 - **found** -- an element the rule judged that the checker did not report,
   with the properties, hashes, relationships or contacts that carry the rule
-  and their lines. Found evidence shows *where* the property is, not that its
+  and their lines. The UI labels these elements "Has it" and "Lacks it", not
+  "Present" and "Missing", which are the rule's verdict: a rule that judges
+  several elements (the root packages for a System-level rule) is Missing when
+  any one lacks the property, so a Missing rule can list elements that have it
+  (`applies_to` and `combine` let the UI say so in words). Found evidence shows *where* the property is, not that its
   value is right: the checker decides presence, and Lumina still does no
   checking of its own.
 
@@ -250,12 +271,12 @@ the UI shows it as the "Generator log" tab, in a monospace font.
 
 Lumina does no conformance checking itself. `run_checker` in
 [`backend/app/conformance.py`](../backend/app/conformance.py) (the source of
-truth) runs `ntia-conformance-checker` for a regulation, using the standard id
+truth) runs `ntia-conformance-checker` for a standard, using the standard id
 in `CHECKER_STANDARDS`, and parses its SARIF into `ConformanceResult` with
 `parse_sarif`. The SPDX version (2 or 3) is detected from the file.
 
-- `ntia`, `g7ai` (partial), `cisa2026` (partial), `fsct2024` (partial) and
-  `bsi` (partial) are supported.
+- `ntia`, `g7ai`, `cisa2026`, `fsct2024` and `bsi` are supported; every one
+  except `ntia` reports some rules as out of scope.
 - Per-rule results carry every rule's outcome. `out-of-scope` rules are
   catalogue-only (the checker cannot check them) and are shown as "not
   checked", never as missing. When the SBOM's only root is one AI model, the G7 AI
@@ -269,12 +290,12 @@ in `CHECKER_STANDARDS`, and parses its SARIF into `ConformanceResult` with
   "Not provided" and is not a gap.
 - `mof` is not supported by the checker; the API returns 501 for it.
 
-When the checker adds a regulation, add it to `RegulationId` and
+When the checker adds a standard, add it to `StandardId` and
 `CHECKER_STANDARDS`, and its rule-id spec code to the maps in
 `sarif_ingest.py`; the API response shape and the UI stay unchanged (the steps
-are in `AGENTS.md`, "Adding a regulation").
+are in `AGENTS.md`, "Adding a standard").
 
-Beyond the current regulations, EU CRA, EO 14028, FDA PMP, and
+Beyond the current standards, EU CRA, EO 14028, FDA PMP, and
 ISO/IEC 5230 are on the roadmap; none is in the API yet.
 
 ## Input modes
@@ -317,10 +338,14 @@ forks.
                            └────────────────────────────────────┘
 ```
 
+After the parse, Modes 1 and 2 add `sbom` (the SBOM text) and, for an SPDX 3
+JSON SBOM, per-rule `evidence`; Mode 1 also adds `generation_log`; Mode 3 sets
+`sbom` from an embedded SBOM whose text is JSON.
+
 ### Mode 1 — Artefact URL (SBOM generation)
 
 - **Endpoint:** `POST /api/v1/artifact/check`
-- **Body:** `{ "artifact_url": "...", "regulation_id": "ntia" }`
+- **Body:** `{ "artifact_url": "...", "standard_id": "ntia" }`
 - **Flow:** the URL is checked by the SSRF guard (http/https only, at most 2048
   characters, every resolved address public) and dispatched by host: a Hugging
   Face Hub host goes to Pitloom's model path, any other host is treated as a
@@ -329,7 +354,7 @@ forks.
   can take minutes (large clones), it runs as a
   [background job](#background-job-execution): the endpoint returns a `job_id`
   immediately (202) and the client polls `GET /api/v1/jobs/{job_id}`. A
-  regulation the checker does not support is refused with 501 before anything
+  standard the checker does not support is refused with 501 before anything
   is queued.
 - **`embedded_sbom`:** absent.  Lumina holds the SBOM Pitloom just produced; no
   need to round-trip via SARIF.
@@ -346,17 +371,19 @@ forks.
     GitHub and any Git host; Pitloom reads the project's Python packaging
     metadata.
   - **Hugging Face Hub URLs** — Pitloom's `generate_model_sbom(url)`
-    (needs the `pitloom[huggingface_hub]` extra). Reads HF metadata via the HF API; it does **not**
-    download model files, so the host stays light on disk and bandwidth. HF
-    auth is optional (lower quota without a token, acceptable for now).
+    (needs the `pitloom[ai]` extra, which brings `huggingface_hub`). Reads HF
+    metadata via the HF API; it does **not** download model files, so the host
+    stays light on disk and bandwidth. HF auth is optional: without a token the
+    Hub allows fewer requests; `HF_TOKEN` raises the limit.
   Both record Lumina as a tool, not a creator, in the SBOM's creation info.
 - **Sync model:** asynchronous via the job queue (see
   [Background job execution](#background-job-execution)). Stage 0/1 runs the
   job in-process; Stage 2 can move it to a worker without changing this
   contract.
 - **Generator output:** what Pitloom logs at WARNING or above while it
-  generates is added as `pitloom.log` notifications, and `CheckRun.generator`
-  names the Pitloom version.
+  generates is added as `pitloom.log` notifications, `CheckRun.generator` names
+  the Pitloom version, and `generation_log` lists everything the generator side
+  did (see [Generator log](#generator-log)).
 - **Failure surfacing:** a refused URL or a failed clone or generation does not
   fail the job; it completes `done` with `execution_successful: false`, source
   `lumina-internal`, zeroed counts, and one `error` notification
@@ -366,7 +393,7 @@ forks.
 ### Mode 2 — SBOM upload
 
 - **Endpoint:** `POST /api/v1/sbom/check`
-- **Body:** multipart `file` plus a `regulation` form field (default `ntia`).
+- **Body:** multipart `file` plus a `standard` form field (default `ntia`).
   An SBOM URL is not supported.
 - **Size cap:** `LUMINA_MAX_SBOM_BYTES`, default 10 MiB. A larger file, or a
   `Content-Length` above the cap plus 64 KiB for the multipart framing, is
@@ -377,7 +404,7 @@ forks.
   `output_sarif(embed_sbom=False)` and feeds the SARIF log through
   `parse_sarif`. An SBOM the checker cannot process is refused with 422 (for
   example when its SPDX version cannot be determined); an unsupported
-  regulation with 501.
+  standard with 501.
 - **`embedded_sbom`:** absent.  Lumina already has the SBOM the user
   just supplied; embedding would double in-memory size for no benefit.
 - **Sync model:** synchronous for now (the check runs in a thread pool).  May
@@ -403,7 +430,8 @@ forks.
 - **Producer:** `ntia-conformance-checker` is recognised by name; any other
   producer's result has source `external-sarif`.
 - **`embedded_sbom`:** **populated iff** the producer chose to embed. The API
-  returns it; the web UI does not show it yet.
+  returns it; when its text is JSON the UI shows it in the *SBOM source* tab
+  (through `sbom`), without per-rule evidence.
 - **Sync model:** synchronous (parsing is cheap; no external calls).
 
 ## Background job execution
@@ -425,12 +453,12 @@ JobQueue.get(job_id)                 -> JobRecord(status, result?, error?)
 Everything above and below this line is **invariant across scaling stages** — the
 HTTP contract (`POST /artifact/check` → `job_id`, `GET /jobs/{job_id}`), the
 frontend (submit + poll), the job function itself
-(`generate_and_check(artifact_url, regulation_id) -> SbomCheckResponse`), the
+(`generate_and_check(artifact_url, standard_id) -> SbomCheckResponse`), the
 generators, and the conformance pipeline. Only the `JobQueue` *backend* changes.
 
 **Discipline that keeps the swap free:** job functions are written as if they
 already run in a separate worker — a top-level named function, JSON-serialisable
-arguments (a URL string, a regulation id), a JSON-serialisable result. They never
+arguments (a URL string, a standard id), a JSON-serialisable result. They never
 close over live in-process objects. Today the function runs in a thread; a future
 worker runs the identical function untouched.
 

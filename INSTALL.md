@@ -49,7 +49,7 @@ Smoke-test in another terminal:
 
 ```bash
 curl -s http://localhost/api/health          # -> {"status":"ok"}
-curl -s http://localhost/api/v1/regulations  # lists regulations + readiness
+curl -s http://localhost/api/v1/standards  # lists standards + readiness
 ```
 
 Test the **generate-and-check** flow end-to-end (paste a small Git or HF repo
@@ -59,7 +59,7 @@ URL in the *Generate & check* screen, or use the API directly):
 # Submit a job — returns {"job_id": "..."}
 curl -s -X POST http://localhost/api/v1/artifact/check \
   -H 'Content-Type: application/json' \
-  -d '{"artifact_url":"https://github.com/bact/pitloom","regulation_id":"ntia"}'
+  -d '{"artifact_url":"https://github.com/bact/pitloom","standard_id":"ntia"}'
 
 # Poll until status == "done" (substitute the job id)
 curl -s http://localhost/api/v1/jobs/<JOB_ID>
@@ -278,7 +278,7 @@ It prints `https://<random-words>.trycloudflare.com`. The network name is
 
 ```bash
 curl -s https://lumina.yourdomain.com/api/health
-curl -s https://lumina.yourdomain.com/api/v1/regulations
+curl -s https://lumina.yourdomain.com/api/v1/standards
 ```
 
 Open the URL in a browser and upload an SBOM to confirm end-to-end.
@@ -364,7 +364,7 @@ The Space repo needs only this one file.
 
    ```bash
    curl -s https://YOUR_USERNAME-YOUR_SPACE_NAME.hf.space/api/health
-   curl -s https://YOUR_USERNAME-YOUR_SPACE_NAME.hf.space/api/v1/regulations
+   curl -s https://YOUR_USERNAME-YOUR_SPACE_NAME.hf.space/api/v1/standards
    ```
 
 ### Updating
@@ -473,7 +473,7 @@ reads it at start.
 
    ```bash
    curl -s https://lumina-xxxx-uc.a.run.app/api/health
-   curl -s https://lumina-xxxx-uc.a.run.app/api/v1/regulations
+   curl -s https://lumina-xxxx-uc.a.run.app/api/v1/standards
    ```
 
 7. **Optional — custom domain:** Cloud Run console → service → **Manage custom

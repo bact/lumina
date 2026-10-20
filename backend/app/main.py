@@ -18,8 +18,8 @@ from pydantic import BaseModel
 
 from .conformance import (
     CHECKER_STANDARDS,
-    RegulationId,
     SbomCheckResponse,
+    StandardId,
     run_checker,
 )
 from .generate import generate_and_check
@@ -76,7 +76,7 @@ class ArtifactCheckRequest(BaseModel):
     """Body for ``POST /api/v1/artifact/check``."""
 
     artifact_url: str
-    regulation_id: RegulationId = "ntia"
+    standard_id: StandardId = "ntia"
 
 
 class JobSubmission(BaseModel):
@@ -109,13 +109,13 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.get("/api/v1/regulations")
-def list_regulations() -> dict[str, Any]:
-    """Return the regulations Lumina knows, and whether the checker supports each."""
+@app.get("/api/v1/standards")
+def list_standards() -> dict[str, Any]:
+    """Return the standards Lumina knows, and whether the checker supports each."""
     return {
-        "regulations": [
-            {"id": reg_id, "ready": reg_id in CHECKER_STANDARDS}
-            for reg_id in get_args(RegulationId)
+        "standards": [
+            {"id": std_id, "ready": std_id in CHECKER_STANDARDS}
+            for std_id in get_args(StandardId)
         ]
     }
 
@@ -127,12 +127,12 @@ async def check_sbom(
         UploadFile,
         File(description="SBOM file (SPDX 2.x / 3.0, JSON/XML/YAML/tag-value)"),
     ],
-    regulation: Annotated[RegulationId, Form()] = "ntia",
+    standard: Annotated[StandardId, Form()] = "ntia",
 ) -> SbomCheckResponse:
     """
-    Upload an SBOM file and check it against the requested regulation.
+    Upload an SBOM file and check it against the requested standard.
 
-    A regulation that ntia-conformance-checker does not support returns 501.
+    A standard that ntia-conformance-checker does not support returns 501.
     """
     declared = request.headers.get("content-length", "")
     if declared.isdigit() and int(declared) > MAX_SBOM_BYTES + _FORM_OVERHEAD:
@@ -156,7 +156,7 @@ async def check_sbom(
 
     try:
         return await run_in_threadpool(
-            _check_upload, tmp_path, regulation, _upload_name(file.filename), text
+            _check_upload, tmp_path, standard, _upload_name(file.filename), text
         )
     except NotImplementedError as exc:
         raise HTTPException(status_code=501, detail=str(exc)) from exc
@@ -195,24 +195,24 @@ async def import_sarif(sarif: dict[str, Any], request: Request) -> SbomCheckResp
 async def check_artifact(req: ArtifactCheckRequest) -> JobSubmission:
     """
     Generate an SBOM from an artefact URL (a Git repository or a Hugging Face
-    Hub URL) and check it against the requested regulation.
+    Hub URL) and check it against the requested standard.
 
     Generation can take minutes, so this returns a ``job_id`` immediately;
     poll ``GET /api/v1/jobs/{job_id}`` for the result.
 
-    A regulation the checker does not support returns 501 at once, before any
+    A standard the checker does not support returns 501 at once, before any
     clone or generation work.
     """
-    if req.regulation_id not in CHECKER_STANDARDS:
+    if req.standard_id not in CHECKER_STANDARDS:
         raise HTTPException(
             status_code=501,
-            detail=f"Regulation '{req.regulation_id}' is not supported by "
-            "ntia-conformance-checker.",
+            detail=f"Minimum elements standard '{req.standard_id}' is not "
+            "supported by ntia-conformance-checker.",
         )
     job_id = _jobs.enqueue(
         "generate_and_check",
         artifact_url=req.artifact_url,
-        regulation_id=req.regulation_id,
+        standard_id=req.standard_id,
     )
     return JobSubmission(job_id=job_id)
 
@@ -229,10 +229,10 @@ async def get_job(job_id: str) -> JobStatusResponse:
 
 
 def _check_upload(
-    path: str, regulation: RegulationId, filename: str, text: str
+    path: str, standard: StandardId, filename: str, text: str
 ) -> SbomCheckResponse:
     """Check the uploaded file at *path*; *text* is its content."""
-    return run_checker(path, regulation, load_sbom(filename, text))
+    return run_checker(path, standard, load_sbom(filename, text))
 
 
 def _upload_name(filename: str | None) -> str:
