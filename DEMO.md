@@ -123,7 +123,8 @@ and the SARIF log the checker made from it for the G7 SBOM for AI standard.
    *FSCT 2024* or *BSI TR-03183-2*. The same SBOM is checked again at once, with
    nothing uploaded again. Each standard asks for different things, and the page
    says which of its rules were not checked.
-3. **Import SARIF.** Click the example *Tiny model with Safetensors weights (G7)*, then *Import SARIF*. This is what
+3. **Import SARIF.** Click the example *Tiny model with Safetensors weights (G7)*: the
+   log appears in the text box, so you can show what it holds. Then *Import SARIF*. This is what
    the checker writes; Lumina shows the same result without running a check. (An
    imported log has no SBOM source tab and no per-rule evidence, because the log
    does not carry the SBOM text.)

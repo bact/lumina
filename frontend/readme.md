@@ -21,7 +21,7 @@ refused request shows the server's own error `detail`.
 | - | - | - |
 | **Generate & check** (default) | `POST /api/v1/artifact/check`, then `GET /api/v1/jobs/{job_id}` | Paste a Git repository or Hugging Face Hub URL; the server generates an SPDX 3 SBOM with Pitloom and checks it. Polls the job every 2.5 s. |
 | **Upload SBOM** | `POST /api/v1/sbom/check` (multipart `file` + `standard`) | Check an SBOM file you have, or one of the four example SBOMs. |
-| **Import SARIF** | `POST /api/v1/sarif/import` (the SARIF JSON as the body) | Read a SARIF 2.1.0 log from a file, pasted text or one of the four example logs; nothing is re-checked. |
+| **Import SARIF** | `POST /api/v1/sarif/import` (the SARIF JSON as the body) | Read a SARIF 2.1.0 log from a file or pasted text; an example button puts one of four real logs in the text box to read (and edit) before importing; nothing is re-checked. |
 | **About** | `GET /api/v1/standards` | Dependencies, licence, and the standards the API lists with what each check covers. |
 
 The three check screens render the result with the same `ArtifactResult`
@@ -40,7 +40,8 @@ when that count is above 0.
 `examples/` holds real files the "Try an example" buttons on *Upload SBOM* and
 *Import SARIF* load (`EXAMPLE_SBOMS`, `EXAMPLE_SARIFS` in `screen-upload.jsx`).
 A button fetches `/examples/<file>` and selects it as if it were chosen from
-disk (what was chosen, with the example's note, stays on screen and is
+disk (on Import SARIF it puts the log's text in the text box instead, replacing
+what was there, with a *Clear text* button) (what was chosen, with the example's note, stays on screen and is
 announced; of two quick choices the newer wins), so the check that follows is the ordinary upload or import. None is
 edited by hand; `scripts/ui-smoke.mjs` checks that each listed file exists and
 is an SPDX document or a SARIF 2.1.0 log. An example holds no personal data (no
