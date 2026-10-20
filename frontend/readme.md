@@ -37,12 +37,14 @@ when that count is above 0.
 
 ## Example files
 
-`examples/` holds real files the "Try an example" buttons on *Upload SBOM* and
+`examples/` holds real files the "Try an example" cards on *Upload SBOM* and
 *Import SARIF* load (`EXAMPLE_SBOMS`, `EXAMPLE_SARIFS` in `screen-upload.jsx`).
-A button fetches `/examples/<file>` and selects it as if it were chosen from
-disk (on Import SARIF it puts the log's text in the text box instead, replacing
-what was there, with a *Clear text* button) (what was chosen, with the example's note, stays on screen and is
-announced; of two quick choices the newer wins), so the check that follows is the ordinary upload or import. None is
+A card fetches `/examples/<file>` and selects it as if it were chosen from
+disk, so the check that follows is the ordinary upload or import (on Import SARIF
+it puts the log's text in the text box instead, replacing what was there; a
+*Clear text* button empties it). What was chosen, with the example's note, stays
+on screen and is announced for as long as it is still what the form holds; of two
+quick choices the newer wins, and a choice made by hand meanwhile is kept. None is
 edited by hand; `scripts/ui-smoke.mjs` checks that each listed file exists and
 is an SPDX document or a SARIF 2.1.0 log. An example holds no personal data (no
 person's name or email address): a project SBOM carries its authors' addresses,
@@ -50,8 +52,8 @@ so none is included.
 
 | File | How it was made |
 | - | - |
-| `phi-tiny-random.spdx3.json` | `loom model` on a tiny Safetensors model |
-| `phi-4.spdx3.json`, `qwen2.5-0.5b-instruct-gguf.spdx3.json` | the SBOM Lumina's *Generate & check* returned on 2026-10-20 for `huggingface.co/microsoft/phi-4` and `huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF` (Pitloom 0.20.2) |
+| `phi-tiny-random.spdx3.json` | `loom model` on a tiny Safetensors model; run by hand, so its SBOM author is Pitloom itself, unlike the SBOMs Lumina generates (author Lumina, tool Pitloom) |
+| `phi-4.spdx3.json`, `qwen2.5-0.5b-instruct-gguf.spdx3.json` | the SBOM Lumina's *Generate & check* returned on 2026-10-20 for `huggingface.co/microsoft/phi-4` and `huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF` (Pitloom at the commit pinned in `backend/requirements.txt`) |
 | `chainguard-image.spdx.json` | an SPDX 2.3 JSON SBOM that apko wrote for a Chainguard container image, copied unchanged from the checker's test data (`tests/data/SPDXSBOMExampleTests/chainguard.spdx.json`) |
 | `*.sarif.json` | `sbomcheck -s <spdx3\|spdx2> -c <g7ai\|ntia> -r sarif -o <file>` on the SBOM of the same name (checker pinned in `backend/requirements.txt`) |
 
@@ -121,8 +123,9 @@ still shown, by its code.
 | `colors-and-type.css` | Design tokens: CSS variables for colours, typography, spacing, motion. |
 | `assets/` | Logo SVGs. |
 | `i18n.js` | `window.LUMINA_I18N`: locales, catalogues, `t()`. |
+| `example-list.jsx` | The "Try an example" list (`ExampleList`): a disclosure over a grid of cards, shared by the three check screens; `EXAMPLE_SUBJECTS` holds the text each card shows. |
 | `components.jsx` | `Icon`, `Logo`, `Button`, `StatusChip`, `StandardTag`, `Card`, `MarginNote`, `TextField`, `Eyebrow`, `Mono`, `SummaryTile`, `ErrorCard`, `useLocale`. |
-| `app-shell.jsx` | `TopBar` (logo, `LanguageSwitcher`), `SideNav` and `NAV_SECTIONS`, the side-nav items. |
+| `app-shell.jsx` | `TopBar` (the translated title as a link to the main content, `LanguageSwitcher`), `SideNav` and `NAV_SECTIONS`, the side-nav items. |
 | `screen-conformance.jsx` | `STANDARD_INFO`, `DEFAULT_STANDARD`, `RULE_CLUSTERS`, the API helpers (`apiErrorMessage`, `postForResult`, `useStandards`), `StandardPicker`, `ScreenFrame` and the Generate & check screen (`ImportScreen`). |
 | `sbom-source.jsx` | `SbomSource` (windowed, highlighted source view), `DownloadSbomButton`, `downloadSbom`, the per-line highlight.js to React conversion. |
 | `generator-log.jsx` | `GeneratorLog`: the "Generator log" tab (`generation_log`, monospace, copy button), shown for a generated SBOM or a failed generation. |
@@ -132,7 +135,7 @@ still shown, by its code.
 | `screen-about.jsx` | About (`AboutScreen`). |
 | `vendor/` | React, React DOM, Babel, Lucide and highlight.js (JSON grammar), each with its licence; see `vendor/README.md`. |
 
-## Internationalization
+## Internationalisation
 
 Only the app shell and each screen's heading are translated: the skip link,
 the language picker, the top-bar title, the side navigation, the main landmark's
@@ -161,6 +164,13 @@ Built against WCAG 2.2 AA:
   screen moves focus to its `<main>` (no ring, it is not a control) so a screen
   reader announces it, and each screen has one `<h1>`. A result adds an `<h2>`
   for each rule cluster, *Gaps* and *Notifications*.
+- **Example list:** a disclosure (`<h2>` holding a button with `aria-expanded` and
+  `aria-controls`) over a grid of cards, each a `<button>` in a list per group
+  (Models, Projects, Container images) named by its visible text (name, what it
+  is, source, and on Import SARIF the standard). The chosen card has
+  `aria-current`. The list is open at first and collapses when a check starts; the
+  header opens it again and keeps focus. The note that says what was chosen is a
+  `role="status"` region that stays mounted.
 - **Skip the rule list:** a result with rules has a link, hidden until it has
   focus, just before the first rule; Enter moves focus to the *Gaps* heading (or
   the "No conformance gaps found" line) after the list.
@@ -168,7 +178,7 @@ Built against WCAG 2.2 AA:
   and `<h1>` carry the locale's `lang`, the rest of the screen (English) sits in
   a `lang="en"` wrapper whenever the locale is not English.
 - **Text size:** no text under 12 px (`Mono` and `code` use `max(0.94em, 12px)`);
-  the page does not scroll sideways at 320 px, and a long value is clamped to two
+  the page does not scroll sideways at 390 px or at 320 px (tested), and a long value is clamped to two
   lines in the rule list with its full text in *Show more*.
 - **Standard picker:** a `radiogroup` named "Minimum elements standard" with one
   tab stop (the chosen chip); the arrow keys, Home and End move focus between

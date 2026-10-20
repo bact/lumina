@@ -12,7 +12,7 @@ SPDX-License-Identifier: Apache-2.0
 // Both render the result with ArtifactResult (screen-conformance.jsx) and show
 // the server's error detail for a refused request (413, 422, 501, ...).
 
-const { useState: _useSU, useRef: _useRefU } = React;
+const { useState: _useSU, useRef: _useRefU, useEffect: _useEU } = React;
 
 function formatBytes(n) {
   if (n < 1024) return `${n} B`;
@@ -23,17 +23,24 @@ function formatBytes(n) {
 // ─── FilePicker -- a native file input with a visible label ─────────────
 function FilePicker({ id, label, accept, file, onChange, disabled }) {
   const inputRef = _useRefU(null);
+  // The input forgets its own choice whenever the file changes (also when an
+  // example, not the input, set it), so choosing the same file again always fires.
+  _useEU(() => { if (inputRef.current) inputRef.current.value = ""; }, [file]);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
       <input ref={inputRef} id={id} type="file" accept={accept} disabled={disabled}
         className="sr-only" tabIndex={-1} aria-hidden="true"
         onChange={(e) => onChange(e.target.files && e.target.files[0] ? e.target.files[0] : null)} />
-      <Button icon="file-up" disabled={disabled} onClick={() => inputRef.current && inputRef.current.click()}>{label}</Button>
+      <Button id={`${id}-choose`} icon="file-up" disabled={disabled} onClick={() => inputRef.current && inputRef.current.click()}>{label}</Button>
       <span aria-live="polite" style={{ fontSize: 12.5, color: "var(--ink-3)" }}>
         {file ? <><Mono style={{ color: "var(--ink-2)" }}>{file.name}</Mono> · {formatBytes(file.size)}</> : "No file chosen"}
       </span>
       {file && !disabled && (
-        <Button variant="ghost" size="sm" icon="x" onClick={() => { onChange(null); if (inputRef.current) inputRef.current.value = ""; }}>Clear</Button>
+        <Button variant="ghost" size="sm" icon="x" onClick={() => {
+          onChange(null);
+          const choose = document.getElementById(`${id}-choose`);
+          if (choose) choose.focus();
+        }}>Clear</Button>
       )}
     </div>
   );
@@ -44,64 +51,66 @@ function FilePicker({ id, label, accept, file, onChange, disabled }) {
 // made). Choosing one picks it as if the visitor had chosen it from disk, so
 // the check that follows is the ordinary upload or import.
 const EXAMPLE_SBOMS = [
-  { label: "Safetensors model with 80K parameters", file: "phi-tiny-random.spdx3.json", standard: "g7ai",
+  { subject: "tiny", file: "phi-tiny-random.spdx3.json", standard: "g7ai",
     note: "made by Pitloom from a tiny test model file" },
-  { label: "Safetensors model with 14.7B parameters", file: "phi-4.spdx3.json", standard: "g7ai",
-    note: "microsoft/phi-4, made by Pitloom from the Hub metadata on 2026-10-20" },
-  { label: "GGUF model with 630M parameters", file: "qwen2.5-0.5b-instruct-gguf.spdx3.json", standard: "g7ai",
-    note: "Qwen2.5-0.5B-Instruct-GGUF, made by Pitloom from the Hub metadata on 2026-10-20" },
-  { label: "Container image with an SPDX 2 SBOM", file: "chainguard-image.spdx.json", standard: "ntia",
-    note: "an SBOM in SPDX 2 JSON, made by apko for a Chainguard container image" },
-];
+  { subject: "phi4", file: "phi-4.spdx3.json", standard: "g7ai",
+    note: "made by Pitloom from the Hub metadata on 2026-10-20" },
+  { subject: "qwengguf", file: "qwen2.5-0.5b-instruct-gguf.spdx3.json", standard: "g7ai",
+    note: "made by Pitloom from the Hub metadata on 2026-10-20" },
+  { subject: "chainguard", file: "chainguard-image.spdx.json", standard: "ntia",
+    note: "an SPDX 2 JSON SBOM made by apko" },
+].map(ex => ({ ...ex, key: ex.file }));
 
 const EXAMPLE_SARIFS = [
-  { label: "Safetensors model with 80K parameters (G7)", file: "phi-tiny-random.g7ai.sarif.json",
-    note: "G7 SBOM for AI result for the tiny test model's SBOM" },
-  { label: "Safetensors model with 14.7B parameters (G7)", file: "phi-4.g7ai.sarif.json",
-    note: "G7 SBOM for AI result for the microsoft/phi-4 SBOM" },
-  { label: "Safetensors model with 14.7B parameters (NTIA)", file: "phi-4.ntia.sarif.json",
-    note: "NTIA result for the same SBOM" },
-  { label: "Container image with an SPDX 2 SBOM (NTIA)", file: "chainguard-image.ntia.sarif.json",
-    note: "NTIA result for the Chainguard container image SBOM" },
-];
+  { subject: "tiny", file: "phi-tiny-random.g7ai.sarif.json", standard: "g7ai",
+    note: "the G7 SBOM for AI result for its SBOM" },
+  { subject: "phi4", file: "phi-4.g7ai.sarif.json", standard: "g7ai",
+    note: "the G7 SBOM for AI result for its SBOM" },
+  { subject: "phi4", file: "phi-4.ntia.sarif.json", standard: "ntia",
+    note: "the NTIA result for the same SBOM" },
+  { subject: "chainguard", file: "chainguard-image.ntia.sarif.json", standard: "ntia",
+    note: "the NTIA result for its SBOM" },
+].map(ex => ({ ...ex, key: ex.file }));
 
-// A row of buttons; `onPick(file, example)` gets the example as a File (or, with
-// `as="text"`, as its text) and returns a short phrase for what else it set.
-// What was chosen, with the example's note, stays on screen (and is announced)
-// under the buttons; `where` says where it went.
-function ExampleFiles({ labelId, examples, disabled, onPick, as = "file", where = "is selected" }) {
-  const [note, setNote] = _useSU("");
+// The list of examples (example-list.jsx) with the loading of the chosen file.
+// `onPick(content, example)` gets the example as a File (or, with `as="text"`,
+// as its text) and returns a short phrase for what else it set. What was chosen,
+// with the example's note, stays on screen (and is announced) for as long as
+// `stillChosen(content, example)` holds, so it never describes a choice the
+// visitor has since changed. `epoch` changes whenever the visitor picks, types
+// or clears by hand: a load still running then is dropped. `describe(example)`
+// says where the content went. `open`/`onOpenChange` are the list's disclosure.
+function ExampleFiles({ idPrefix, examples, disabled, onPick, stillChosen, epoch, open, onOpenChange, showStandard = false, as = "file",
+  describe = (ex) => `The file ${ex.file} is selected` }) {
+  const [chosen, setChosen] = _useSU(null); // { content, ex, extra }
   const [error, setError] = _useSU("");
   const latest = _useRefU(0); // the newest choice; an older load that ends later is dropped
+  const epochRef = _useRefU(epoch);
+  epochRef.current = epoch;
   async function choose(ex) {
-    const mine = ++latest.current;
+    const mine = ++latest.current, startedAt = epochRef.current;
     setError("");
     try {
       const response = await fetch(`/examples/${ex.file}`);
       if (!response.ok) throw new Error(`the server answered ${response.status}`);
       const blob = await response.blob();
       const content = as === "text" ? await blob.text() : new File([blob], ex.file, { type: "application/json" });
-      if (mine !== latest.current) return;
-      const extra = onPick(content, ex) || "";
-      setNote(`Example chosen: ${ex.label} (${ex.note}). The file ${ex.file} ${where}${extra}.`);
+      if (mine !== latest.current || startedAt !== epochRef.current) return;
+      setChosen({ content, ex, extra: onPick(content, ex) || "" });
     } catch (err) {
-      if (mine !== latest.current) return;
-      setNote("");
+      if (mine !== latest.current || startedAt !== epochRef.current) return;
+      setChosen(null);
       setError(`Could not load the example file ${ex.file}: ${String(err.message || err)}`);
     }
   }
+  const current = chosen && stillChosen(chosen.content, chosen.ex) ? chosen : null;
+  const note = current
+    ? `Example chosen: ${exampleTitle(current.ex.subject)} (${current.ex.note}). ${describe(current.ex)}${current.extra}.` : "";
   return (
     <>
-      <div role="group" aria-labelledby={labelId} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <span id={labelId} style={{ fontSize: 12.5, color: "var(--ink-3)" }}>Try an example:</span>
-        {examples.map(ex => (
-          <Button key={ex.file} size="sm" variant="ghost" disabled={disabled}
-            title={`${ex.file} (${ex.note})`} onClick={() => choose(ex)}>
-            {ex.label}
-          </Button>
-        ))}
-      </div>
-      <div role="status" style={note ? { fontSize: 12.5, color: "var(--ink-3)" } : undefined}>{note}</div>
+      <ExampleList idPrefix={idPrefix} examples={examples} open={open} onOpenChange={onOpenChange}
+        disabled={disabled} onChoose={choose} note={note} chosenKey={current ? current.ex.key : undefined}
+        showStandard={showStandard} />
       {error && <ErrorCard title="Could not load the example">{error}</ErrorCard>}
     </>
   );
@@ -137,13 +146,13 @@ function useCheck() {
   return { phase, result, errorMsg, start, reset, recheck };
 }
 
-function CheckOutcome({ check }) {
+function CheckOutcome({ check, busy = "Working…" }) {
   return (
     <>
       <ResultAnnouncer result={check.phase === "done" ? check.result : null} />
       {check.phase === "running" && (
         <div role="status" style={{ fontSize: 12.5, color: "var(--ink-3)", display: "flex", alignItems: "center", gap: 8 }}>
-          <Icon name="loader" size={14} /> Working…
+          <Icon name="loader" size={14} /> {busy}
         </div>
       )}
       {check.phase === "error" && <ErrorCard>{check.errorMsg}</ErrorCard>}
@@ -159,11 +168,15 @@ function UploadScreen() {
   const standardList = useStandards();
   const [standardId, setStandardId] = useSelectedStandard(standardList.standards);
   const [file, setFile] = _useSU(null);
+  const [epoch, setEpoch] = _useSU(0); // counts the visitor's own file choices
+  const [examplesOpen, setExamplesOpen] = _useSU(true); // the list is open until a check is started
   const check = useCheck();
   const running = check.phase === "running";
+  const readyStandard = (id) => !!(standardList.standards && standardList.standards.find(r => r.id === id && r.ready));
 
   function submit() {
     if (!file || !standardId) return;
+    setExamplesOpen(false);
     const form = new FormData();
     form.append("file", file, file.name);
     form.append("standard", standardId);
@@ -187,21 +200,22 @@ function UploadScreen() {
           } else check.reset();
         }} />
       <FilePicker id="sbom-file" label="Choose SBOM file" file={file} disabled={running}
-        onChange={(f) => { setFile(f); check.reset(); }} />
-      <ExampleFiles labelId="example-sbom-label" examples={EXAMPLE_SBOMS} disabled={running}
+        onChange={(f) => { setEpoch(e => e + 1); setFile(f); check.reset(); }} />
+      <ExampleFiles idPrefix="example-sbom" examples={EXAMPLE_SBOMS} disabled={running} epoch={epoch}
+        open={examplesOpen} onOpenChange={setExamplesOpen}
+        stillChosen={(f, ex) => file === f && (!readyStandard(ex.standard) || standardId === ex.standard)}
+        describe={(ex) => `The file ${ex.file} is selected${readyStandard(ex.standard) ? ` and ${standardLabel(ex.standard)} is selected` : ""}`}
         onPick={(f, ex) => {
           setFile(f); check.reset();
-          const known = standardList.standards && standardList.standards.find(r => r.id === ex.standard);
-          if (!(known && known.ready)) return "";
-          setStandardId(ex.standard);
-          return ` and ${standardLabel(ex.standard)} is selected`;
+          if (readyStandard(ex.standard)) setStandardId(ex.standard);
+          return "";
         }} />
       <div>
         <Button variant="primary" icon={running ? "loader" : "play"} onClick={submit} disabled={running || !file || !standardId}>
           {running ? "Checking…" : "Check SBOM"}
         </Button>
       </div>
-      <CheckOutcome check={check} />
+      <CheckOutcome check={check} busy="Checking the SBOM…" />
     </ScreenFrame>
   );
 }
@@ -214,12 +228,17 @@ function SarifScreen() {
   const textRef = _useRefU(null);
   const [file, setFile] = _useSU(null);
   const [text, setText] = _useSU("");
+  const [epoch, setEpoch] = _useSU(0); // counts the visitor's own picks, edits and clears
+  const [examplesOpen, setExamplesOpen] = _useSU(true); // the list is open until a check is started
+  const live = _useRefU({ file, text }); // what is in the form now, for a load that ends later
+  live.current = { file, text };
   const check = useCheck();
   const running = check.phase === "running";
   const hasInput = !!file || text.trim() !== "";
 
   function submit() {
     if (!hasInput) return;
+    setExamplesOpen(false);
     check.start(async () => postForResult("/api/v1/sarif/import", {
       headers: { "Content-Type": "application/json" },
       body: file ? await file.text() : text,
@@ -230,26 +249,28 @@ function SarifScreen() {
     <ScreenFrame eyebrow={t("nav.sarif")} title={t("screen.sarif.title")}
       intro="Choose or paste a SARIF 2.1.0 log made by a conformance checker. Nothing is re-checked: Lumina reads the log's results. The standard is taken from the log's rule ids.">
       <FilePicker id="sarif-file" label="Choose SARIF file" accept=".sarif,.json,application/json" file={file} disabled={running}
-        onChange={(f) => { setFile(f); check.reset(); }} />
-      <ExampleFiles labelId="example-sarif-label" examples={EXAMPLE_SARIFS} disabled={running}
-        as="text" where="is in the text box below"
+        onChange={(f) => { setEpoch(e => e + 1); setFile(f); check.reset(); }} />
+      <ExampleFiles idPrefix="example-sarif" examples={EXAMPLE_SARIFS} disabled={running} epoch={epoch}
+        open={examplesOpen} onOpenChange={setExamplesOpen}
+        as="text" showStandard stillChosen={(content) => !file && text === content}
+        describe={(ex) => `The text of ${ex.file} is in the text box below`}
         onPick={(content) => {
-          const replaced = text.trim() !== "" || !!file;
+          const replaced = live.current.text.trim() !== "" || !!live.current.file;
           setFile(null); setText(content); check.reset();
           return replaced ? ", replacing what was there" : "";
         }} />
       <div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
           <label htmlFor="sarif-text" style={{ fontSize: 12, color: "var(--ink-3)" }}>
-            {file ? (text.trim() ? "A file is chosen and is used; the text you pasted is kept until you clear the file." : "A file is chosen; clear it to paste instead.") : "Or paste the SARIF JSON"}
+            {file ? (text.trim() ? "A file is chosen and is used; the text in the box is kept until you clear the file." : "A file is chosen; clear it to paste instead.") : "Or paste the SARIF JSON"}
           </label>
           {text !== "" && !file && (
             <Button variant="ghost" size="sm" icon="x" disabled={running}
-              onClick={() => { setText(""); check.reset(); textRef.current && textRef.current.focus(); }}>Clear text</Button>
+              onClick={() => { setEpoch(e => e + 1); setText(""); check.reset(); textRef.current && textRef.current.focus(); }}>Clear text</Button>
           )}
         </div>
         <textarea id="sarif-text" ref={textRef} value={text} disabled={running || !!file}
-          onChange={(e) => { setText(e.target.value); check.reset(); }}
+          onChange={(e) => { setEpoch(n => n + 1); setText(e.target.value); check.reset(); }}
           rows={text ? 14 : 8} spellCheck={false}
           placeholder='{"version": "2.1.0", "runs": [ ... ]}'
           style={{
@@ -264,7 +285,7 @@ function SarifScreen() {
           {running ? "Importing…" : "Import SARIF"}
         </Button>
       </div>
-      <CheckOutcome check={check} />
+      <CheckOutcome check={check} busy="Importing the log…" />
       <MarginNote title="Which logs are read?">
         Rule ids must follow the SBOM requirements ontology (<Mono>BOM-[SPEC][YEAR]-…</Mono>, for example <Mono>BOM-NTIA2021-DF-001</Mono>) and name one supported standard and edition. A log for another edition, or one that mixes standards, is refused with the reason.
       </MarginNote>

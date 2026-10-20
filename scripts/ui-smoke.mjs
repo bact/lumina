@@ -113,7 +113,8 @@ const NTIA_RESULT = {
     system_judged_by_model: null,
   },
   run: { ...TOOL, generator: "pitloom 0.0.0-mock", execution_successful: true,
-    notifications: [{ level: "warning", message: "Mock Pitloom warning.", descriptor_id: "pitloom.log" }] },
+    notifications: [{ level: "warning", message: "Mock Pitloom warning.", descriptor_id: "pitloom.log" },
+      { level: "warning", message: "1 component(s) are not connected to the SBOM root and were not evaluated.", descriptor_id: "spdx.floating-component" }] },
   embedded_sbom: null,
   sbom: SBOM,
   generation_log: [
@@ -411,50 +412,75 @@ check((await page.getAttribute("main", "aria-label")) === "Generate & check scre
 await chipsMatchApi("Generate & check");
 await noSampleData("Generate & check");
 await shot("1-generate");
-// The example buttons fill the URL and pick the demo's standard.
-await page.getByRole("button", { name: "Project with no AI model" }).click();
+// The example cards fill the URL and pick the demo's standard (every card is checked below).
+const card = (key) => page.locator(`[data-example="${key}"]`);
+// Choose a card, opening its list first when a started check has collapsed it.
+const pick = async (key) => {
+  await page.evaluate(k => {
+    const r = document.querySelector(`[data-example="${k}"]`).closest("[id$=-region]");
+    if (r.hidden) document.querySelector(`[aria-controls="${r.id}"]`).click();
+  }, key);
+  await card(key).click();
+};
+await pick("https://github.com/pallets/flask");
 check(await page.getByPlaceholder(/github/).inputValue() === "https://github.com/pallets/flask"
   && await page.getByRole("radio", { name: "NTIA Minimum Elements" }).getAttribute("aria-checked") === "true",
   "Generate & check: an example fills the URL and picks its standard");
-await page.getByRole("button", { name: "Safetensors model with a dataset" }).click();
+await pick("https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad");
 check((await page.getByPlaceholder(/github/).inputValue()).startsWith("https://huggingface.co/distilbert/")
   && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
   "Generate & check: the model example fills the URL and picks G7 SBOM for AI");
-check(await page.getByRole("group", { name: "Try an example:" }).count() === 1
-  && (await page.locator("[role=status].sr-only").allInnerTexts()).some(t => t.includes("Example chosen: Safetensors model with a dataset") && t.includes("G7 SBOM for AI")),
-  "Generate & check: the examples are a named group and the choice is announced");
-await page.getByRole("button", { name: "Safetensors model with 14.7B parameters" }).click();
-check(await page.getByPlaceholder(/github/).inputValue() === "https://huggingface.co/microsoft/phi-4"
-  && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
-  "Generate & check: the Safetensors model example fills the URL and picks G7 SBOM for AI");
-await page.getByRole("button", { name: "Safetensors model with 119B parameters" }).click();
-check(await page.getByPlaceholder(/github/).inputValue() === "https://huggingface.co/mistralai/Mistral-Small-4-119B-2603"
-  && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
-  "Generate & check: the Mistral model example fills the URL and picks G7 SBOM for AI");
-await page.getByRole("button", { name: "Safetensors model with 29.3B parameters" }).click();
-check(await page.getByPlaceholder(/github/).inputValue() === "https://huggingface.co/ibm-granite/granite-4.2-30b"
-  && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
-  "Generate & check: the Granite model example fills the URL and picks G7 SBOM for AI");
-for (const [name, url] of [["Safetensors model with 303M parameters", "https://huggingface.co/sonyinteractive/grooming-risk-classifier"], ["Safetensors model with 14.8B parameters", "https://huggingface.co/JTS-AI/OpenJAI-v1.0-14B"]]) {
-  await page.getByRole("button", { name }).click();
-  check(await page.getByPlaceholder(/github/).inputValue() === url
-    && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
-    `Generate & check: the example ${name} fills the URL and picks G7 SBOM for AI`);
-}
-await page.getByRole("button", { name: "GGUF model with 630M parameters" }).click();
-check(await page.getByPlaceholder(/github/).inputValue() === "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF"
-  && await page.getByRole("radio", { name: "G7 SBOM for AI" }).getAttribute("aria-checked") === "true",
-  "Generate & check: the GGUF model example fills the URL and picks G7 SBOM for AI");
+check(await page.getByRole("region", { name: /^Try an example/ }).count() === 1
+  && (await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("Example chosen: distilbert/distilbert-base-cased-distilled-squad, Safetensors model") && t.includes("G7 SBOM for AI")),
+  "Generate & check: the examples are a named region and the choice is announced");
+// The list is a grid of cards, three lines each, grouped by kind; the chosen card is marked.
+const grid = await page.evaluate(() => [...document.querySelectorAll("#example-generate-region .example-card")].map(c => !!c.querySelector(".example-card-head .example-name") && !!c.querySelector(".example-card-body .example-what") && c.querySelector(".example-card-body .example-source").textContent.startsWith("From ") && !c.querySelector(".example-tag")));
+check(grid.length === 10 && grid.every(Boolean), `Generate & check: ten cards, name as heading, what it is and source in the body, no standard (${grid.length})`);
+check(await page.evaluate(() => JSON.stringify([...document.querySelectorAll("#example-generate-region .example-group-label")].map(e => e.textContent))) === JSON.stringify(["Models", "Projects"]), "Generate & check: the examples are grouped as Models and Projects");
+check(await card("https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad").getAttribute("aria-current") === "true"
+  && await card("https://github.com/pallets/flask").getAttribute("aria-current") === null, "Generate & check: the chosen card is marked");
+// The cards are one tab stop; the arrow keys, Home and End move between them.
+const PHI = "https://huggingface.co/microsoft/phi-4";
+check(await page.evaluate(() => [...document.querySelectorAll("#example-generate-region .example-card")].filter(c => c.tabIndex === 0).length) === 1, "Generate & check: the example cards are one tab stop");
+await card(PHI).focus();
+const focusedKey = () => page.evaluate(() => document.activeElement.dataset.example);
+const rect = () => page.evaluate(() => { const r = document.activeElement.getBoundingClientRect(); return { top: r.top, left: r.left }; });
+await page.keyboard.press("ArrowRight");
+check(await focusedKey() === "https://huggingface.co/mistralai/Mistral-Small-4-119B-2603", "Generate & check: ArrowRight moves to the next card");
+await page.keyboard.press("ArrowLeft");
+const before = await rect();
+await page.keyboard.press("ArrowDown");
+const below = await rect();
+check(below.top > before.top && Math.abs(below.left - before.left) < 40, "Generate & check: ArrowDown moves to the card below");
+await page.keyboard.press("ArrowUp");
+check(await focusedKey() === PHI, "Generate & check: ArrowUp moves back up");
+await page.keyboard.press("End");
+check(await focusedKey() === "https://github.com/pallets/flask", "Generate & check: End moves to the last card");
+await page.keyboard.press("Home");
+check(await focusedKey() === "https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad", "Generate & check: Home moves to the first card");
+check(await page.evaluate(() => [...document.querySelectorAll("#example-generate-region .example-card")].filter(c => c.tabIndex === 0).length) === 1, "Generate & check: the arrow keys keep one tab stop");
+await page.keyboard.press("Enter");
+check(await page.getByPlaceholder(/github/).inputValue() === "https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad", "Generate & check: Enter on a card chooses it");
 await page.getByPlaceholder(/github/).fill("https://github.com/o/refuse");
 await page.getByRole("button", { name: "Generate & check" }).last().click();
 await page.waitForSelector(`text=${DETAIL_501}`, { timeout: 5000 }).catch(() => {});
 check((await text()).includes(DETAIL_501), "Generate & check: a 501 shows the server detail");
+// Starting a check collapses the example list (more room); its header opens it again.
+const collapsedAfterRun = async (prefix, what) => {
+  const head = page.locator(`#${prefix}-head button`), region = page.locator(`#${prefix}-region`);
+  check(await head.getAttribute("aria-expanded") === "false" && await region.isHidden(), `${what}: the example list collapses when a check is started`);
+  await head.click();
+  check(await head.getAttribute("aria-expanded") === "true" && await region.isVisible()
+      && await page.evaluate(() => document.activeElement.closest("h2")?.id.endsWith("-head")), `${what}: the example list opens again from its header and keeps focus there`);
+};
+await collapsedAfterRun("example-generate", "Generate & check");
 await page.getByPlaceholder(/github/).fill("https://github.com/o/r");
 await page.getByRole("button", { name: "Generate & check" }).last().click();
 await page.waitForSelector("text=Data fields", { timeout: 10000 }).catch(() => {});
 let body = await text();
 check(body.includes("Data fields") && body.includes("Component supplier") && body.includes("pitloom 0.0.0-mock"),
   "Generate & check: the job result renders with rules and generator");
+check((await text()).includes("Not a failure: the checker does not evaluate a component that is not connected"), "Generate & check: a floating-component notification explains itself");
 check(posted.at(-1).standard_id === "g7ai", "Generate & check: the default request names g7ai");
 await shot("2-generate-result");
 await evidenceAndSource("Generate & check");
@@ -541,6 +567,19 @@ await page.evaluate(() => { location.hash = "#sbom-L12345"; });
 await page.waitForSelector('.sbom-line--hit[data-line="12345"]', { timeout: 5000 }).catch(() => {});
 check(await lineVisible(12345, '"key12345"'), "big source: a #sbom-L12345 hash jumps to line 12345");
 
+// Every Generate example: fills its URL, picks its standard, says so (visibly), and the note goes when the URL is edited.
+const demoExamples = await page.evaluate(() => DEMO_EXAMPLES);
+for (const ex of demoExamples) {
+  await pick(ex.key);
+  const title = await page.evaluate(s => exampleTitle(s), ex.subject);
+  const said = (await page.locator("[role=status]").allInnerTexts()).some(t => t.includes(`Example chosen: ${title} (${ex.note})`) && t.includes(ex.url));
+  check(await page.getByPlaceholder(/github/).inputValue() === ex.url
+      && await page.getByRole("radio", { name: LABELS[ex.standard] }).getAttribute("aria-checked") === "true" && said,
+    `Generate & check: the example ${ex.subject} fills the URL, picks its standard and says so`);
+}
+await page.getByPlaceholder(/github/).fill("https://github.com/o/r");
+check(!(await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("Example chosen")), "Generate & check: the example note goes when the URL is edited");
+
 // Upload SBOM
 await nav("Upload SBOM");
 await chipsMatchApi("Upload SBOM");
@@ -557,30 +596,52 @@ const sbomExamples = await page.evaluate(() => EXAMPLE_SBOMS);
 for (const ex of sbomExamples) {
   const doc = JSON.parse(fs.readFileSync(path.join(root, "examples", ex.file), "utf8"));
   check(Boolean(doc.spdxVersion || doc["@graph"]), `Upload SBOM: example ${ex.file} is an SPDX document`);
-  await page.getByRole("button", { name: ex.label, exact: true }).click();
+  await pick(ex.key);
   await page.waitForSelector(`text=${ex.file}`, { timeout: 5000 }).catch(() => {});
+  const title = await page.evaluate(s => exampleTitle(s), ex.subject);
   check(await page.getByText(ex.file, { exact: false }).first().isVisible()
       && await page.getByRole("radio", { name: LABELS[ex.standard] }).getAttribute("aria-checked") === "true"
-      && (await page.locator("[role=status]").allInnerTexts()).some(t => t.includes(`Example chosen: ${ex.label} (${ex.note})`) && t.includes(LABELS[ex.standard])),
-    `Upload SBOM: choosing the example ${ex.label} selects its file and standard, and says so`);
+      && (await page.locator("[role=status]").allInnerTexts()).some(t => t.includes(`Example chosen: ${title} (${ex.note})`) && t.includes(LABELS[ex.standard])),
+    `Upload SBOM: choosing the example ${ex.subject} selects its file and standard, and says so`);
 }
 // Two quick choices: the slower, older load must not replace the newer one.
 await page.route("**/examples/phi-4.spdx3.json", async r => { await new Promise(res => setTimeout(res, 700)); await r.continue(); });
-await page.getByRole("button", { name: "Safetensors model with 14.7B parameters", exact: true }).click();
-await page.getByRole("button", { name: "GGUF model with 630M parameters", exact: true }).click();
+await pick("phi-4.spdx3.json");
+await pick("qwen2.5-0.5b-instruct-gguf.spdx3.json");
 await page.waitForTimeout(1200);
-check((await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("Example chosen: GGUF model with 630M parameters"))
-    && !(await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("Example chosen: Safetensors model with 14.7B parameters"))
+check((await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("Example chosen: Qwen/Qwen2.5-0.5B-Instruct-GGUF"))
+    && !(await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("Example chosen: microsoft/phi-4"))
     && await page.getByText("qwen2.5-0.5b-instruct-gguf.spdx3.json").first().isVisible(),
   "Upload SBOM: an older, slower example load does not replace a newer choice");
 await page.unroute("**/examples/phi-4.spdx3.json");
+// A file chosen from disk while an example is still loading is not overwritten when it arrives.
+await page.route("**/examples/phi-4.spdx3.json", async r => { await new Promise(res => setTimeout(res, 700)); await r.continue(); });
+await pick("phi-4.spdx3.json");
+await page.setInputFiles("#sbom-file", { name: "mine.spdx.json", mimeType: "application/json", buffer: Buffer.from("{}") });
+await page.waitForTimeout(1200);
+check(await page.getByText("mine.spdx.json").first().isVisible() && !(await page.getByText("phi-4.spdx3.json").first().isVisible().catch(() => false)),
+  "Upload SBOM: a file chosen from disk while an example loads is kept");
+await page.unroute("**/examples/phi-4.spdx3.json");
+// The note never describes a choice that has changed; Clear returns focus to Choose.
+const noteShown = async () => (await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("Example chosen"));
+await pick("qwen2.5-0.5b-instruct-gguf.spdx3.json");
+await page.waitForSelector("text=Example chosen: Qwen/Qwen2.5", { timeout: 5000 }).catch(() => {});
+check(await page.evaluate(() => document.getElementById("sbom-file").value === ""), "Upload SBOM: the file input forgets its value when an example sets the file");
+await page.getByRole("radio", { name: LABELS.ntia }).click();
+check(!(await noteShown()), "Upload SBOM: the example note goes when the standard is changed");
+await pick("qwen2.5-0.5b-instruct-gguf.spdx3.json");
+await page.waitForSelector("text=Example chosen: Qwen/Qwen2.5", { timeout: 5000 }).catch(() => {});
+await page.getByRole("button", { name: "Clear", exact: true }).click();
+check(!(await noteShown()) && await page.evaluate(() => document.activeElement.id) === "sbom-file-choose", "Upload SBOM: Clear removes the example note and returns focus to Choose SBOM file");
+check(await page.evaluate(() => document.querySelectorAll("#example-sbom-region .example-card").length > 0 && !document.querySelector("#example-sbom-region .example-tag")), "Upload SBOM: the cards name no standard (the visitor chooses it)");
 const sentBodies = [];
 page.on("request", q => { if (q.url().endsWith("/api/v1/sbom/check")) sentBodies.push(q.postData() || ""); });
-await page.getByRole("button", { name: "Container image with an SPDX 2 SBOM", exact: true }).click();
+await pick("chainguard-image.spdx.json");
 await page.getByRole("button", { name: "Check SBOM" }).click();
 await page.waitForTimeout(500);
 check(sentBodies.length === 1 && sentBodies[0].includes('filename="chainguard-image.spdx.json"') && sentBodies[0].includes("SPDX-2.3"),
   "Upload SBOM: an example is uploaded as its real file");
+await collapsedAfterRun("example-sbom", "Upload SBOM");
 await page.getByRole("button", { name: "Clear" }).click();
 await page.setInputFiles("#sbom-file", { name: "big.spdx.json", mimeType: "application/json", buffer: Buffer.from("{}") });
 await page.getByRole("radio", { name: LABELS.ntia }).click();
@@ -595,7 +656,7 @@ body = await text();
 check(body.includes("SBOM document") && body.includes("Components") && body.includes("Doc creator")
     && body.includes("1 present · 1 missing · 0 not applicable · 1 not checked")
     && body.includes("0 present · 1 missing · 1 not applicable · 0 not checked · 1 optional not provided")
-    && body.includes("FIELDS CHECKED") && !body.includes("erdict"),
+    && body.includes("RULES CHECKED") && !body.includes("erdict"),
   "Upload SBOM: BSI shows its DOC and COMP clusters with per-rule counts");
 check(/not provided/i.test(body) && body.includes("OPTIONAL PROVIDED") && body.includes("0 of 1"),
   "Upload SBOM: an optional rule is Not provided, apart from Missing");
@@ -612,7 +673,7 @@ await page.getByRole("radio", { name: LABELS.g7ai }).click();
 await page.getByRole("button", { name: "Check SBOM" }).click();
 await page.waitForSelector("text=could not be checked", { timeout: 5000 }).catch(() => {});
 body = await text();
-check(body.includes("The SBOM could not be checked") && body.includes("spdx.parsing-error") && !body.includes("Fields checked"),
+check(body.includes("The SBOM could not be checked") && body.includes("spdx.parsing-error") && !body.includes("Rules checked"),
   "Upload SBOM: an unreadable SBOM shows no counts, only why");
 await shot("5b-upload-unreadable");
 
@@ -628,7 +689,7 @@ for (const [name, reason] of [
   await page.getByRole("button", { name: "Check SBOM" }).click();
   await page.waitForSelector("text=Nothing was checked", { timeout: 5000 }).catch(() => {});
   const banner = await text();
-  check(banner.includes("Nothing was checked") && banner.includes(reason) && !banner.includes("Fields checked"),
+  check(banner.includes("Nothing was checked") && banner.includes(reason) && !banner.includes("Rules checked"),
     `Upload SBOM: the nothing-checked banner gives the reason for ${name}`);
   check((await page.locator("[role=status].sr-only").allInnerTexts()).some(t => t === `Check finished. Nothing was checked. ${reason}`),
     `Upload SBOM: the nothing-checked reason is announced for ${name}`);
@@ -643,15 +704,16 @@ for (const ex of sarifExamples) {
   const raw = fs.readFileSync(path.join(root, "examples", ex.file), "utf8");
   const log = JSON.parse(raw);
   check(log.version === "2.1.0" && log.runs.length > 0, `Import SARIF: example ${ex.file} is a SARIF 2.1.0 log`);
-  await page.getByRole("button", { name: ex.label, exact: true }).click();
+  await pick(ex.key);
   await page.waitForFunction(r => document.getElementById("sarif-text").value === r, raw, { timeout: 5000 }).catch(() => {});
+  const title = await page.evaluate(s => exampleTitle(s), ex.subject);
   check(await page.inputValue("#sarif-text") === raw
-      && (await page.locator("[role=status]").allInnerTexts()).some(t => t.includes(`Example chosen: ${ex.label} (${ex.note})`) && t.includes("in the text box below")),
-    `Import SARIF: choosing the example ${ex.label} puts its SARIF in the text box, and says so`);
+      && (await page.locator("[role=status]").allInnerTexts()).some(t => t.includes(`Example chosen: ${title} (${ex.note})`) && t.includes("in the text box below")),
+    `Import SARIF: choosing the example ${ex.key} puts its SARIF in the text box, and says so`);
 }
 // Choosing an example replaces what was in the box, and says so; Clear text empties it.
 await page.fill("#sarif-text", "pasted text");
-await page.getByRole("button", { name: "Safetensors model with 14.7B parameters (G7)", exact: true }).click();
+await pick("phi-4.g7ai.sarif.json");
 await page.waitForFunction(() => document.getElementById("sarif-text").value !== "pasted text", null, { timeout: 5000 }).catch(() => {});
 check((await page.locator("[role=status]").allInnerTexts()).some(t => t.includes("replacing what was there")), "Import SARIF: an example that replaces pasted text says so");
 await page.getByRole("button", { name: "Clear text" }).click();
@@ -659,19 +721,21 @@ check(await page.inputValue("#sarif-text") === "" && await page.evaluate(() => d
 // A file chosen with the picker leaves the pasted text in place.
 await page.fill("#sarif-text", "pasted text");
 await page.setInputFiles("#sarif-file", { name: "own.sarif.json", mimeType: "application/json", buffer: Buffer.from("{}") });
-check(await page.inputValue("#sarif-text") === "pasted text" && (await text()).includes("the text you pasted is kept"),
+check(await page.inputValue("#sarif-text") === "pasted text" && (await text()).includes("the text in the box is kept"),
   "Import SARIF: choosing a file keeps the pasted text, and the label says so");
 await page.getByRole("button", { name: "Clear", exact: true }).click();
 check(await page.inputValue("#sarif-text") === "pasted text" && !(await page.locator("#sarif-text").isDisabled()),
   "Import SARIF: the pasted text is back when the file is cleared");
 await page.getByRole("button", { name: "Clear text" }).click();
-await page.getByRole("button", { name: "Safetensors model with 14.7B parameters (NTIA)", exact: true }).click();
+await pick("phi-4.ntia.sarif.json");
 await page.waitForFunction(() => document.getElementById("sarif-text").value.length > 0, null, { timeout: 5000 }).catch(() => {});
+check(await page.evaluate(() => [...document.querySelectorAll("#example-sarif-region .example-card")].every(c => c.querySelector(".example-tag"))), "Import SARIF: each card names the standard its log is for");
 const sentLogs = [];
 page.on("request", q => { if (q.url().endsWith("/api/v1/sarif/import")) sentLogs.push(q.postData() || ""); });
 await page.getByRole("button", { name: "Import SARIF" }).last().click();
 await page.waitForTimeout(500);
 check(sentLogs.length === 1 && sentLogs[0].includes('"ruleId"'), "Import SARIF: an example is sent as its real log");
+await collapsedAfterRun("example-sarif", "Import SARIF");
 await page.getByRole("button", { name: "Clear text" }).click();
 await page.fill("#sarif-text", '{"version": "2.1.0", "runs": [{"results": [{"ruleId": "BOM-CISA2025-META-001"}]}]}');
 await page.getByRole("button", { name: "Import SARIF" }).last().click();
@@ -777,7 +841,7 @@ await page.getByRole("navigation").getByRole("button").nth(1).click();
 check((await page.title()) === "ตรวจสอบไฟล์ SBOM | Lumina", "Document title is translated");
 check(await page.evaluate(() => document.querySelector("main h1").closest("[lang]").lang === "th"
     && document.querySelector("main p").closest("[lang]").lang === "en"
-    && document.querySelector("main [role=group]").closest("[lang]").lang === "en"),
+    && document.querySelector("main .example-list").closest("[lang]").lang === "en"),
   "In Thai, the heading is lang=th and the English body is lang=en");
 await page.getByRole("button", { name: /^[A-Z]{2}, / }).click();
 await page.getByRole("option", { name: /^English/ }).click();
@@ -785,7 +849,7 @@ await page.getByRole("option", { name: /^English/ }).click();
 await page.setInputFiles("#sbom-file", { name: "bsi.spdx.json", mimeType: "application/json", buffer: Buffer.from("{}") });
 await page.getByRole("radio", { name: LABELS.bsi }).click();
 await page.getByRole("button", { name: "Check SBOM" }).click();
-await page.waitForSelector("text=Fields checked", { timeout: 5000 }).catch(() => {});
+await page.waitForSelector("text=Rules checked", { timeout: 5000 }).catch(() => {});
 // The skip link over the rule list: hidden until focused, then jumps past the list.
 const skipRules = page.getByRole("link", { name: "Skip the rule list" });
 check(await skipRules.count() === 1 && (await skipRules.boundingBox()).width <= 1, "Skip the rule list: one link, hidden until it has focus");
