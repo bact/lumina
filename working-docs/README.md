@@ -12,6 +12,7 @@ SPDX-License-Identifier: CC0-1.0
 Internal notes. Content can change without notice; the user-facing docs
 (`README.md`, `INSTALL.md`) never link here.
 
+- [roadmap.md](roadmap.md): what is done and what is open.
 - [design.md](design.md): architecture and design decisions.
 - [demo.md](demo.md): set up, warm up and run a demo.
 - [frontend.md](frontend.md): frontend notes (screens, examples, conventions).
