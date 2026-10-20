@@ -223,6 +223,9 @@ change. Target: WCAG 2.2 AA. Specifically:
   and a name, so the keyboard can scroll it.
 - Moving content (a jump to a line, a tab switch) also moves focus to where the
   user lands.
+- Choosing a screen moves focus to its `<main>` and sets a translated
+  `document.title`; each screen has one `<h1>`, and a result has an `<h2>` per
+  cluster and section.
 
 **Screen readers and labels**
 - Every control has an accessible name. When it has visible text, the name
@@ -236,7 +239,8 @@ change. Target: WCAG 2.2 AA. Specifically:
   region that is mounted before its text changes (a finished check, a copied
   log, an example that filled the form); errors use `role="alert"`.
 - Decorative icons and dots: `aria-hidden="true"`. Landmarks and headings give
-  each screen a sensible outline; `lang` is set on text in another language.
+  each screen a sensible outline; `lang` is set on text in another language. Text that is not translated
+  stays in a `lang="en"` wrapper under another locale.
 
 **Text, colour and motion**
 - Body text at least 12 px and in relative units where it can be; the page must

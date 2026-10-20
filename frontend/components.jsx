@@ -87,7 +87,7 @@ function StatusChip({ status, children }) {
   };
   const c = map[status] || map.neutral;
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 500, padding: "2px 9px", borderRadius: 999, lineHeight: 1.4, background: c.bg, color: c.fg, whiteSpace: "nowrap" }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 500, padding: "2px 9px", borderRadius: 999, lineHeight: 1.4, background: c.bg, color: c.fg, whiteSpace: "nowrap" }}>
       {c.dot && <span style={{ width: 6, height: 6, borderRadius: 999, background: c.dot, flex: "0 0 6px" }} />}
       {children || c.label}
     </span>
@@ -113,7 +113,7 @@ function StandardTag({ children, active, onClick, role, ariaChecked, ariaLabel, 
   return (
     <span onClick={activate} {...a11y} style={{
       display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "var(--font-mono)",
-      fontSize: 11, padding: "3px 8px", borderRadius: 2,
+      fontSize: 12, padding: "3px 8px", borderRadius: 2,
       background: active ? "var(--ink)" : disabled ? "var(--paper-2)" : "var(--white)",
       color: active ? "var(--paper)" : disabled ? "var(--ink-3)" : "var(--ink-2)",
       border: "1px " + (disabled ? "dashed " : "solid ") + (active ? "var(--ink)" : "var(--border)"),
@@ -158,7 +158,7 @@ function MarginNote({ children, title = "A note" }) {
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <span aria-hidden="true" style={{ width: 6, height: 6, background: "var(--shu)", borderRadius: 999, flex: "0 0 6px" }} />
-        <span id={titleId} style={{ fontSize: 10.5, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--shu-deep)" }}>{title}</span>
+        <span id={titleId} style={{ fontSize: 12, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--shu-deep)" }}>{title}</span>
       </div>
       <div style={{ fontSize: 13, lineHeight: 1.6, color: "var(--ink-2)" }}>
         {children}
@@ -199,7 +199,7 @@ function TextField({ icon, placeholder, label, value, onChange, style = {}, id, 
 
 // ─── Eyebrow ────────────────────────────────────────────────────────────
 function Eyebrow({ children, style = {}, id }) {
-  return <div id={id} style={{ fontSize: 10.5, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--ink-3)", ...style }}>{children}</div>;
+  return <div id={id} style={{ fontSize: 12, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--ink-3)", ...style }}>{children}</div>;
 }
 
 // ─── SummaryTile -- small labelled count card ───────────────────────────
@@ -228,7 +228,7 @@ function ErrorCard({ title = "Could not complete", children }) {
 
 // ─── Mono ───────────────────────────────────────────────────────────────
 function Mono({ children, style = {} }) {
-  return <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.94em", letterSpacing: "-0.005em", ...style }}>{children}</span>;
+  return <span style={{ fontFamily: "var(--font-mono)", fontSize: "max(0.94em, 12px)", letterSpacing: "-0.005em", ...style }}>{children}</span>;
 }
 
 // ─── useLocale ──────────────────────────────────────────────────────────

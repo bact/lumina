@@ -230,9 +230,9 @@ function ResultBody({ result, expanded, setExpanded, onToggle, onShow, details }
 
       {showFindings && gaps.length > 0 && (
         <Card padding={0}>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 500 }}>
+          <h2 style={{ margin: 0, padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 500 }}>
             Gaps ({gaps.length})
-          </div>
+          </h2>
           <div>
             {gaps.map((g, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 16px", borderBottom: i < gaps.length - 1 ? "1px solid var(--border)" : "none" }}>
@@ -259,9 +259,9 @@ function ResultBody({ result, expanded, setExpanded, onToggle, onShow, details }
 
       {notes.length > 0 && (
         <Card padding={0}>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 500 }}>
+          <h2 style={{ margin: 0, padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 500 }}>
             Notifications ({notes.length})
-          </div>
+          </h2>
           <div>
             {notes.map((n, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 16px", borderBottom: i < notes.length - 1 ? "1px solid var(--border)" : "none" }}>

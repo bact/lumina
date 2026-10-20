@@ -150,8 +150,22 @@ Built against WCAG 2.2 AA:
   `<main id="main-content">` labelled with the screen name. A *Skip to main
   content* link is the first focusable element.
 - **Keyboard:** every interactive element is a `<button>` or carries
-  `role="button"` / `role="radio"` with Enter/Space handlers. The language
-  popover closes on Esc and returns focus to its button.
+  `role="button"` / `role="radio"` with Enter/Space handlers.
+- **Language picker:** a listbox. ArrowDown on its button opens it, with focus on
+  the selected option; the arrow keys, Home and End move focus (one tab stop,
+  roving `tabindex`), Enter or Space picks, Esc or Tab closes and returns focus
+  to the button. Each option is named by its visible text, native name in its
+  own `lang`, English name in `lang="en"`.
+- **Screens:** the document title names the screen (translated), choosing a
+  screen moves focus to its `<main>` (no ring, it is not a control) so a screen
+  reader announces it, and each screen has one `<h1>`. A result adds an `<h2>`
+  for each rule cluster, *Gaps* and *Notifications*.
+- **Language of parts:** `<html lang>` follows the locale; a screen's eyebrow
+  and `<h1>` carry the locale's `lang`, the rest of the screen (English) sits in
+  a `lang="en"` wrapper whenever the locale is not English.
+- **Text size:** no text under 12 px (`Mono` and `code` use `max(0.94em, 12px)`);
+  the page does not scroll sideways at 320 px, and a long value is clamped to two
+  lines in the rule list with its full text in *Show more*.
 - **Standard picker:** a `radiogroup` named "Minimum elements standard" with one
   tab stop (the chosen chip); the arrow keys, Home and End move focus between
   the usable chips and Enter or Space chooses, because choosing can start a new

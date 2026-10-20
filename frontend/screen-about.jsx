@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
 // API lists (GET /api/v1/standards) with what each check covers.
 
 function AboutScreen() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const standardList = useStandards();
 
   // ── Dependencies Lumina leans on directly ──────────────────────────────
@@ -33,12 +33,14 @@ function AboutScreen() {
     <div className="screen-frame" style={{ padding: "32px 48px", display: "flex", flexDirection: "column", gap: 24, maxWidth: 960, margin: "0 auto" }}>
       {/* ── Header / one-line description ───────────────────────────────── */}
       <div>
-        <Eyebrow>{t("nav.about")}</Eyebrow>
-        <h1 style={{ margin: "6px 0 4px", fontSize: 32, fontWeight: 500, letterSpacing: "-0.018em" }}>
-          <span style={{ color: "var(--ink-3)" }}>{t("screen.about.titleBefore")}</span>
-          <Logo size={32} />
-          <span style={{ color: "var(--ink-3)" }}>{t("screen.about.titleAfter")}</span>
-        </h1>
+        <div lang={locale}>
+          <Eyebrow>{t("nav.about")}</Eyebrow>
+          <h1 style={{ margin: "6px 0 4px", fontSize: 32, fontWeight: 500, letterSpacing: "-0.018em" }}>
+            <span style={{ color: "var(--ink-3)" }}>{t("screen.about.titleBefore")}</span>
+            <Logo size={32} />
+            <span style={{ color: "var(--ink-3)" }}>{t("screen.about.titleAfter")}</span>
+          </h1>
+        </div>
         <p style={{ margin: "12px 0 0", fontSize: 15, color: "var(--ink-2)", lineHeight: 1.6, maxWidth: 640 }}>
           Lumina checks a Software Bill of Materials (SBOM) against a
           minimum elements standard and shows, rule by rule, which of its
@@ -59,7 +61,7 @@ function AboutScreen() {
             }}>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)" }}>{d.name}</div>
-                <div style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 2 }}>{d.role}</div>
+                <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 2 }}>{d.role}</div>
               </div>
               <div style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.55 }}>{d.detail}</div>
               <a href={d.href} target="_blank" rel="noopener noreferrer" style={{
@@ -82,7 +84,7 @@ function AboutScreen() {
           <div style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: 16, alignItems: "baseline" }}>
             <div>
               <div style={{ fontSize: 14, fontWeight: 500 }}>Apache License 2.0</div>
-              <Mono style={{ fontSize: 11, color: "var(--ink-3)" }}>SPDX: Apache-2.0</Mono>
+              <Mono style={{ fontSize: 12, color: "var(--ink-3)" }}>SPDX: Apache-2.0</Mono>
             </div>
             <div style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.55 }}>
               Lumina is open source. Use, modify, and redistribute under the
@@ -164,7 +166,7 @@ function SpecRow({ reg, isLast }) {
     }}>
       <div>
         <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--ink)" }}>
-          {standardLabel(reg.id)} <Mono style={{ fontSize: 11, color: "var(--ink-3)", fontWeight: 400 }}>{reg.id}</Mono>
+          {standardLabel(reg.id)} <Mono style={{ fontSize: 12, color: "var(--ink-3)", fontWeight: 400 }}>{reg.id}</Mono>
         </div>
         {info.covers && <div style={{ fontSize: 12.5, color: "var(--ink-3)", marginTop: 3, lineHeight: 1.5 }}>{info.covers}</div>}
       </div>

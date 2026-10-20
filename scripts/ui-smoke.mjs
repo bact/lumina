@@ -740,6 +740,71 @@ const missingKeys = await page.evaluate(() => {
 });
 check(missingKeys.length === 0, `every catalogue has every shell key ${JSON.stringify(missingKeys)}`);
 
+// Round 2 accessibility: document titles, focus on navigation, language of parts,
+// headings in a result, minimum text size, and the language picker's keyboard.
+await page.getByRole("button", { name: /^[A-Z]{2}, / }).click();
+await page.getByRole("option", { name: /^English/ }).click();
+const EN_TITLES = ["Check a repository or model | Lumina", "Check an SBOM file | Lumina", "Read a SARIF conformance log | Lumina", "About | Lumina"];
+const gotTitles = [], gotFocus = [];
+for (let i = 0; i < 4; i++) {
+  await page.getByRole("navigation").getByRole("button").nth(i).click();
+  await page.waitForTimeout(150);
+  gotTitles.push(await page.title());
+  gotFocus.push(await page.evaluate(() => document.activeElement.id));
+}
+check(JSON.stringify(gotTitles) === JSON.stringify(EN_TITLES), `Document title follows the screen ${JSON.stringify(gotTitles)}`);
+check(gotFocus.every(id => id === "main-content"), `Choosing a screen moves focus to its main landmark ${JSON.stringify(gotFocus)}`);
+await page.getByRole("button", { name: /^[A-Z]{2}, / }).click();
+await page.getByRole("option", { name: /ไทย/ }).click();
+await page.getByRole("navigation").getByRole("button").nth(1).click();
+check((await page.title()) === "ตรวจสอบไฟล์ SBOM | Lumina", "Document title is translated");
+check(await page.evaluate(() => document.querySelector("main h1").closest("[lang]").lang === "th"
+    && document.querySelector("main p").closest("[lang]").lang === "en"
+    && document.querySelector("main [role=group]").closest("[lang]").lang === "en"),
+  "In Thai, the heading is lang=th and the English body is lang=en");
+await page.getByRole("button", { name: /^[A-Z]{2}, / }).click();
+await page.getByRole("option", { name: /^English/ }).click();
+// A result: cluster and section headings, and no text under 12 px.
+await page.setInputFiles("#sbom-file", { name: "bsi.spdx.json", mimeType: "application/json", buffer: Buffer.from("{}") });
+await page.getByRole("radio", { name: LABELS.bsi }).click();
+await page.getByRole("button", { name: "Check SBOM" }).click();
+await page.waitForSelector("text=Fields checked", { timeout: 5000 }).catch(() => {});
+const h2s = await page.locator("main h2").allInnerTexts();
+check(h2s.length >= 2, `A result has h2 headings for its clusters and sections ${JSON.stringify(h2s)}`);
+const small = await page.evaluate(() => {
+  const out = [];
+  for (const e of document.querySelectorAll("#root *")) {
+    if (e.closest(".sr-only") || ![...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) continue;
+    const fs = parseFloat(getComputedStyle(e).fontSize);
+    if (fs < 12) out.push(`${fs}px ${e.tagName} ${e.textContent.trim().slice(0, 20)}`);
+  }
+  return out;
+});
+check(small.length === 0, `No text under 12 px ${JSON.stringify(small.slice(0, 3))}`);
+// Language picker: ArrowDown opens it with focus on the selected option; arrows,
+// Home and End move; Escape closes and returns focus; Tab closes.
+const trigger = page.getByRole("button", { name: /^[A-Z]{2}, / });
+await trigger.focus();
+await page.keyboard.press("ArrowDown");
+const focusName = () => page.evaluate(() => document.activeElement.innerText.replace(/\s+/g, " ").trim());
+const k1 = await focusName();
+await page.keyboard.press("ArrowDown"); const k2 = await focusName();
+await page.keyboard.press("End"); const k3 = await focusName();
+await page.keyboard.press("ArrowDown"); const k4 = await focusName();
+await page.keyboard.press("Home"); const k5 = await focusName();
+check(k1 === "English" && k2 === "Deutsch German" && k3 === "ไทย Thai" && k4 === "English" && k5 === "English",
+  `Language picker: focus starts on the selected option and arrows, Home and End move it ${JSON.stringify([k1, k2, k3, k4, k5])}`);
+check(await page.evaluate(() => document.querySelectorAll("[role=option][tabindex='0']").length) === 1, "Language picker: one tab stop (roving tabindex)");
+await page.keyboard.press("Escape");
+check(await page.getByRole("listbox").count() === 0 && (await page.evaluate(() => document.activeElement.getAttribute("aria-haspopup"))) === "listbox", "Language picker: Escape closes it and returns focus to its button");
+await trigger.focus(); await page.keyboard.press("Enter");
+await page.keyboard.press("Tab");
+check(await page.getByRole("listbox").count() === 0 && (await page.evaluate(() => document.activeElement.getAttribute("aria-haspopup"))) === "listbox", "Language picker: Tab closes it and keeps focus on its button");
+await trigger.focus(); await page.keyboard.press("Enter"); await page.keyboard.press("ArrowDown"); await page.keyboard.press("Enter");
+check((await page.getAttribute("html", "lang")) === "de", "Language picker: Enter on an option picks it");
+await trigger.focus(); await page.keyboard.press("Enter");
+await page.getByRole("option", { name: /^English/ }).click();
+
 check(errors.length === 0, `no page or console errors ${JSON.stringify(errors)}`);
 await browser.close();
 server.close();
