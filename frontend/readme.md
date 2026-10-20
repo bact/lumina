@@ -37,9 +37,9 @@ when that count is above 0.
 
 ## Example files
 
-`examples/` holds real files the "Try an example" buttons on *Upload SBOM* and
+`examples/` holds real files the "Try an example" cards on *Upload SBOM* and
 *Import SARIF* load (`EXAMPLE_SBOMS`, `EXAMPLE_SARIFS` in `screen-upload.jsx`).
-A button fetches `/examples/<file>` and selects it as if it were chosen from
+A card fetches `/examples/<file>` and selects it as if it were chosen from
 disk, so the check that follows is the ordinary upload or import (on Import SARIF
 it puts the log's text in the text box instead, replacing what was there; a
 *Clear text* button empties it). What was chosen, with the example's note, stays
@@ -123,6 +123,7 @@ still shown, by its code.
 | `colors-and-type.css` | Design tokens: CSS variables for colours, typography, spacing, motion. |
 | `assets/` | Logo SVGs. |
 | `i18n.js` | `window.LUMINA_I18N`: locales, catalogues, `t()`. |
+| `example-list.jsx` | The "Try an example" list (`ExampleList`): a disclosure over a grid of cards, shared by the three check screens; `EXAMPLE_SUBJECTS` holds the text each card shows. |
 | `components.jsx` | `Icon`, `Logo`, `Button`, `StatusChip`, `StandardTag`, `Card`, `MarginNote`, `TextField`, `Eyebrow`, `Mono`, `SummaryTile`, `ErrorCard`, `useLocale`. |
 | `app-shell.jsx` | `TopBar` (the translated title as a link to the main content, `LanguageSwitcher`), `SideNav` and `NAV_SECTIONS`, the side-nav items. |
 | `screen-conformance.jsx` | `STANDARD_INFO`, `DEFAULT_STANDARD`, `RULE_CLUSTERS`, the API helpers (`apiErrorMessage`, `postForResult`, `useStandards`), `StandardPicker`, `ScreenFrame` and the Generate & check screen (`ImportScreen`). |
@@ -163,6 +164,13 @@ Built against WCAG 2.2 AA:
   screen moves focus to its `<main>` (no ring, it is not a control) so a screen
   reader announces it, and each screen has one `<h1>`. A result adds an `<h2>`
   for each rule cluster, *Gaps* and *Notifications*.
+- **Example list:** a disclosure (`<h2>` holding a button with `aria-expanded` and
+  `aria-controls`) over a grid of cards, each a `<button>` in a list per group
+  (Models, Projects, Container images) named by its visible text (name, what it
+  is, source, and on Import SARIF the standard). The chosen card has
+  `aria-current`. The list is open at first and collapses when a check starts; the
+  header opens it again and keeps focus. The note that says what was chosen is a
+  `role="status"` region that stays mounted.
 - **Skip the rule list:** a result with rules has a link, hidden until it has
   focus, just before the first rule; Enter moves focus to the *Gaps* heading (or
   the "No conformance gaps found" line) after the list.

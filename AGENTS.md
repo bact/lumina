@@ -46,9 +46,9 @@ lumina/
 │   ├── index.html              Entry point + router
 │   ├── colors-and-type.css     Design tokens
 │   ├── assets/                 Logo SVGs
-│   ├── examples/               Real SBOM and SARIF files the example buttons load
+│   ├── examples/               Real SBOM and SARIF files the example cards load
 │   ├── vendor/                 React, Babel, Lucide, highlight.js (no CDN; see vendor/README.md)
-│   └── *.jsx / *.js            Shell, shared components, screens
+│   └── *.jsx / *.js            Shell, shared components, screens (example-list.jsx: the example cards)
 ├── backend/
 │   ├── Dockerfile
 │   ├── requirements.txt        Pinned deps; Pitloom and the checker by Git commit

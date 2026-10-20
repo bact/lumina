@@ -216,7 +216,7 @@ lumina/
 │   ├── index.html              Entry point + router
 │   ├── colors-and-type.css     Design tokens
 │   ├── assets/                 Logo SVGs
-│   ├── examples/               Real SBOM and SARIF files the example buttons load
+│   ├── examples/               Real SBOM and SARIF files the example cards load
 │   ├── vendor/                 React, Babel, Lucide, highlight.js (no CDN)
 │   └── *.jsx / *.js            Shell, shared components, screens
 ├── backend/                    Python API

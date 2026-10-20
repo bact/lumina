@@ -79,23 +79,25 @@ Then run the check again.
 ## 3. Warm it up (the day before, on the demo network)
 
 Run each once from the page. This confirms the URL works from that machine and
-fills caches. The page has "Try an example" buttons for these ten: each fills
-the URL and picks the standard named below. A button names the model's file
-format (Safetensors, GGUF, ONNX, fastText, CRFsuite) where it has one, and the
-parameter count the Hub or the file states.
+fills caches. The page has a "Try an example" list of cards for these ten (open
+at first, collapsed once you start a check; its header opens it again). A card is
+headed by the repository, model or file name; its body says what it is (the model
+file format, Safetensors, GGUF, ONNX, fastText or CRFsuite, and the parameter
+count the Hub or the file states) and where it comes from. Choosing a card fills
+the URL and picks the standard named below.
 
-| Step | URL | Standard | Expect |
+| Card | URL | Standard | Expect |
 | :--- | :-- | :------- | :----- |
-| Safetensors model with a dataset | `https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad` | G7 SBOM for AI | 27 of 56 rules present; model Apache-2.0, dataset `squad` CC-BY-SA-4.0 |
-| Safetensors model with 14.7B parameters | `https://huggingface.co/microsoft/phi-4` | G7 SBOM for AI | 23 of 38 present; no dataset listed; parameter count read from the Hub's Safetensors summary; "judged by `phi-4`" |
-| Safetensors model with 119B parameters | `https://huggingface.co/mistralai/Mistral-Small-4-119B-2603` | G7 SBOM for AI | 22 of 38 present; no dataset listed; model Apache-2.0; "judged by `Mistral-Small-4-119B-2603`" |
-| Safetensors model with 29.3B parameters | `https://huggingface.co/ibm-granite/granite-4.2-30b` | G7 SBOM for AI | 25 of 38 present; model Apache-2.0; parameter count read from the Hub's Safetensors summary; a `descendantOf` link to its base model `granite-4.1-30b-base`; "judged by `granite-4.2-30b`" |
-| Safetensors model with 303M parameters | `https://huggingface.co/sonyinteractive/grooming-risk-classifier` | G7 SBOM for AI | 25 of 38 present; text classification; model Apache-2.0; parameter count read from the Hub's Safetensors summary; a `descendantOf` link to its base model `embeddinggemma-300m` |
-| Safetensors model with 14.8B parameters | `https://huggingface.co/JTS-AI/OpenJAI-v1.0-14B` | G7 SBOM for AI | 25 of 38 present; text generation; model Apache-2.0; parameter count read from the Hub's Safetensors summary; a `descendantOf` link to its base model `Qwen3-14B` |
-| GGUF model with 630M parameters | `https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF` | G7 SBOM for AI | 22 of 38 present; model Apache-2.0; parameter count read from the Hub's GGUF summary; a `descendantOf` link to the base model `Qwen2.5-0.5B-Instruct` (quantized) |
-| Project with a fastText model | `https://github.com/bact/sentimentdemo` | G7 SBOM for AI | 22 of 38 |
-| Project with ONNX and CRFsuite models (about 12 s) | `https://github.com/PyThaiNLP/pythainlp` | G7 SBOM for AI | 21 of 38; three ONNX and five CRFsuite models |
-| Project with no AI model | `https://github.com/pallets/flask` | NTIA, then BSI TR-03183-2 | NTIA 6 of 7; BSI 6 of 13, 2 optional not provided |
+| distilbert/distilbert-base-cased-distilled-squad | `https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad` | G7 SBOM for AI | 27 of 56 rules present; model Apache-2.0, dataset `squad` CC-BY-SA-4.0 |
+| microsoft/phi-4 | `https://huggingface.co/microsoft/phi-4` | G7 SBOM for AI | 23 of 38 present; no dataset listed; parameter count read from the Hub's Safetensors summary; "judged by `phi-4`" |
+| mistralai/Mistral-Small-4-119B-2603 | `https://huggingface.co/mistralai/Mistral-Small-4-119B-2603` | G7 SBOM for AI | 22 of 38 present; no dataset listed; model Apache-2.0; "judged by `Mistral-Small-4-119B-2603`" |
+| ibm-granite/granite-4.2-30b | `https://huggingface.co/ibm-granite/granite-4.2-30b` | G7 SBOM for AI | 25 of 38 present; model Apache-2.0; parameter count read from the Hub's Safetensors summary; a `descendantOf` link to its base model `granite-4.1-30b-base`; "judged by `granite-4.2-30b`" |
+| sonyinteractive/grooming-risk-classifier | `https://huggingface.co/sonyinteractive/grooming-risk-classifier` | G7 SBOM for AI | 25 of 38 present; text classification; model Apache-2.0; parameter count read from the Hub's Safetensors summary; a `descendantOf` link to its base model `embeddinggemma-300m` |
+| JTS-AI/OpenJAI-v1.0-14B | `https://huggingface.co/JTS-AI/OpenJAI-v1.0-14B` | G7 SBOM for AI | 25 of 38 present; text generation; model Apache-2.0; parameter count read from the Hub's Safetensors summary; a `descendantOf` link to its base model `Qwen3-14B` |
+| Qwen/Qwen2.5-0.5B-Instruct-GGUF | `https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF` | G7 SBOM for AI | 22 of 38 present; model Apache-2.0; parameter count read from the Hub's GGUF summary; a `descendantOf` link to the base model `Qwen2.5-0.5B-Instruct` (quantized) |
+| bact/sentimentdemo | `https://github.com/bact/sentimentdemo` | G7 SBOM for AI | 22 of 38 |
+| PyThaiNLP/pythainlp (about 12 s) | `https://github.com/PyThaiNLP/pythainlp` | G7 SBOM for AI | 21 of 38; three ONNX and five CRFsuite models |
+| pallets/flask | `https://github.com/pallets/flask` | NTIA, then BSI TR-03183-2 | NTIA 6 of 7; BSI 6 of 13, 2 optional not provided |
 
 These counts were measured on 2026-10-19 and 2026-10-20; a changed upstream
 repository or Hub card can move them by a rule or two. A model's "judged by"
@@ -110,14 +112,13 @@ crash, a hang or a red error banner is.
 The repository carries real example files in
 [`frontend/examples/`](frontend/examples/), served by the page itself: four
 SBOMs on *Upload SBOM* and four SARIF logs on *Import SARIF*, each a "Try an
-example" button (see [frontend/readme.md](frontend/readme.md) for how each was
+example" card (see [frontend/readme.md](frontend/readme.md) for how each was
 made). The first is a small SBOM Pitloom generated for a tiny Safetensors model,
 and the SARIF log the checker made from it for the G7 SBOM for AI standard.
 
-1. **Upload SBOM.** Click the example *Safetensors model with 80K parameters* (it
-   picks *G7 SBOM for AI*), then *Check SBOM*. The other examples are a model
-   with Safetensors weights (`phi-4`), a model with GGUF weights, and a container
-   image with an SPDX 2 SBOM (NTIA). Lumina shows the
+1. **Upload SBOM.** Click the example card *phi-tiny-random* (it
+   picks *G7 SBOM for AI*), then *Check SBOM*. The other examples are *microsoft/phi-4* (Safetensors), *Qwen/Qwen2.5-0.5B-Instruct-GGUF* (GGUF) and a Chainguard container image
+   with an SPDX 2 SBOM (NTIA). Lumina shows the
    rules by cluster (Metadata, System-level properties, Models, Dataset
    properties, and so on), each with the value the
    SBOM holds. Point out:
@@ -132,34 +133,31 @@ and the SARIF log the checker made from it for the G7 SBOM for AI standard.
    *CISA 2026 Minimum Elements*, *FSCT 2024 (CISA Framing)* or *BSI TR-03183-2*. The same SBOM is checked again at once, with
    nothing uploaded again. Each standard asks for different things, and the page
    says which of its rules were not checked.
-3. **Import SARIF.** Click the example *Safetensors model with 80K parameters (G7)*: the
-   log appears in the text box, so you can show what it holds. Then *Import SARIF*. This is what
-   the checker writes; Lumina shows the same result without running a check. (An
+3. **Import SARIF.** Click the example card *phi-tiny-random* (G7): the
+   log appears in the text box, so you can show what it holds. Then *Import SARIF*.
+   This is what the checker writes; Lumina shows the same result without running a check. (An
    imported log has no SBOM source tab and no per-rule evidence, because the log
    does not carry the SBOM text.)
 4. **Generate & check, a model with a dataset** (needs internet). Click
-   *Safetensors model with a dataset* (or paste its URL from the table above),
-   then *Generate & check*. Lumina generates the SBOM with Pitloom from the Hub
+   the card *distilbert/distilbert-base-cased-distilled-squad* (or paste its URL from
+   the table above), then *Generate & check*. Lumina generates the SBOM with Pitloom from the Hub
    metadata (no weights are downloaded) and checks it. Point out the model's
    Apache-2.0 licence, the dataset `squad` with its own licence (CC-BY-SA-4.0,
    read from the dataset's card) and the `trainedOn` link between them. Open the
    *Generator log* tab to show what the server did.
-   Then click *Safetensors model with 14.7B parameters* (`microsoft/phi-4`): a
+   Then click the card *microsoft/phi-4*: a
    model with no dataset. Its parameter count comes from the Safetensors summary
-   on the Hub; no weights are downloaded. The *Generator log* says so: it reads the Hub
-   metadata and downloads no model files.
-5. **A project that ships a fastText model.** Click *Project with a fastText
-   model*, then *Generate & check*. Pitloom finds the model file and hashes it (SHA-256 and SHA-512). Its
+   on the Hub; no weights are downloaded. The *Generator log* says so: it reads the Hub metadata and downloads no model files.
+5. **A project that ships a fastText model.** Click the card *bact/sentimentdemo*, then *Generate & check*. Pitloom finds the model file and hashes it (SHA-256 and SHA-512). Its
    name is just "model": the file name is all the file states, and the SBOM says
    so. The System producer rule is *Missing* while one line inside it says the
    project has a producer: the rule judges every root package, and the model
    has none.
-6. **A project that ships ONNX and CRFsuite models.** Click *Project with ONNX
-   and CRFsuite models*, then *Generate & check*. Slowest step (about 12 seconds). Three ONNX models carry a version and a
+6. **A project that ships ONNX and CRFsuite models.** Click the card *PyThaiNLP/pythainlp*, then *Generate & check*. Slowest step (about 12 seconds). Three ONNX models carry a version and a
    parameter count read from the files; five CRFsuite models carry less, because
    that format states less. The SBOM records what each file states and nothing
    more.
-7. **A project with no AI model.** Click *Project with no AI model* (flask; it
+7. **A project with no AI model.** Click the card *pallets/flask* (it
    picks *NTIA Minimum Elements*), then *Generate & check*, then click *BSI
    TR-03183-2* to check the same SBOM again. BSI shows optional elements apart from *Missing*
    ("Not provided"): lacking them is not a gap.

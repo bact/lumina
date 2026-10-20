@@ -19,34 +19,40 @@ const { useState: _useSC, useRef: _useRef, useEffect: _useEffect } = React;
 // from GET /api/v1/standards; an id missing here is shown by its id.
 const STANDARD_INFO = {
   ntia: {
+    short: "NTIA", // for tags where the label is too long
     label: "NTIA Minimum Elements",
     covers: "NTIA 2021 minimum elements: the seven data fields (supplier, component name, version, other unique identifiers, dependency relationship, SBOM author, timestamp). Per-rule results.",
     href: "https://www.ntia.gov/report/2021/minimum-elements-software-bill-materials-sbom",
   },
   bsi: {
+    short: "BSI", // for tags where the label is too long
     sbomSpecs: ["spdx3"], // the SBOM specifications the checker covers for it (omitted: any)
     label: "BSI TR-03183-2",
     covers: "BSI TR-03183-2 v2.1 SBOM content requirements (section 5.2). Per-rule, SPDX 3 only: elements SPDX 3.0.1 cannot show are listed as not checked.",
     href: "https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/TechGuidelines/TR03183/BSI-TR-03183-2_v2_1_0.html",
   },
   g7ai: {
+    short: "G7", // for tags where the label is too long
     sbomSpecs: ["spdx3"], // the SBOM specifications the checker covers for it (omitted: any)
     label: "G7 SBOM for AI",
     covers: "G7 2026 SBOM for AI minimum elements. Partial, SPDX 3 only: rules the checker cannot check are listed as not checked.",
     href: "https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/KI/SBOM-for-AI_minimum-elements.pdf",
   },
   cisa2026: {
+    short: "CISA 2026", // for tags where the label is too long
     sbomSpecs: ["spdx3"], // the SBOM specifications the checker covers for it (omitted: any)
     label: "CISA 2026 Minimum Elements",
     covers: "CISA 2026 minimum elements. Partial, SPDX 3 only: rules the checker cannot check are listed as not checked.",
     href: "https://www.cisa.gov/sites/default/files/2026-07/2026_cisa_sbom_minimum_elements_508c.pdf",
   },
   fsct2024: {
+    short: "FSCT 2024", // for tags where the label is too long
     label: "FSCT 2024 (CISA Framing)",
     covers: "2024 CISA Framing Software Component Transparency, minimum expectation. Partial.",
     href: "https://www.cisa.gov/resources-tools/resources/framing-software-component-transparency-2024",
   },
   mof: {
+    short: "MOF", // for tags where the label is too long
     label: "Model Openness Framework",
     covers: "Not supported by the checker; the API refuses it with HTTP 501.",
     href: "https://isitopen.ai/",
@@ -58,29 +64,20 @@ const DEFAULT_STANDARD = "g7ai";
 
 // Example URLs for the Generate & check screen (the demo script, DEMO.md).
 // Each fills the URL field and picks the standard the demo uses for it; the
-// result is still whatever the server generates and checks.
+// result is still whatever the server generates and checks. `subject` is the
+// card's text (example-list.jsx); `note` adds what the card does not say.
 const DEMO_EXAMPLES = [
-  { label: "Safetensors model with a dataset", note: "Hugging Face", standard: "g7ai",
-    url: "https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad" },
-  { label: "Safetensors model with 14.7B parameters", note: "Hugging Face", standard: "g7ai",
-    url: "https://huggingface.co/microsoft/phi-4" },
-  { label: "Safetensors model with 119B parameters", note: "Hugging Face", standard: "g7ai",
-    url: "https://huggingface.co/mistralai/Mistral-Small-4-119B-2603" },
-  { label: "Safetensors model with 29.3B parameters", note: "Hugging Face", standard: "g7ai",
-    url: "https://huggingface.co/ibm-granite/granite-4.2-30b" },
-  { label: "Safetensors model with 303M parameters", note: "Hugging Face, text classification", standard: "g7ai",
-    url: "https://huggingface.co/sonyinteractive/grooming-risk-classifier" },
-  { label: "Safetensors model with 14.8B parameters", note: "Hugging Face, text generation", standard: "g7ai",
-    url: "https://huggingface.co/JTS-AI/OpenJAI-v1.0-14B" },
-  { label: "GGUF model with 630M parameters", note: "Hugging Face", standard: "g7ai",
-    url: "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF" },
-  { label: "Project with a fastText model", note: "GitHub", standard: "g7ai",
-    url: "https://github.com/bact/sentimentdemo" },
-  { label: "Project with ONNX and CRFsuite models", note: "GitHub, about 12 s", standard: "g7ai",
-    url: "https://github.com/PyThaiNLP/pythainlp" },
-  { label: "Project with no AI model", note: "GitHub", standard: "ntia",
-    url: "https://github.com/pallets/flask" },
-];
+  { subject: "distilbert", standard: "g7ai", url: "https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad", note: "a dataset linked by trainedOn" },
+  { subject: "phi4", standard: "g7ai", url: "https://huggingface.co/microsoft/phi-4", note: "no dataset" },
+  { subject: "mistral", standard: "g7ai", url: "https://huggingface.co/mistralai/Mistral-Small-4-119B-2603", note: "the largest here" },
+  { subject: "granite", standard: "g7ai", url: "https://huggingface.co/ibm-granite/granite-4.2-30b", note: "a base model linked by descendantOf" },
+  { subject: "sony", standard: "g7ai", url: "https://huggingface.co/sonyinteractive/grooming-risk-classifier", note: "text classification" },
+  { subject: "openjai", standard: "g7ai", url: "https://huggingface.co/JTS-AI/OpenJAI-v1.0-14B", note: "text generation" },
+  { subject: "qwengguf", standard: "g7ai", url: "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF", note: "a quantised model with a base model" },
+  { subject: "sentiment", standard: "g7ai", url: "https://github.com/bact/sentimentdemo", note: "the model file is hashed" },
+  { subject: "pythainlp", standard: "g7ai", url: "https://github.com/PyThaiNLP/pythainlp", note: "slowest, about 12 s" },
+  { subject: "flask", standard: "ntia", url: "https://github.com/pallets/flask", note: "a plain Python project" },
+].map(ex => ({ ...ex, key: ex.url }));
 
 const standardLabel = (id) => (STANDARD_INFO[id] && STANDARD_INFO[id].label) || id;
 
@@ -254,6 +251,7 @@ function ImportScreen() {
   const [errorMsg, setErrorMsg] = _useSC("");
   const [rechecking, setRechecking] = _useSC(false); // the running phase is a re-check
   const [chosenExample, setChosenExample] = _useSC(null); // the example that filled the form, while it still does
+  const [examplesOpen, setExamplesOpen] = _useSC(true); // the list is open until a check is started
   const aliveRef = _useRef(true);
   _useEffect(() => () => { aliveRef.current = false; }, []);
 
@@ -262,6 +260,7 @@ function ImportScreen() {
   async function run() {
     const artifactUrl = url.trim();
     if (!artifactUrl || !standardId) return;
+    setExamplesOpen(false);
     setPhase("running"); setResult(null); setErrorMsg("");
     try {
       const { job_id } = await postForResult("/api/v1/artifact/check", {
@@ -313,7 +312,7 @@ function ImportScreen() {
   // Said (and shown) while the form still holds what the example put there.
   const exampleReady = chosenExample && standardList.standards && standardList.standards.some(r => r.id === chosenExample.standard && r.ready);
   const exampleNote = chosenExample && url === chosenExample.url && (!exampleReady || standardId === chosenExample.standard)
-    ? `Example chosen: ${chosenExample.label} (${chosenExample.note}). The URL field now holds ${chosenExample.url}` +
+    ? `Example chosen: ${exampleTitle(chosenExample.subject)} (${chosenExample.note}). The URL field now holds ${chosenExample.url}` +
       (exampleReady ? ` and ${standardLabel(chosenExample.standard)} is selected.` : ".") : "";
 
   return (
@@ -338,23 +337,14 @@ function ImportScreen() {
         </Button>
       </div>
 
-      <div role="group" aria-labelledby="example-label" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <span id="example-label" style={{ fontSize: 12.5, color: "var(--ink-3)" }}>Try an example:</span>
-        {DEMO_EXAMPLES.map(ex => (
-          <Button key={ex.url} size="sm" variant="ghost" title={`${ex.url} (${ex.note})`}
-            disabled={phase === "running"}
-            onClick={() => {
-              setUrl(ex.url); setResult(null); setPhase("idle");
-              const known = standardList.standards && standardList.standards.find(r => r.id === ex.standard);
-              if (known && known.ready) setStandardId(ex.standard);
-              setChosenExample(ex);
-            }}>
-            {ex.label}
-          </Button>
-        ))}
-      </div>
-
-      <div role="status" style={exampleNote ? { fontSize: 12.5, color: "var(--ink-3)" } : undefined}>{exampleNote}</div>
+      <ExampleList idPrefix="example-generate" examples={DEMO_EXAMPLES} open={examplesOpen} onOpenChange={setExamplesOpen}
+        disabled={phase === "running"} note={exampleNote} chosenKey={exampleNote ? chosenExample.key : undefined}
+        onChoose={(ex) => {
+          setUrl(ex.url); setResult(null); setPhase("idle");
+          const known = standardList.standards && standardList.standards.find(r => r.id === ex.standard);
+          if (known && known.ready) setStandardId(ex.standard);
+          setChosenExample(ex);
+        }} />
       <ResultAnnouncer result={phase === "done" ? result : null} />
 
       {phase === "running" && (
