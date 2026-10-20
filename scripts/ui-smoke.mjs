@@ -613,10 +613,15 @@ check(STANDARDS.every(r => body.includes(r.id)), "About: lists every standard th
 await noSampleData("About");
 await shot("9-about");
 
+// Top bar: a plain-language title, whose link name contains it (label in name).
+const topTitle = "Generate and check SBOMs against G7 SBOM for AI";
+check(await page.getByRole("banner").getByRole("link", { name: `${topTitle} -- go to main content` }).innerText() === topTitle,
+  "Top bar: the visible title is the link, and its accessible name contains it");
 // Language switch: nav labels and the main label follow the locale.
 await page.getByRole("button", { name: /Language/ }).click();
 await page.getByRole("option", { name: /Deutsch/ }).click();
 check(await page.getByRole("navigation").getByRole("button", { name: "SBOM hochladen" }).isVisible(), "German nav labels");
+check((await page.getByRole("banner").innerText()).includes("SBOMs erzeugen und gegen G7 SBOM for AI prüfen"), "German top bar title");
 check((await page.getAttribute("main", "aria-label")) === "Ansicht Über", "German main landmark label");
 await shot("10-about-de");
 
