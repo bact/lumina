@@ -126,8 +126,12 @@ Built against WCAG 2.2 AA:
 - **Keyboard:** every interactive element is a `<button>` or carries
   `role="button"` / `role="radio"` with Enter/Space handlers. The language
   popover closes on Esc and returns focus to its button.
-- **Standard picker:** a `radiogroup` named "Minimum elements standard"; an unsupported one is a radio
-  with `aria-disabled="true"`, out of the tab order.
+- **Standard picker:** a `radiogroup` named "Minimum elements standard" with one
+  tab stop (the chosen chip); the arrow keys, Home and End move focus between
+  the usable chips and Enter or Space chooses, because choosing can start a new
+  check of the SBOM on screen (so, unlike the standard radio pattern, an arrow key
+  does not choose). A hidden description says so. An unsupported chip is a radio
+  with `aria-disabled="true"`, skipped by the keys.
 - **Errors and progress:** an error card has `role="alert"`; the working
   message has `role="status"`, and a finished check, a copied log or source and
   an example that filled the form are announced through live regions

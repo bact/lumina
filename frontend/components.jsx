@@ -98,12 +98,12 @@ function StatusChip({ status, children }) {
 // Display chip for a standard (e.g. "NTIA Minimum Elements"). When onClick
 // is provided, becomes a keyboard-accessible button (or radio, via the `role`
 // prop). A `disabled` chip keeps its role but cannot be selected.
-function StandardTag({ children, active, onClick, role, ariaChecked, ariaLabel, disabled }) {
+function StandardTag({ children, active, onClick, role, ariaChecked, ariaLabel, disabled, tabStop = true }) {
   const interactive = !!onClick || disabled;
   const activate = (e) => { if (!disabled && onClick) onClick(e); };
   const a11y = interactive ? {
     role: role || "button",
-    tabIndex: disabled ? -1 : 0,
+    tabIndex: disabled || !tabStop ? -1 : 0, // one tab stop per radio group (roving)
     "aria-disabled": disabled ? true : undefined,
     "aria-pressed": role ? undefined : !!active,
     "aria-checked": role === "radio" ? !!(ariaChecked ?? active) : undefined,
