@@ -11,9 +11,8 @@ SPDX-License-Identifier: Apache-2.0
 */
 
 /* ---- Webfonts ---- */
-/* Geist (UI/Display) + Geist Mono + Instrument Serif (editorial italic).
-   These come from Google Fonts; the design system stores no .ttf files
-   currently -- flagged in README. */
+/* Geist (UI/Display) and Geist Mono, loaded from Google Fonts; no font files
+   are stored in the repository. */
 @import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
 
 :root {
@@ -105,7 +104,7 @@ SPDX-License-Identifier: Apache-2.0
   --font-mono:    'Geist Mono', ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
   /* No serif. The system has two families: Geist and Geist Mono. The "soft voice"
      is Geist 300 (Light) with looser tracking, not a typeface switch.
-     --font-serif is kept as a fallback alias only for legacy references. */
+     --font-serif is an alias of Geist. */
   --font-serif:   'Geist', ui-sans-serif, sans-serif;
 
   /* ─────────────────────────────────────────────────────────
@@ -277,7 +276,7 @@ p, .p {
   color: var(--ink-2);
 }
 
-/* legacy alias for any markup still using .serif-accent -- renders as soft-voice */
+/* .serif-accent renders as the soft voice. */
 .serif-accent {
   font-family: var(--font-sans);
   font-weight: 300;

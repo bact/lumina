@@ -43,7 +43,7 @@ OCPUS=1 MEMORY_GB=6   # within Always Free (max 4 OCPU / 24 GB total); 1/6 = con
 [ -n "$SUBNET" ] || { echo "SUBNET not set in $CONFIG_FILE"; exit 1; }
 [ -n "$IMAGE" ]  || { echo "IMAGE not set in $CONFIG_FILE";  exit 1; }
 [ "${#ADS[@]}" -gt 0 ] || { echo "ADS not set in $CONFIG_FILE"; exit 1; }
-[ -f "$CLOUD_INIT" ] || { echo "missing $CLOUD_INIT — create it first (see INSTALL.md)"; exit 1; }
+[ -f "$CLOUD_INIT" ] || { echo "missing $CLOUD_INIT (it belongs next to this script)"; exit 1; }
 [ -f "$SSH_KEY" ]    || { echo "missing $SSH_KEY — run ssh-keygen first"; exit 1; }
 
 while true; do

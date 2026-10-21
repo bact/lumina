@@ -7,8 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 // Lumina frontend -- app shell (top bar + side nav)
 //
 // Accessibility + i18n:
-//   <header role="banner">       -- top bar: logo + language switcher
-//   <nav aria-label="Primary">   -- side nav: one <button> per screen
+//   <header role="banner">                -- top bar: logo + language switcher
+//   <nav aria-label="Primary navigation"> -- side nav: one <button> per screen
 //   All labels run through t() so they re-render when the locale changes.
 
 const { useState: _useStateA, useEffect: _useEffA, useRef: _useRefA } = React;

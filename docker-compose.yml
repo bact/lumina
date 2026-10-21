@@ -17,10 +17,8 @@ services:
     restart: unless-stopped
 
   # ── API: FastAPI conformance-checking backend ────────────────────────────
-  # Mode-1 SBOM generation runs in-process as a background job (see
-  # working-docs/design.md "Background job execution"), so there is no separate worker
-  # or Redis at this stage. A worker + Redis are added only at Stage 2, when
-  # load justifies them.
+  # SBOM generation runs in-process as a background job (backend/app/jobs.py):
+  # there is no separate worker or Redis.
   api:
     build: ./backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

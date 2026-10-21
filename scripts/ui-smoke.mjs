@@ -6,7 +6,7 @@
 // UI smoke test for frontend/: serves it from a local HTTP server, mocks every
 // /api/ route, visits every side-nav screen in headless Chromium and asserts:
 //   - no page errors and no console errors;
-//   - none of the old sample-data strings appear;
+//   - no sample-data string (invented names) appears on any screen;
 //   - the standard chips equal the mocked GET /api/v1/standards response
 //     (same ids, same order, ready=false not selectable);
 //   - refused requests (413, 422, 501) show the server's `detail` text;
@@ -16,7 +16,12 @@
 //     "Result" / "SBOM source" tabs, per-rule Show more / Show less details
 //     with the mocked evidence, and "Show in SBOM" marks the evidence lines in
 //     the highlighted source; a 50,000-line source stays windowed and any line
-//     can be reached; a result without `sbom` has none of these.
+//     can be reached; a result without `sbom` has none of these;
+//   - the Generator log tab shows a generated or failed run's log;
+//   - switching the standard re-checks the same SBOM (keeping the generator
+//     and its log), and a failed switch keeps the earlier result;
+//   - a finished check and a chosen example are announced, and the "Nothing
+//     was checked" banner gives its reason.
 // It writes one screenshot per state to the output directory.
 //
 // Needs Node 18+ and playwright-core in one node_modules directory (not

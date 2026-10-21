@@ -65,9 +65,8 @@ def _max_sbom_bytes() -> int:
 
 MAX_SBOM_BYTES = _max_sbom_bytes()
 
-# Stage 0-1 job backend: runs Mode-1 SBOM generation in-process (see jobs.py and
-# working-docs/design.md "Background job execution").  Swappable for an RQ/Taskiq backend
-# at Stage 2 without touching the endpoints below.
+# Runs SBOM generation (``POST /api/v1/artifact/check``) in this process (see
+# jobs.py); the endpoints below depend only on the ``JobQueue`` interface.
 _jobs = InProcessJobQueue()
 _jobs.register("generate_and_check", generate_and_check)
 

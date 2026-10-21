@@ -10,8 +10,8 @@ SPDX-License-Identifier: Apache-2.0
 // When the response carries the checked SBOM (`result.sbom`), the view has
 // two tabs, "Result" and "SBOM source", and a Download SBOM button; a
 // generated SBOM (or a failed generation) adds a "Generator log" tab. Without
-// it (older responses, SARIF logs with no embedded JSON SBOM) the view is the
-// result alone. "Show in SBOM" in a rule's details switches to the source
+// it (a SARIF log with no embedded JSON SBOM) the view is the result alone.
+// "Show in SBOM" in a rule's details switches to the source
 // tab at the line range it names and sets the URL hash (#sbom-L57 or
 // #sbom-L57-L80); setting such a hash by hand jumps there too.
 

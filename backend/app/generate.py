@@ -8,9 +8,8 @@
 ``generate_and_check`` is the single background job behind
 ``POST /api/v1/artifact/check``.  It is written **remote-ready** -- a top-level
 function with JSON-serialisable arguments and a JSON-serialisable
-(:class:`SbomCheckResponse`) result -- so the same function runs unchanged whether
-the Stage 0 in-process queue calls it in a thread or a future RQ/Taskiq worker
-runs it in another process.
+(:class:`SbomCheckResponse`) result -- so the same function runs unchanged in a
+thread of the in-process queue or in a separate worker process.
 
 Flow:
 
@@ -107,8 +106,8 @@ def _ensure_public_http_url(artifact_url: str) -> None:
     in development (e.g. cloning from a Git server on the LAN).
 
     Note: this is a resolve-time check; it does not defend against DNS
-    rebinding between validation and clone.  Acceptable at this stage --
-    network-level egress policy is the real control for a hardened deploy.
+    rebinding between validation and clone.  Network-level egress policy is the
+    real control for a hardened deploy.
     """
     if len(artifact_url) > MAX_URL_LENGTH:
         raise GenerationError(

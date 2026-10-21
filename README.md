@@ -132,13 +132,13 @@ nginx   → http://localhost:80
           FastAPI. Built from proxy/Dockerfile.
 
 api     → http://localhost:8000
-          FastAPI -- SBOM upload + conformance checking, plus Mode-1 SBOM
+          FastAPI -- SBOM upload + conformance checking, plus SBOM
           generation (Git repo / Hugging Face URL) run as an in-process
           background job. See backend/app/main.py, conformance.py, generate.py.
 ```
 
-SBOM generation needs no separate worker or Redis at this stage; a worker +
-Redis are introduced only if load grows.
+SBOM generation runs inside the `api` service: there is no separate worker or
+Redis.
 
 ---
 
@@ -216,7 +216,9 @@ lumina/
 │   └── *.jsx / *.js            Shell, shared components, screens
 ├── backend/                    Python API
 │   ├── Dockerfile
+│   ├── pyproject.toml          mypy configuration
 │   ├── requirements.txt        Pinned; Pitloom and the checker by Git commit
+│   ├── requirements-dev.txt    Test and lint tools
 │   ├── app/
 │   │   ├── main.py             FastAPI app + endpoints
 │   │   ├── conformance.py      run_checker, CHECKER_STANDARDS, schemas
@@ -225,7 +227,7 @@ lumina/
 │   │   ├── sbom_source.py      SBOM source text and @graph line index
 │   │   ├── evidence/           Per-rule evidence: the SBOM elements behind each outcome
 │   │   ├── jobs.py             JobQueue interface + in-process backend
-│   │   ├── generate.py         Mode-1 job: artefact URL → SBOM → check
+│   │   ├── generate.py         Generation job: artefact URL → SBOM → check
 │   │   └── generators/         Pitloom-backed SBOM generators (git, hf)
 │   └── tests/                  pytest suite + SBOM and SARIF fixtures
 ├── scripts/
@@ -234,5 +236,6 @@ lumina/
 │   ├── cloud-init.sh           First-boot script: installs Docker on the VM
 │   └── ui-smoke.mjs            Headless-browser smoke test of the frontend (see AGENTS.md)
 ├── docker/                     Alternative deployment images (see INSTALL.md)
+├── .github/                    CI: backend tests; Dependabot
 └── INSTALL.md                  Free public-deployment guide
 ```

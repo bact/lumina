@@ -21,8 +21,8 @@ anywhere. A screen that has nothing to show from the API shows nothing.
 | - | - |
 | Frontend | Static HTML/CSS/JS (React 18 + Babel in-browser, no build step) |
 | API | FastAPI (Python 3.14) |
-| Background jobs | In-process `asyncio` queue (`backend/app/jobs.py`); no broker. An RQ/Taskiq swap is planned for Stage 2 — see `working-docs/design.md` |
-| SBOM generation | Pitloom (Git checkout or Hugging Face Hub URL) |
+| Background jobs | In-process `asyncio` queue (`backend/app/jobs.py`); no broker. An RQ/Taskiq swap is planned: see `working-docs/design.md` |
+| SBOM generation | Pitloom (Git repository URL or Hugging Face Hub URL; Pitloom resolves, fetches and reads it) |
 | Dev environment | Docker Compose (`docker compose up` — auto-loads override.yml) |
 
 Python minimum: **3.14**. Use `python3.14` when running outside Docker.
@@ -50,16 +50,18 @@ lumina/
 │   └── *.jsx / *.js            Shell, shared components, screens (example-list.jsx: the example cards)
 ├── backend/
 │   ├── Dockerfile
+│   ├── pyproject.toml          Tool settings (mypy)
 │   ├── requirements.txt        Pinned deps; Pitloom and the checker by Git commit
+│   ├── requirements-dev.txt    Test and lint tools
 │   ├── app/
 │   │   ├── main.py             FastAPI endpoints
 │   │   ├── conformance.py      run_checker, CHECKER_STANDARDS, schemas
 │   │   ├── sarif_ingest.py     SARIF 2.1.0 → SbomCheckResponse
-│   │   ├── generation_log.py   Generation log: Lumina steps, git output, Pitloom records
+│   │   ├── generation_log.py   Generation log: Lumina steps and Pitloom records
 │   │   ├── sbom_source.py      SbomSource (download + display text), @graph line index
 │   │   ├── evidence/           Per-rule evidence: SBOM elements and lines behind each outcome
 │   │   ├── jobs.py             JobQueue interface + in-process backend
-│   │   ├── generate.py         Mode-1 job: artefact URL → SBOM → check (SSRF guard)
+│   │   ├── generate.py         SBOM generation job: artefact URL → SBOM → check (SSRF guard)
 │   │   └── generators/         Pitloom-backed SBOM generators (git, hf)
 │   └── tests/                  pytest suite + SBOM and SARIF fixtures
 ├── docker/                     Alternative deployment images (see INSTALL.md)
@@ -67,11 +69,15 @@ lumina/
 │   ├── hfspaces/               Hugging Face Spaces single-file Dockerfile
 │   └── standalone/             Single-container image (Cloud Run)
 ├── scripts/                    OCI VM launch + cloud-init helpers; ui-smoke.mjs
+├── .github/                    CI (backend tests) and Dependabot
 ├── working-docs/               Internal docs (see "Documentation" below)
 │   ├── design.md               Architecture and design decisions
 │   ├── demo.md                 Demo guide: set up, warm up, script, troubleshooting
-│   └── frontend.md             Frontend notes: screens, examples, conventions
-└── INSTALL.md                  Free public-deployment guide (3 options)
+│   ├── deployment-options.md   Free-hosting comparison
+│   ├── frontend.md             Frontend notes: screens, examples, conventions
+│   └── roadmap.md              What is done and what is next
+├── INSTALL.md                  Free public-deployment guide (3 options)
+└── README.md                   Overview and quick start
 ```
 
 ---

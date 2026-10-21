@@ -299,7 +299,7 @@ No card required.
 **Caveats:**
 
 - Spaces may sleep when inactive; the first request after sleep takes 30–60 s.
-- In-memory job state (Mode-1 generation via `POST /api/v1/artifact/check`) is
+- In-memory job state (SBOM generation via `POST /api/v1/artifact/check`) is
   lost if the Space sleeps between submission and completion. For reliable
   generation, keep traffic flowing or use the synchronous SBOM upload path
   (`POST /api/v1/sbom/check`, completes in seconds).
@@ -366,7 +366,7 @@ To pin a specific Lumina version, set `LUMINA_REF` in the Dockerfile to a
 branch or tag (a commit SHA does not work with a shallow clone):
 
 ```dockerfile
-ARG LUMINA_REF=v0.2.0   # branch or tag
+ARG LUMINA_REF=<branch-or-tag>
 ```
 
 ---
@@ -386,7 +386,7 @@ ARG LUMINA_REF=v0.2.0   # branch or tag
 
 **Caveats:**
 
-- Scale-to-zero means in-memory job state (Mode-1 generation) can be lost if
+- Scale-to-zero means in-memory job state (SBOM generation) can be lost if
   the instance shuts down between polling calls. With `--min-instances=1` the
   instance stays warm but consumes the free vCPU-second allowance (~4 days of
   always-on per month before small charges apply). For reliable generation jobs,

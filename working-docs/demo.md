@@ -1,6 +1,6 @@
 ---
 Created: 2026-10-18
-Last-Modified: 2026-10-20
+Last-Modified: 2026-10-21
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -126,7 +126,7 @@ and the SARIF log the checker made from it for the G7 SBOM for AI standard.
    SBOM holds. Point out:
    - *Present* means the property exists, not that its value is right.
    - *Not checked* rules are ones SPDX 3.0.1 cannot show, or that the checker
-     does not check yet. They are never counted as missing.
+     does not check. They are never counted as missing.
    - The note "judged by that model": the SBOM's only root is the model, so the
      system-level rules read the model.
    - *Show more* on a rule lists the SBOM elements behind it, and *Show in SBOM*

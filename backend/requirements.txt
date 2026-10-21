@@ -8,11 +8,11 @@ fastapi==0.143.3
 uvicorn[standard]==0.54.0
 python-multipart==0.0.32  # required by FastAPI for Form / File uploads
 
-# SBOM generation (Mode 1: artefact-URL input)
-# Generates SPDX 3 JSON-LD from a Git checkout or a Hugging Face Hub model.
-# Pinned by commit, like the checker: the released Pitloom (0.20.2) predates
-# the fixes the G7, CISA and FSCT results depend on. The extras are the readers
-# for the tier-1 model formats and for Hub models; without one, a model file in a
+# SBOM generation (artefact-URL input)
+# Generates SPDX 3 JSON-LD from a Git repository URL or a Hugging Face Hub model.
+# Pinned by commit, like the checker: the latest release (0.20.2) lacks fixes
+# the G7, CISA and FSCT results depend on. The extras are the readers for the
+# tier-1 model formats and for Hub models; without one, a model file in a
 # cloned repository is read without its format reader.
 pitloom[ai,content-type] @ git+https://github.com/bact/pitloom.git@eb848cbb321c94bd1dc666b15d019d57d8edcc72
 
