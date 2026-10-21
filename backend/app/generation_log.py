@@ -8,8 +8,9 @@
 While :func:`app.generate.generate_and_check` runs, everything the generator side
 did is recorded here in order: the steps Lumina took and every record Pitloom
 logged (INFO and above: the redirects followed, the repository, branch and
-folder named, the ``git`` command lines).  The response carries it as ``generation_log``; nothing is invented, and
-a line the generator did not produce is not added.
+folder named, the ``git`` command lines).  The response carries it as
+``generation_log``; nothing is invented, and a line the generator did not
+produce is not added.
 
 The log lives in a context variable so the generators call :func:`note` without
 passing it around; outside a generation :func:`note` does nothing.
