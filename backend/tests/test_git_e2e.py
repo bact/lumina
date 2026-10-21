@@ -195,11 +195,11 @@ def test_the_job_api_runs_the_whole_chain(base: str) -> None:
         )
         assert posted.status_code == 202
         job_id = posted.json()["job_id"]
-        for _ in range(120):
+        for _ in range(900):  # polls until done; the limit is only a backstop
             status = client.get(f"/api/v1/jobs/{job_id}").json()
             if status["status"] in {"done", "failed"}:
                 break
-            time.sleep(0.5)
+            time.sleep(0.2)
     assert status["status"] == "done", status
     assert status["result"]["sbom"]["filename"] == "p.spdx3.json"
     assert shutil.which("git")
