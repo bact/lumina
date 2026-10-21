@@ -1,6 +1,6 @@
 ---
 Created: 2026-05-26
-Last-Modified: 2026-10-20
+Last-Modified: 2026-10-21
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -23,8 +23,9 @@ Backend processing uses the SPDX Python toolchain:
 - **SBOM generation** — [Pitloom][pitloom], for the artefact-URL input mode (see
   [Mode 1](#mode-1--artefact-url-sbom-generation)). Pitloom emits **SPDX 3
   JSON-LD** and is the single generator for both source kinds:
-  - **Git repository URLs** — Lumina shallow-clones the repo, then runs Pitloom
-    on the local checkout (`generate_project_sbom`).
+  - **Git repository URLs** — Pitloom resolves the URL, shallow-clones the
+    repository and reads the project (`generate_git_project_sbom`); Lumina
+    passes its address check and adds nothing else.
   - **Hugging Face Hub URLs** — Pitloom reads HF metadata directly
     (`generate_model_sbom`); no model download.
 
@@ -208,7 +209,8 @@ and no gap is reported.
 | `sarif.no-rule-outcomes` | Lumina | The log has no `ruleOutcomes`; only missing rules are counted |
 | `pitloom.log` | Lumina, Mode 1 | A WARNING-or-above record Pitloom logged while generating |
 | `pitloom.generation-failed`, `pitloom.url-unsupported` | Lumina, Mode 1 | Pitloom failed, or the URL has no host |
-| `git.clone-failed`, `git.timeout` | Lumina, Mode 1 | The shallow clone failed or exceeded 600 s |
+| `git.clone-failed`, `git.timeout`, `git.output-too-large`, `git.not-found`, `git.offline` | Pitloom, via Mode 1 | The clone failed, exceeded 600 s or produced too much output, or `git` is missing |
+| `git.url-invalid`, `git.ref-not-found`, `git.path-not-found`, `git.no-project`, `git.too-many-redirects` | Pitloom, via Mode 1 | A refused scheme or path, a branch or folder the repository does not have, no Python project in the folder (the message names the ones below it), or too many redirects |
 | `lumina.url-too-long`, `lumina.url-invalid`, `lumina.url-scheme-blocked`, `lumina.url-unresolvable`, `lumina.url-private-address` | Lumina, Mode 1 | The URL guard refused the URL: over 2048 characters, unparsable, not http/https, unresolvable, or resolving to a non-public address |
 
 ### SBOM source and rule evidence
@@ -258,9 +260,9 @@ evidence.
 
 A generated result also carries `generation_log`: what the generator side did,
 in order, for a user who wants to see the working. Each line has a `source`
-(`lumina`: a step Lumina took, including the real `git clone` command line;
-`git`: its own output on success; `pitloom`: a record Pitloom logged at INFO or
-above), a `level` (`info`, `warning`, `error`), the `message` and `elapsed_ms`
+(`lumina`: a step Lumina took; `pitloom`: a record Pitloom logged at INFO or
+above, including each redirect followed, the branch and folder used and every
+`git` command line), a `level` (`info`, `warning`, `error`), the `message` and `elapsed_ms`
 since the start. A failed generation keeps its log, ending with the error.
 Nothing is added that the generator did not produce, so a quiet Pitloom run
 shows few `pitloom` lines. The server's temporary directory is shown as
@@ -361,17 +363,20 @@ JSON SBOM, per-rule `evidence`; Mode 1 also adds `generation_log`; Mode 3 sets
 - **`embedded_sbom`:** absent.  Lumina holds the SBOM Pitloom just produced; no
   need to round-trip via SARIF.
 - **Generators (one interface, dispatched by URL kind; both Pitloom):**
-  - **Git repository URLs** — a **shallow clone** (`git clone --depth 1`,
-    blobs over 10 MB skipped, redirects not followed, no credential prompt)
-    into a temp work directory, then Pitloom's `generate_project_sbom(dir,
-    output_path=..., pitloom_config=PitloomConfig())` on the checkout, then the
-    temp directory is removed. The checkout is untrusted, so an empty explicit
-    config replaces its own `[tool.pitloom]`: a repository cannot name host
-    paths (fragments, ID registry) or switch features on. Pitloom itself never
-    runs the project's build backend unless the caller asks.
-    Bounded by a 600 s clone timeout and cleaned up in a `finally`. Covers
-    GitHub and any Git host; Pitloom reads the project's Python packaging
-    metadata.
+  - **Git repository URLs** — all URL handling is Pitloom's
+    (`pitloom.assemble.generate_git_project_sbom`; its docs: "SBOM from a Git
+    URL"): a clone URL or the page of a repository, branch or folder on GitHub,
+    GitLab, Gitea/Forgejo/Codeberg, Bitbucket or SourceHut; the Git server's
+    redirect (GitLab's `project` to `project.git`) followed hop by hop;
+    a shallow clone into a temporary directory that is removed afterwards; the
+    repository's own `[tool.pitloom]` ignored and its build backend never run;
+    a 600 s deadline. Lumina's part is policy only: it passes its SSRF guard
+    (`_ensure_public_http_url`) as `check_url`, which Pitloom calls on **every**
+    redirect target before requesting it, and maps a Pitloom
+    `RemoteSourceError` code to a `GenerationError`. Pitloom logs each redirect
+    (source and target URLs), the repository, branch and folder a URL named,
+    and every refusal (a `WARNING:` as well as the error), and all of that
+    reaches the generation log and the notifications.
   - **Hugging Face Hub URLs** — Pitloom's `generate_model_sbom(url)`
     (needs the `pitloom[ai]` extra, which brings `huggingface_hub`). Reads HF
     metadata via the HF API; it does **not** download model files, so the host
@@ -502,9 +507,9 @@ Guidance:
 ### Resource safety (any stage)
 
 - Concurrency cap (semaphore of 1 at Stage 0; worker count at Stage 2).
-- Timeout on the `git clone` subprocess (600 s; Pitloom generation itself has no
-  timeout yet); blobs over 10 MB are skipped; the temp work-dir is removed in a
-  `finally`.
+- Pitloom bounds `git` (600 s for all calls together, 8 MiB of output per call,
+  blobs over 10 MB requested to be skipped) and removes the temporary checkout;
+  Pitloom generation itself has no timeout yet.
 - At most 1000 finished job records are kept in memory; the oldest go first.
 - Recommended, not set in the compose files: a container memory limit so a
   runaway job is contained, not the whole host (see INSTALL.md, "Hardening

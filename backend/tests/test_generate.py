@@ -7,14 +7,12 @@
 
 from __future__ import annotations
 
-import http.server
 import importlib.metadata
 import importlib.util
 import json
 import logging
 import shutil
 import tempfile
-import threading
 from pathlib import Path
 
 import pytest
@@ -26,7 +24,6 @@ from app.generate import _ensure_public_http_url
 from app.generation_log import hide_temp_dir
 from app.generators import GenerationError, generate_from_huggingface
 from app.generators.base import creation_info
-from app.generators.git import _run_pitloom, _shallow_clone
 
 SPDX3_FIXTURE = Path(__file__).parent / "fixtures" / "sbom" / "spdx3_g7ai.json"
 
@@ -85,42 +82,6 @@ def test_hf_generator_writes_a_valid_aibom(tmp_path: Path) -> None:
     assert "ai_AIPackage" in out.read_text(encoding="utf-8")
 
 
-def test_git_generator_writes_a_valid_sbom(tmp_path: Path) -> None:
-    """Real Pitloom call on a tiny project: guards the Pitloom API names."""
-    project = tmp_path / "p"
-    project.mkdir()
-    (project / "pyproject.toml").write_text(
-        '[project]\nname = "demo"\nversion = "1.0"\n', encoding="utf-8"
-    )
-    out = tmp_path / "out.spdx3.json"
-    _run_pitloom(str(project), str(out))
-    assert "software_Package" in out.read_text(encoding="utf-8")
-
-
-def test_git_generator_ignores_the_checkouts_own_pitloom_config(
-    tmp_path: Path,
-) -> None:
-    """A cloned repo is untrusted: its ``[tool.pitloom]`` must not name host paths.
-
-    The missing registry and required fragment would each fail the run if read.
-    """
-    host = tmp_path / "host"
-    project = tmp_path / "p"
-    project.mkdir()
-    (project / "pyproject.toml").write_text(
-        '[project]\nname = "demo"\nversion = "1.0"\n'
-        "[tool.pitloom]\n"
-        f'id-registry = "{(host / "ids.json").as_posix()}"\n'
-        "[tool.pitloom.fragment]\n"
-        f'files = [{{path = "{(host / "f.json").as_posix()}", required = true}}]\n',
-        encoding="utf-8",
-    )
-    out = tmp_path / "out.spdx3.json"
-    _run_pitloom(str(project), str(out))
-    assert "software_Package" in out.read_text(encoding="utf-8")
-    assert not host.exists()
-
-
 def test_huggingface_hub_client_is_installed() -> None:
     """Pitloom reads a Hub model through ``huggingface_hub`` (a Pitloom extra)."""
     assert importlib.util.find_spec("huggingface_hub") is not None
@@ -156,76 +117,6 @@ def test_odd_urls_are_refused_with_a_descriptor(url: str, descriptor: str) -> No
     with pytest.raises(GenerationError) as excinfo:
         _ensure_public_http_url(url)
     assert excinfo.value.descriptor_id == descriptor
-
-
-def test_clone_does_not_follow_a_redirect(tmp_path: Path) -> None:
-    """A public URL that redirects to another host must not be followed."""
-    hits: list[str] = []
-
-    class Target(http.server.BaseHTTPRequestHandler):
-        """A request handler."""
-
-        def do_GET(self) -> None:  # pylint: disable=invalid-name
-            """Answer a GET request."""
-            hits.append(self.path)
-            self.send_response(404)
-            self.end_headers()
-
-        def log_message(self, *_args: object) -> None:
-            """Keep the test output quiet."""
-
-    target = http.server.HTTPServer(("127.0.0.1", 0), Target)
-
-    class Redirect(http.server.BaseHTTPRequestHandler):
-        """A request handler."""
-
-        def do_GET(self) -> None:  # pylint: disable=invalid-name
-            """Answer a GET request."""
-            self.send_response(302)
-            self.send_header("Location", f"http://127.0.0.1:{target.server_port}/x")
-            self.end_headers()
-
-        def log_message(self, *_args: object) -> None:
-            """Keep the test output quiet."""
-
-    redirect = http.server.HTTPServer(("127.0.0.1", 0), Redirect)
-    threads = [
-        threading.Thread(target=server.serve_forever, daemon=True)
-        for server in (target, redirect)
-    ]
-    for thread in threads:
-        thread.start()
-    try:
-        with pytest.raises(GenerationError):
-            _shallow_clone(
-                f"http://127.0.0.1:{redirect.server_port}/r.git", str(tmp_path / "w")
-            )
-    finally:
-        for server in (target, redirect):
-            server.shutdown()
-            server.server_close()
-    assert not hits
-
-
-def test_lumina_is_the_author_of_a_scanned_project_not_its_supplier(
-    tmp_path: Path,
-) -> None:
-    """Regression: the supplier must come from the project, which states none."""
-    project = tmp_path / "p"
-    project.mkdir()
-    (project / "pyproject.toml").write_text(
-        '[project]\nname = "demo"\nversion = "1.0"\n', encoding="utf-8"
-    )
-    out = tmp_path / "out.spdx3.json"
-    _run_pitloom(str(project), str(out))
-    graph = json.loads(out.read_text(encoding="utf-8"))["@graph"]
-    demo = next(e for e in graph if e.get("name") == "demo")
-    assert "suppliedBy" not in demo
-    by_id = {e["spdxId"]: e for e in graph if "spdxId" in e}
-    info = next(e for e in graph if e["type"] == "CreationInfo")
-    authors = [(by_id[i]["type"], by_id[i]["name"]) for i in info["createdBy"]]
-    assert authors == [("SoftwareAgent", "Lumina")]
-    assert [by_id[i]["name"] for i in info["createdUsing"]] == ["Pitloom"]
 
 
 def test_pitloom_warnings_reach_the_user_as_notifications(

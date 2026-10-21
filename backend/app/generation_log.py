@@ -6,9 +6,9 @@
 """The log of one SBOM generation, for the user to read.
 
 While :func:`app.generate.generate_and_check` runs, everything the generator side
-did is recorded here in order: the steps Lumina took (the real ``git clone``
-command line), what ``git`` printed, and every record Pitloom logged (INFO and
-above).  The response carries it as ``generation_log``; nothing is invented, and
+did is recorded here in order: the steps Lumina took and every record Pitloom
+logged (INFO and above: the redirects followed, the repository, branch and
+folder named, the ``git`` command lines).  The response carries it as ``generation_log``; nothing is invented, and
 a line the generator did not produce is not added.
 
 The log lives in a context variable so the generators call :func:`note` without
@@ -29,7 +29,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-LogSource = Literal["lumina", "git", "pitloom"]
+LogSource = Literal["lumina", "pitloom"]
 LogLevel = Literal["info", "warning", "error"]
 
 MAX_LOG_LINES = 1000
@@ -46,8 +46,8 @@ class LogLine(BaseModel):
     """One line of the generation log."""
 
     source: LogSource
-    """Who wrote it: ``lumina`` (a step Lumina took), ``git`` (its output) or
-    ``pitloom`` (a record Pitloom logged)."""
+    """Who wrote it: ``lumina`` (a step Lumina took) or ``pitloom`` (a record
+    Pitloom logged)."""
     level: LogLevel
     message: str
     elapsed_ms: int
