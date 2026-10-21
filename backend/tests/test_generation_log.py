@@ -43,7 +43,7 @@ def test_note_outside_a_generation_does_nothing() -> None:
 def test_a_multi_line_message_is_one_log_line_per_line() -> None:
     """Tool output with several lines becomes one log line per line."""
     log = GenerationLog()
-    log.add("git", "info", "Cloning into 'x'...\nremote: done")
+    log.add("pitloom", "info", "Cloning into 'x'...\nremote: done")
     assert [line.message for line in log.finish()] == [
         "Cloning into 'x'...",
         "remote: done",
@@ -60,7 +60,7 @@ def test_the_temporary_directory_is_hidden() -> None:
 def test_a_long_line_is_cut_and_says_so() -> None:
     """A line over the cap is cut and the cut is stated."""
     log = GenerationLog()
-    log.add("git", "info", "x" * (MAX_LINE_CHARS + 7))
+    log.add("pitloom", "info", "x" * (MAX_LINE_CHARS + 7))
     message = log.finish()[0].message
     assert message.startswith("x" * MAX_LINE_CHARS)
     assert message.endswith("(7 more characters)")
@@ -69,7 +69,7 @@ def test_a_long_line_is_cut_and_says_so() -> None:
 def test_too_many_lines_are_counted_not_kept() -> None:
     """Past the line limit lines are counted, and the count is shown last."""
     log = GenerationLog()
-    log.add("git", "info", "\n".join(["l"] * (MAX_LOG_LINES + 3)))
+    log.add("pitloom", "info", "\n".join(["l"] * (MAX_LOG_LINES + 3)))
     lines = log.finish()
     assert len(lines) == MAX_LOG_LINES + 1
     assert lines[-1].message == "3 more lines not shown (limit)."

@@ -119,8 +119,7 @@ const NTIA_RESULT = {
   sbom: SBOM,
   generation_log: [
     { source: "lumina", level: "info", message: "Generating an SBOM for https://github.com/o/r", elapsed_ms: 0 },
-    { source: "lumina", level: "info", message: "$ git -c http.followRedirects=false clone --depth 1 -- https://github.com/o/r <tmp>", elapsed_ms: 3 },
-    { source: "git", level: "info", message: "Cloning into '<tmp>'...", elapsed_ms: 912 },
+    { source: "pitloom", level: "info", message: "Git source: $ git -c http.followRedirects=false clone --depth 1 -- https://github.com/o/r <tmp>", elapsed_ms: 3 },
     { source: "pitloom", level: "warning", message: "FORMAT=gguf: mock log record", elapsed_ms: 1530 },
     { source: "lumina", level: "info", message: "Pitloom finished; reading the SBOM it wrote", elapsed_ms: 2104 },
   ],
@@ -495,8 +494,8 @@ check(await page.$$eval("[role=tab]", els => els.every(e => document.getElementB
 await page.getByRole("tab", { name: "Generator log" }).click();
 await page.waitForSelector(".gen-log-line");
 const logLines = await page.locator(".gen-log-line").allInnerTexts();
-check(logLines.length === 5 && logLines[2].includes("git") && logLines[2].includes("Cloning into '<tmp>'...")
-  && logLines[3].includes("WARNING") && logLines[3].includes("FORMAT=gguf: mock log record"),
+check(logLines.length === 4 && logLines[1].includes("pitloom") && logLines[1].includes("Git source: $ git")
+  && logLines[2].includes("WARNING") && logLines[2].includes("FORMAT=gguf: mock log record"),
   "Generate & check: the Generator log tab lists the returned lines with source and level");
 check(await page.locator(".gen-log-line", { hasText: "$ git -c http.followRedirects=false clone" }).count() === 1,
   "Generate & check: the real clone command line is shown");

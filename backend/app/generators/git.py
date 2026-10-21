@@ -5,110 +5,57 @@
 
 """Generate an SBOM from a Git repository URL.
 
-Pitloom does not fetch Git URLs itself, so Lumina does the fetch: a **shallow
-clone** (``git clone --depth 1``) into a temporary work directory, then Pitloom's
-``generate_project_sbom`` on the checkout (it reads the project's Python packaging
-metadata).  The work directory is always removed in a ``finally``; the clone is
-bounded by a timeout.
+Pitloom does the work: it reads the URL (a clone URL, or the address of a
+repository web page naming a branch, tag or commit and a folder), follows the
+Git server's own redirect, shallow-clones into a temporary directory, reads the
+project and removes the directory (``pitloom.assemble.generate_git_project_sbom``).
+Lumina's part is policy: the address check (an SSRF guard, handed to Pitloom to
+run on every redirect target), the SBOM's author, and turning a Pitloom failure
+into a :class:`~app.generators.base.GenerationError`.  What Pitloom logs (the
+redirects followed, the repository and branch named, the ``git`` commands) reaches
+the generation log through the Pitloom logger.
 """
 
 from __future__ import annotations
 
-import os
-import shlex
-import shutil
-import subprocess
-import tempfile
+from collections.abc import Callable
 from pathlib import Path
 
-from ..generation_log import note
 from .base import GenerationError, creation_info
 
-# A shallow clone is bounded, but a large repo over a slow link can still take a
-# while.  Cap it so a single job cannot hang the worker indefinitely.
-CLONE_TIMEOUT_SECONDS = 600
 
-# Skip blobs above this size during clone.  Pitloom reads packaging metadata
-# (small text files), so large binaries are never needed.  Servers that do not
-# support partial clone ignore the filter with a warning -- never a failure.
-CLONE_BLOB_LIMIT = "10m"
+def generate_from_git(
+    repo_url: str, output_path: str, check_url: Callable[[str], None]
+) -> None:
+    """Write an SPDX 3 SBOM of the repository *repo_url* names to *output_path*.
 
+    *check_url* raises :class:`GenerationError` for an address that must not be
+    fetched; Pitloom calls it with every redirect target before requesting it.
 
-def generate_from_git(repo_url: str, output_path: str) -> None:
-    """Clone *repo_url* (shallow) and write an SPDX 3 SBOM to *output_path*.
-
-    Raises :class:`GenerationError` with a ``git.*`` descriptor for clone
-    failures and a ``pitloom.*`` descriptor for generation failures.
+    Raises :class:`GenerationError`: with the code Pitloom gives a refused or
+    failed fetch (``git.clone-failed``, ``git.timeout``, ``git.ref-not-found``,
+    ``git.path-not-found``, ``git.no-project``, ...), with *check_url*'s own for a
+    refused address, and ``pitloom.generation-failed`` for any other failure.
     """
-    work_dir = tempfile.mkdtemp(prefix="lumina-clone-")
-    try:
-        _shallow_clone(repo_url, work_dir)
-        _run_pitloom(work_dir, output_path)
-    finally:
-        shutil.rmtree(work_dir, ignore_errors=True)
-
-
-def _shallow_clone(repo_url: str, work_dir: str) -> None:
-    command = [
-        "git",
-        # The URL was checked once; a redirect to an internal host
-        # would skip that check, so none is followed.
-        "-c",
-        "http.followRedirects=false",
-        "clone",
-        "--depth",
-        "1",
-        f"--filter=blob:limit={CLONE_BLOB_LIMIT}",
-        "--",
-        repo_url,
-        work_dir,
-    ]
-    note("lumina", "info", f"$ {shlex.join(command)}")
-    try:
-        done = subprocess.run(
-            command,
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=CLONE_TIMEOUT_SECONDS,
-            # A private/nonexistent repo must fail fast, not sit at a
-            # credential prompt until the timeout.
-            env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
-        )
-        # On failure the output is in the GenerationError raised below.
-        for output in (done.stdout, done.stderr):
-            if output and output.strip():
-                note("git", "info", output.rstrip())
-    except subprocess.TimeoutExpired as exc:
-        raise GenerationError(
-            "git.timeout",
-            f"git clone exceeded {CLONE_TIMEOUT_SECONDS}s for {repo_url}",
-        ) from exc
-    except subprocess.CalledProcessError as exc:
-        detail = (exc.stderr or "").strip() or f"git exited {exc.returncode}"
-        raise GenerationError("git.clone-failed", detail) from exc
-
-
-def _run_pitloom(project_dir: str, output_path: str) -> None:
     # Imported lazily; see app.generators.base.
     # pylint: disable=import-outside-toplevel
-    from pitloom.assemble import generate_project_sbom
+    from pitloom.assemble import generate_git_project_sbom
     from pitloom.core.config import PitloomConfig
+    from pitloom.extract.remote import RemoteSourceError
 
-    note(
-        "lumina",
-        "info",
-        "Pitloom: generate_project_sbom() on the checkout, with the project's "
-        "own [tool.pitloom] settings ignored (untrusted checkout)",
-    )
     try:
-        generate_project_sbom(
-            Path(project_dir),
+        generate_git_project_sbom(
+            repo_url,
+            check_url=check_url,
             output_path=Path(output_path),
             creation_metadata=creation_info(),
-            # The checkout is untrusted: its own [tool.pitloom] must not name
-            # host paths (fragments, ID registry) or switch features on.
+            # The repository is untrusted: Pitloom already ignores its own
+            # [tool.pitloom]; the empty config says Lumina wants none.
             pitloom_config=PitloomConfig(),
         )
+    except RemoteSourceError as exc:
+        raise GenerationError(exc.code, str(exc)) from exc
+    except GenerationError:
+        raise
     except Exception as exc:
         raise GenerationError("pitloom.generation-failed", str(exc)) from exc

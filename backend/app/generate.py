@@ -247,13 +247,22 @@ _UNSAFE_FILENAME_CHARS = re.compile(r"[^A-Za-z0-9._-]+")
 
 def sbom_filename(artifact_url: str) -> str:
     """``<name>.spdx3.json`` for a generated SBOM: the Hugging Face model name
-    (``huggingface.co/<org>/<model>/...``) or the last path segment of a Git
-    URL (without ``.git``); ``sbom.spdx3.json`` when the URL names nothing."""
+    (``huggingface.co/<org>/<model>/...``) or the repository name of a Git URL
+    (without ``.git``; for a page URL the repository, not the folder);
+    ``sbom.spdx3.json`` when the URL names nothing."""
     parsed = urlparse(artifact_url)
-    segments = [s for s in parsed.path.split("/") if s]
     if (parsed.hostname or "").lower() in _HF_HOSTS:
-        segments = segments[:2]
-    name = segments[-1] if segments else ""
+        segments = [s for s in parsed.path.split("/") if s][:2]
+        name = segments[-1] if segments else ""
+    else:
+        # Imported lazily; see app.generators.base.
+        # pylint: disable-next=import-outside-toplevel
+        from pitloom.extract.remote import RemoteSourceError, parse_git_page
+
+        try:
+            name = parse_git_page(artifact_url).repo_name
+        except RemoteSourceError:  # a path Pitloom will refuse
+            name = ""
     name = _UNSAFE_FILENAME_CHARS.sub("-", name.removesuffix(".git")).strip(".-")
     return f"{name or 'sbom'}.spdx3.json"
 
@@ -267,7 +276,7 @@ def _generate(artifact_url: str, sbom_path: str) -> None:
     else:
         # Any other URL with a host is treated as a Git repository
         # (GitHub, GitLab, Bitbucket, self-hosted, ...).
-        generate_from_git(artifact_url, sbom_path)
+        generate_from_git(artifact_url, sbom_path, _ensure_public_http_url)
 
 
 def _failure_response(

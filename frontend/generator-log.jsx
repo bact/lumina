@@ -6,8 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 */
 // Lumina frontend -- the "Generator log" view: what the server did to make the
 // SBOM it checked (`result.generation_log`), in order and in a monospace font:
-// the steps Lumina took (the real `git clone` command line), what git printed
-// and every record Pitloom logged (INFO and above). Shown only for a generated
+// the steps Lumina took and every record Pitloom logged (INFO and above: the
+// redirects followed, the branch and folder named, the git command lines). Shown only for a generated
 // SBOM; the lines are exactly what the API returned.
 
 const { useState: _useSG } = React;
@@ -36,8 +36,8 @@ function GeneratorLog({ lines }) {
       <div className="sbom-toolbar">
         <div style={{ fontSize: 12.5, color: "var(--ink-3)", maxWidth: "60ch" }}>
           What the server did to generate this SBOM, in order. <Mono>lumina</Mono> lines are steps
-          Lumina took, <Mono>git</Mono> lines are git's own output, <Mono>pitloom</Mono> lines are
-          the generator's INFO, WARNING and ERROR log records (a quiet run has few).
+          Lumina took, <Mono>pitloom</Mono> lines are the generator's INFO, WARNING and ERROR log
+          records: each redirect followed, the branch and folder used, the git commands.
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 12, color: "var(--ink-3)" }}>{lines.length.toLocaleString("en")} {lines.length === 1 ? "line" : "lines"}</span>
