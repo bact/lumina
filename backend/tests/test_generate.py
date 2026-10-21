@@ -336,14 +336,14 @@ class _FakeDistribution:  # pylint: disable=too-few-public-methods
 
 
 _GIT = {
-    "vcs_info": {"vcs": "git", "commit_id": "ade664290c89948aaaf3a75e0015199169c836fa"}
+    "vcs_info": {"vcs": "git", "commit_id": "26ede5b7fce26afcc8c460e461fbc7922a7ab8c1"}
 }
 
 
 @pytest.mark.parametrize(
     ("direct_url", "expected"),
     [
-        (json.dumps(_GIT), "0.20.2 (ade6642)"),
+        (json.dumps(_GIT), "0.20.2 (26ede5b)"),
         (json.dumps({"dir_info": {}}), "0.20.2"),  # installed from a directory
         (None, "0.20.2"),  # an ordinary wheel: no direct_url.json
         (json.dumps({"vcs_info": {"commit_id": ""}}), "0.20.2"),  # states nothing
