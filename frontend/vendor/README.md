@@ -22,6 +22,6 @@ not depend on a CDN. Each keeps its own licence (the texts are alongside).
 To update one, fetch the new file from npm, check its version, replace the file
 and its row here, and update the `<script>` tags in `../index.html`.
 
-The page also asks Google Fonts for Geist, Geist Mono and Instrument Serif
+The page also asks Google Fonts for Geist and Geist Mono
 (`../colors-and-type.css`). Offline, the browser falls back to the system fonts
 named after them in the same file; nothing breaks.

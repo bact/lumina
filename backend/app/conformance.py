@@ -165,15 +165,16 @@ class CheckRun(BaseModel):
     """How the check went: tool identity, parse status, notifications.
 
     Holds run-level metadata that is *not* a conformance finding.  Scales
-    to future additions (timing, signing status, ingestion provenance)
+    to further run-level fields (timing, signing status, ingestion provenance)
     without polluting ConformanceResult.
     """
 
     tool_name: str
     tool_version: str = ""
     generator: str = ""
-    """What made the SBOM when Lumina generated it (``"pitloom 0.20.2"``); empty
-    for an uploaded SBOM or an imported SARIF log."""
+    """What made the SBOM when Lumina generated it: ``"pitloom <version>"``, plus
+    the short commit in parentheses when installed from Git; empty for an
+    uploaded SBOM or an imported SARIF log."""
     execution_successful: bool = True
     notifications: list[Notification] = Field(default_factory=list)
 
@@ -186,7 +187,7 @@ class EmbeddedSbom(BaseModel):
     Set on ``POST /api/v1/sarif/import`` when the producer embedded the SBOM
     (``output_sarif(embed_sbom=True)``, the checker CLI's ``sarif-sbom``
     output), so a client can show it alongside the findings from one
-    round-trip; the web UI does not yet.
+    round-trip; the web UI does not read this field.
     """
 
     uri: str

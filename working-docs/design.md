@@ -111,7 +111,7 @@ ConformanceResult                     # what was found
   total         : int                 # decided rules (see "Counts" below)
   present       : int
   missing       : int
-  unverified    : int                 # always 0 today
+  unverified    : int                 # always 0
   gaps          : list[FieldGap]
   rules         : list[RuleResult]    # per-rule outcome, when the SARIF log
                                       # has ruleOutcomes (the checker's do)
@@ -154,7 +154,7 @@ SbomSource
   line_count    : int                 # "\n"-separated lines of display
 
 LogLine
-  source        : "lumina" | "git" | "pitloom"
+  source        : "lumina" | "pitloom"
   level         : "info" | "warning" | "error"
   message       : str
   elapsed_ms    : int                 # since the generation started
@@ -205,7 +205,7 @@ and no gap is reported.
 | Id | From | Meaning |
 | :- | :--- | :------ |
 | `spdx.parsing-error`, `spdx.validation-message`, `spdx.floating-component`, `spdx.unknown-pointer` | checker | The SBOM could not be read, failed validation, or has elements not connected to its root or pointers to missing elements |
-| `sbom.nothing-applies` | checker | No rule of the standard applies to this SBOM; a newer checker says why in the message (the standard is checked on SPDX 3 only and the SBOM is SPDX 2) |
+| `sbom.nothing-applies` | checker | No rule of the standard applies to this SBOM; the message may say why (the standard is checked on SPDX 3 only and the SBOM is SPDX 2) |
 | `sarif.no-rule-outcomes` | Lumina | The log has no `ruleOutcomes`; only missing rules are counted |
 | `pitloom.log` | Lumina, Mode 1 | A WARNING-or-above record Pitloom logged while generating |
 | `pitloom.generation-failed`, `pitloom.url-unsupported` | Lumina, Mode 1 | Pitloom failed, or the URL has no host |
@@ -237,8 +237,8 @@ SBOM whose text is JSON, without evidence.
   several elements (the root packages for a System-level rule) is Missing when
   any one lacks the property, so a Missing rule can list elements that have it
   (`applies_to` and `combine` let the UI say so in words). Found evidence shows *where* the property is, not that its
-  value is right: the checker decides presence, and Lumina still does no
-  checking of its own.
+  value is right: the checker decides presence; Lumina does no checking of
+  its own.
 
 Which elements a rule judges and whether each passes come from the same
 checker instance that produced the result (its per-rule results, the
@@ -414,9 +414,7 @@ JSON SBOM, per-rule `evidence`; Mode 1 also adds `generation_log`; Mode 3 sets
   standard with 501.
 - **`embedded_sbom`:** absent.  Lumina already has the SBOM the user
   just supplied; embedding would double in-memory size for no benefit.
-- **Sync model:** synchronous for now (the check runs in a thread pool).  May
-  move behind the same queue as mode 1 once we measure typical SBOM-parse
-  latency on large inputs.
+- **Sync model:** synchronous (the check runs in a thread pool).
 
 ### Mode 3 — SARIF import
 
@@ -466,14 +464,14 @@ generators, and the conformance pipeline. Only the `JobQueue` *backend* changes.
 **Discipline that keeps the swap free:** job functions are written as if they
 already run in a separate worker — a top-level named function, JSON-serialisable
 arguments (a URL string, a standard id), a JSON-serialisable result. They never
-close over live in-process objects. Today the function runs in a thread; a future
-worker runs the identical function untouched.
+close over live in-process objects. The function runs in a thread today; a
+worker would run the identical function untouched.
 
 ### Staged backends
 
 | Stage | Backend | Extra services | Notes |
 | :---- | :------ | :------------- | :---- |
-| **0–1 (now)** | `InProcessJobQueue` | none | `asyncio` task + in-memory `dict`; blocking `git clone` + Pitloom offloaded with `asyncio.to_thread`; `Semaphore(1)` caps concurrency. **Jobs are lost on restart — accepted.** Stage 1 = bump the semaphore + add a container memory limit; no code change. |
+| **0–1 (built)** | `InProcessJobQueue` | none | `asyncio` task + in-memory `dict`; blocking `git clone` + Pitloom offloaded with `asyncio.to_thread`; `Semaphore(1)` caps concurrency. **Jobs are lost on restart — accepted.** Stage 1 = bump the semaphore + add a container memory limit; no code change. |
 | **2 (on load growth)** | `RQ` *or* `Taskiq` | a worker process + Redis | Add a backend setting (none exists yet), a `worker` service in compose, and Redis. Endpoints, jobs, generators, frontend untouched. |
 
 Because Stage 0 ships behind the interface, the broker choice is **deferred to the

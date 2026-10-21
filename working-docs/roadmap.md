@@ -13,7 +13,7 @@ A summary, not a copy: each item with more detail links to the note that holds
 it. See also [design.md](design.md) (architecture), [demo.md](demo.md) (demo
 guide) and [deployment-options.md](deployment-options.md).
 
-## Done (2026-10-18 to 2026-10-20)
+## Done (2026-10-18 to 2026-10-21)
 
 - [x] **Per-rule results** for NTIA, G7 SBOM for AI, CISA 2026, FSCT 2024 and
   BSI TR-03183-2, all from `ntia-conformance-checker`; a rule's evidence shows
@@ -21,6 +21,10 @@ guide) and [deployment-options.md](deployment-options.md).
 - [x] **Three input screens**: Generate & check (a Git or Hugging Face URL),
   Upload SBOM and Import SARIF, with real example files and URLs, shown as a
   collapsible grid of cards.
+- [x] **Git URLs handled by Pitloom** (#55): clone URLs and page URLs of
+  GitHub, GitLab, Gitea/Forgejo/Codeberg, Bitbucket and SourceHut; redirects
+  followed hop by hop through Lumina's SSRF guard; Pitloom's log lines reach
+  the generator log.
 - [x] **Generator log** and an SBOM source view (windowed for large files).
 - [x] **Author and tool**: Lumina is the SBOM's author (a software agent) and
   Pitloom its tool; needs Pitloom's software-agent supplier fix (#312).
@@ -28,8 +32,8 @@ guide) and [deployment-options.md](deployment-options.md).
   contrast), checked by `scripts/ui-smoke.mjs` and axe-core.
 - [x] **Locales**: the app shell and each screen's heading in English, German,
   Japanese, Thai, French and Irish.
-- [x] **Pinned by commit**: Pitloom (`main` after #311 to #315) and the
-  checker (`82a63b9`), so builds do not move.
+- [x] **Pinned by commit**: Pitloom (the merge of its #317) and the checker
+  (`82a63b9`), so builds do not move.
 - [x] **Internal docs in `working-docs/`**, user docs kept to `README.md` and
   `INSTALL.md`.
 

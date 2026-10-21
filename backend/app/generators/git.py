@@ -49,7 +49,7 @@ def generate_from_git(
             check_url=check_url,
             output_path=Path(output_path),
             creation_metadata=creation_info(),
-            # The repository is untrusted: Pitloom already ignores its own
+            # The repository is untrusted: Pitloom ignores its own
             # [tool.pitloom]; the empty config says Lumina wants none.
             pitloom_config=PitloomConfig(),
         )

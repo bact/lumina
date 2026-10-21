@@ -13,18 +13,19 @@ The API talks to one small ``JobQueue`` boundary and nothing else::
     JobQueue.enqueue(job_name, **kwargs) -> job_id
     JobQueue.get(job_id)                 -> JobRecord
 
-Everything above and below that boundary -- the HTTP contract, the frontend, the
-job functions, the generators, the conformance pipeline -- is invariant across
-scaling stages.  Only the *backend* changes:
+The HTTP contract, the frontend, the job functions, the generators and the
+conformance pipeline sit on either side of that boundary and do not depend on
+the queue behind it.
 
-* **Stage 0-1 (now):** :class:`InProcessJobQueue` -- an ``asyncio`` task plus an
-  in-memory dict.  Blocking work is offloaded with ``asyncio.to_thread`` and a
-  semaphore caps concurrency.  Jobs are lost on restart (accepted).
-* **Stage 2 (on load growth):** an ``RQ`` / ``Taskiq`` backend implementing this
-  same interface, run as a separate worker process.  See ``working-docs/design.md``.
+* :class:`InProcessJobQueue` -- an ``asyncio`` task plus an in-memory dict.
+  Blocking work is offloaded with ``asyncio.to_thread`` and a semaphore caps
+  concurrency.  Jobs are lost on restart.
 
-To keep that future swap free, **jobs are written as if they already run in a
-separate worker**: a top-level named function, JSON-serialisable arguments, a
+A broker-backed implementation of the same interface (a separate worker
+process) can replace it without changing the layers on either side.
+
+To keep that swap possible, **jobs are written as if they ran in a separate
+worker**: a top-level named function, JSON-serialisable arguments, a
 JSON-serialisable result.  They never close over live in-process objects.  The
 queue dispatches by *name* (as a real broker would), so the in-memory backend and
 a broker backend resolve the same registry the same way.
@@ -53,8 +54,8 @@ class JobRecord:
     """The observable state of a single job.
 
     ``result`` is set only when ``status == "done"``; ``error`` only when
-    ``status == "error"``.  Both are JSON-serialisable so this record survives a
-    future move across a process boundary unchanged.
+    ``status == "error"``.  Both are JSON-serialisable, so the record can cross a
+    process boundary unchanged.
     """
 
     id: str
@@ -87,15 +88,15 @@ class JobQueue:
 
 
 class InProcessJobQueue(JobQueue):
-    """Stage 0-1 backend: run jobs in this process, track state in memory.
+    """Run jobs in this process and track their state in memory.
 
     The job runs as an ``asyncio`` task.  The (blocking) job function is offloaded
     to a worker thread with ``asyncio.to_thread`` so it never stalls the event
     loop, even for a multi-minute clone.  A semaphore caps how many run at once so
     concurrent large clones cannot exhaust the host.
 
-    State lives in an in-memory dict, so **jobs are lost on restart** -- an
-    accepted trade at this stage (the user simply resubmits).
+    State lives in an in-memory dict, so **jobs are lost on restart**; the user
+    resubmits.
     """
 
     def __init__(self, concurrency: int = 1, max_finished_jobs: int = 1000) -> None:

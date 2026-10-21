@@ -20,7 +20,7 @@ server {
         try_files $uri $uri/ =404;
     }
 
-    # API proxy — long timeout for SBOM generation jobs (a clone may take up to 10 min)
+    # API proxy -- generous read timeout for slow checks
     location /api/ {
         # Keep this above the API's upload cap, LUMINA_MAX_SBOM_BYTES (default
         # 10 MiB): it limits the whole request, multipart framing included.

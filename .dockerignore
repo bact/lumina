@@ -24,7 +24,7 @@
 **/.pytest_cache
 **/.venv
 
-# Node (not used today, future-proofing)
+# Node (the image build uses none)
 **/node_modules
 
 # Docs and meta (not needed in any image)
