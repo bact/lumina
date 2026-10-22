@@ -764,6 +764,7 @@ await page.waitForSelector("text=Model Openness Framework");
 body = await text();
 check(/present means the property exists, not that its value is right/i.test(body), "About: states what present means");
 check(STANDARDS.every(r => body.includes(r.id)), "About: lists every standard the API returns");
+check(["ntia-conformance-checker", "Pitloom", "LicenseID"].every(n => body.includes(n)), "About: lists the major dependencies");
 await noSampleData("About");
 await shot("9-about");
 

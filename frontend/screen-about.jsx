@@ -27,6 +27,12 @@ function AboutScreen() {
       detail: "Generates the SPDX 3 SBOM for a Git repository or Hugging Face model on the Generate & check screen.",
       href: "https://github.com/bact/pitloom",
     },
+    {
+      name: "LicenseID",
+      role: "Licence identifier",
+      detail: "Pitloom uses it while generating an SBOM, to recognise a licence text and name it with its SPDX licence identifier.",
+      href: "https://github.com/bact/licenseid",
+    },
   ];
 
   return (
