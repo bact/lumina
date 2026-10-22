@@ -768,7 +768,7 @@ await noSampleData("About");
 await shot("9-about");
 
 // Top bar: a plain-language title, whose link name contains it (label in name).
-const topTitle = "Generate and check SBOMs against G7 SBOM for AI";
+const topTitle = "Generate and check SBOMs against minimum elements standards";
 check(await page.getByRole("banner").getByRole("link", { name: `${topTitle} -- go to main content` }).innerText() === topTitle,
   "Top bar: the visible title is the link, and its accessible name contains it");
 // Language switch: nav labels and the main label follow the locale.
