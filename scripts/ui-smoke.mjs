@@ -775,14 +775,14 @@ check(await page.getByRole("banner").getByRole("link", { name: `${topTitle} -- g
 await page.getByRole("button", { name: /Language/ }).click();
 await page.getByRole("option", { name: /Deutsch/ }).click();
 check(await page.getByRole("navigation").getByRole("button", { name: "SBOM hochladen" }).isVisible(), "German nav labels");
-check((await page.getByRole("banner").innerText()).includes("SBOMs erzeugen und gegen G7 SBOM for AI prüfen"), "German top bar title");
+check((await page.getByRole("banner").innerText()).includes("SBOMs erzeugen und gegen Mindestelemente-Standards prüfen"), "German top bar title");
 check((await page.getAttribute("main", "aria-label")) === "Ansicht Über", "German main landmark label");
 await shot("10-about-de");
 // The other locales: nav label, top bar title, main label and <html lang>.
 const LOCALES = [
-  { option: /Français/, lang: "fr", nav: "Téléverser un SBOM", title: "Générer des SBOM et les vérifier selon G7 SBOM for AI", main: "Écran À propos" },
-  { option: /Gaeilge/, lang: "ga", nav: "Uaslódáil SBOM", title: "Gin SBOManna agus seiceáil iad i gcoinne G7 SBOM for AI", main: "Scáileán Maidir leis" },
-  { option: /ไทย/, lang: "th", nav: "อัปโหลด SBOM", title: "สร้าง SBOM และตรวจสอบตาม G7 SBOM for AI", main: "หน้าจอ เกี่ยวกับ" },
+  { option: /Français/, lang: "fr", nav: "Téléverser un SBOM", title: "Générer des SBOM et les vérifier selon des normes d’éléments minimaux", main: "Écran À propos" },
+  { option: /Gaeilge/, lang: "ga", nav: "Uaslódáil SBOM", title: "Gin SBOManna agus seiceáil iad i gcoinne caighdeáin na n-eilimintí íosta", main: "Scáileán Maidir leis" },
+  { option: /ไทย/, lang: "th", nav: "อัปโหลด SBOM", title: "สร้าง SBOM และตรวจสอบตามมาตรฐานองค์ประกอบขั้นต่ำ", main: "หน้าจอ เกี่ยวกับ" },
 ];
 for (const loc of LOCALES) {
   await page.getByRole("button", { name: /^[A-Z]{2}, / }).click();
