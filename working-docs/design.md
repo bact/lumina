@@ -1,6 +1,6 @@
 ---
 Created: 2026-05-26
-Last-Modified: 2026-10-21
+Last-Modified: 2026-10-22
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -211,7 +211,7 @@ and no gap is reported.
 | `pitloom.generation-failed`, `pitloom.url-unsupported` | Lumina, Mode 1 | Pitloom failed, or the URL has no host |
 | `git.clone-failed`, `git.timeout`, `git.output-too-large`, `git.not-found`, `git.offline` | Pitloom, via Mode 1 | The clone failed, exceeded 600 s or produced too much output, or `git` is missing |
 | `git.url-invalid`, `git.ref-not-found`, `git.path-not-found`, `git.no-project`, `git.too-many-redirects` | Pitloom, via Mode 1 | A refused scheme or path, a branch or folder the repository does not have, no Python project in the folder (the message names the ones below it), or too many redirects |
-| `lumina.url-too-long`, `lumina.url-invalid`, `lumina.url-scheme-blocked`, `lumina.url-unresolvable`, `lumina.url-private-address` | Lumina, Mode 1 | The URL guard refused the URL: over 2048 characters, unparsable, not http/https, unresolvable, or resolving to a non-public address |
+| `lumina.url-too-long`, `lumina.url-invalid`, `lumina.url-scheme-blocked`, `lumina.url-unresolvable`, `lumina.url-private-address` | Lumina, Mode 1 | The URL guard refused the URL: over 2048 characters, unparsable, not http/https, unresolvable, or resolving to a non-public address (unless the operator listed the host in `LUMINA_ALLOWED_PRIVATE_HOSTS`) |
 
 ### SBOM source and rule evidence
 
