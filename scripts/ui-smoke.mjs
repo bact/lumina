@@ -764,7 +764,8 @@ await page.waitForSelector("text=Model Openness Framework");
 body = await text();
 check(/present means the property exists, not that its value is right/i.test(body), "About: states what present means");
 check(STANDARDS.every(r => body.includes(r.id)), "About: lists every standard the API returns");
-check(["ntia-conformance-checker", "Pitloom", "LicenseID"].every(n => body.includes(n)), "About: lists the major dependencies");
+const depNames = await page.$$eval("#about-deps-h + * > div", els => els.map(e => e.querySelector(":scope > div > div").textContent));
+check(JSON.stringify(depNames) === JSON.stringify(["Pitloom", "LicenseID", "NTIA Conformance Checker"]), `About: major dependencies in order (${depNames})`);
 await noSampleData("About");
 await shot("9-about");
 

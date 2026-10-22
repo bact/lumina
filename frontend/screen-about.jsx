@@ -16,12 +16,6 @@ function AboutScreen() {
   // ── Dependencies Lumina leans on directly ──────────────────────────────
   const dependencies = [
     {
-      name: "ntia-conformance-checker",
-      role: "Conformance checker",
-      detail: "Runs every check (the G7, CISA 2026, FSCT and BSI rules are in the bact fork Lumina pins). Lumina turns its SARIF log into the result the screens show.",
-      href: "https://github.com/bact/ntia-conformance-checker",
-    },
-    {
       name: "Pitloom",
       role: "SBOM generator",
       detail: "Generates the SPDX 3 SBOM for a Git repository or Hugging Face model on the Generate & check screen.",
@@ -32,6 +26,12 @@ function AboutScreen() {
       role: "Licence identifier",
       detail: "Pitloom uses it while generating an SBOM, to recognise a licence text and name it with its SPDX licence identifier.",
       href: "https://github.com/bact/licenseid",
+    },
+    {
+      name: "NTIA Conformance Checker",
+      role: "Conformance checker",
+      detail: "Runs every check (the G7, CISA 2026, FSCT and BSI rules are in the bact fork Lumina pins). Lumina turns its SARIF log into the result the screens show.",
+      href: "https://github.com/bact/ntia-conformance-checker",
     },
   ];
 
