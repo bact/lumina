@@ -439,7 +439,7 @@ check(await page.getByRole("region", { name: /^Try an example/ }).count() === 1
   "Generate & check: the examples are a named region and the choice is announced");
 // The list is a grid of cards, three lines each, grouped by kind; the chosen card is marked.
 const grid = await page.evaluate(() => [...document.querySelectorAll("#example-generate-region .example-card")].map(c => !!c.querySelector(".example-card-head .example-name") && !!c.querySelector(".example-card-body .example-what") && c.querySelector(".example-card-body .example-source").textContent.startsWith("From ") && !c.querySelector(".example-tag")));
-check(grid.length === 10 && grid.every(Boolean), `Generate & check: ten cards, name as heading, what it is and source in the body, no standard (${grid.length})`);
+check(grid.length === 11 && grid.every(Boolean), `Generate & check: eleven cards, name as heading, what it is and source in the body, no standard (${grid.length})`);
 check(await page.evaluate(() => JSON.stringify([...document.querySelectorAll("#example-generate-region .example-group-label")].map(e => e.textContent))) === JSON.stringify(["Models", "Projects"]), "Generate & check: the examples are grouped as Models and Projects");
 check(await card("https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad").getAttribute("aria-current") === "true"
   && await card("https://github.com/pallets/flask").getAttribute("aria-current") === null, "Generate & check: the chosen card is marked");
@@ -459,7 +459,7 @@ check(below.top > before.top && Math.abs(below.left - before.left) < 40, "Genera
 await page.keyboard.press("ArrowUp");
 check(await focusedKey() === PHI, "Generate & check: ArrowUp moves back up");
 await page.keyboard.press("End");
-check(await focusedKey() === "https://github.com/pallets/flask", "Generate & check: End moves to the last card");
+check(await focusedKey() === "https://labs.etsi.org/rep/ocf/sdk", "Generate & check: End moves to the last card");
 await page.keyboard.press("Home");
 check(await focusedKey() === "https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad", "Generate & check: Home moves to the first card");
 check(await page.evaluate(() => [...document.querySelectorAll("#example-generate-region .example-card")].filter(c => c.tabIndex === 0).length) === 1, "Generate & check: the arrow keys keep one tab stop");
