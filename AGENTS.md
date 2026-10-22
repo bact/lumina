@@ -198,7 +198,7 @@ every side-nav screen in headless Chromium and fails on a page or console
 error, on an old sample-data string, when the standard chips differ from the
 mocked `GET /api/v1/standards`, when a refused request's `detail` is not
 shown, when the per-rule BSI result lacks its DOC and COMP clusters and counts,
-when G7 SBOM for AI is not preselected, when the SBOM download, rule values and
+when CISA 2026 is not preselected, when the SBOM download, rule values and
 evidence, Show in SBOM, the Generator log tab or the windowed 50,000-line source
 view break, when switching the standard does not re-check the same SBOM (and keep
 the generator and its log), when a failed switch loses the earlier result, or when

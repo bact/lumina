@@ -60,7 +60,7 @@ const STANDARD_INFO = {
 };
 
 // Preselected on the check screens when the API lists it as ready.
-const DEFAULT_STANDARD = "g7ai";
+const DEFAULT_STANDARD = "cisa2026";
 
 // Example URLs for the Generate & check screen (the demo script, working-docs/demo.md).
 // Each fills the URL field and picks the standard the demo uses for it; the
@@ -76,8 +76,8 @@ const DEMO_EXAMPLES = [
   { subject: "qwengguf", standard: "g7ai", url: "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF", note: "a quantised model with a base model" },
   { subject: "sentiment", standard: "g7ai", url: "https://github.com/bact/sentimentdemo", note: "the model file is hashed" },
   { subject: "pythainlp", standard: "g7ai", url: "https://github.com/PyThaiNLP/pythainlp", note: "slowest, about 12 s" },
-  { subject: "flask", standard: "ntia", url: "https://github.com/pallets/flask", note: "a plain Python project" },
-  { subject: "etsisdk", standard: "ntia", url: "https://labs.etsi.org/rep/ocf/sdk", note: "a Python project on a GitLab server" },
+  { subject: "flask", standard: "cisa2026", url: "https://github.com/pallets/flask", note: "a plain Python project" },
+  { subject: "etsisdk", standard: "cisa2026", url: "https://labs.etsi.org/rep/ocf/sdk", note: "a Python project on a GitLab server" },
 ].map(ex => ({ ...ex, key: ex.url }));
 
 const standardLabel = (id) => (STANDARD_INFO[id] && STANDARD_INFO[id].label) || id;

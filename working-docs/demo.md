@@ -99,8 +99,8 @@ the URL and picks the standard named below.
 | Qwen/Qwen2.5-0.5B-Instruct-GGUF | `https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF` | G7 SBOM for AI | 22 of 38 present; model Apache-2.0; parameter count read from the Hub's GGUF summary; a `descendantOf` link to the base model `Qwen2.5-0.5B-Instruct` (quantized) |
 | bact/sentimentdemo | `https://github.com/bact/sentimentdemo` | G7 SBOM for AI | 22 of 38 |
 | PyThaiNLP/pythainlp (about 12 s) | `https://github.com/PyThaiNLP/pythainlp` | G7 SBOM for AI | 21 of 38; three ONNX and five CRFsuite models |
-| pallets/flask | `https://github.com/pallets/flask` | NTIA, then BSI TR-03183-2 | NTIA 6 of 7; BSI 6 of 13, 2 optional not provided |
-| labs.etsi.org/rep/ocf/sdk | `https://labs.etsi.org/rep/ocf/sdk` | NTIA, then BSI TR-03183-2 | NTIA 6 of 7; BSI 6 of 13, 2 optional not provided; a GitLab server (the repository redirects to `.git`) |
+| pallets/flask | `https://github.com/pallets/flask` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 12 of 14; NTIA 6 of 7; BSI 6 of 13, 2 optional not provided |
+| labs.etsi.org/rep/ocf/sdk | `https://labs.etsi.org/rep/ocf/sdk` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 11 of 14; NTIA 6 of 7; BSI 6 of 13, 2 optional not provided; a GitLab server (the repository redirects to `.git`) |
 
 These counts were measured on 2026-10-19 and 2026-10-20; a changed upstream
 repository or Hub card can move them by a rule or two. A model's "judged by"
@@ -162,7 +162,7 @@ and the SARIF log the checker made from it for the G7 SBOM for AI standard.
    that format states less. The SBOM records what each file states and nothing
    more.
 7. **A project with no AI model.** Click the card *pallets/flask* (it
-   picks *NTIA Minimum Elements*), then *Generate & check*, then click *BSI
+   picks *CISA 2026 Minimum Elements*), then *Generate & check*, then click *BSI
    TR-03183-2* to check the same SBOM again. BSI shows optional elements apart from *Missing*
    ("Not provided"): lacking them is not a gap.
 8. **Errors are shown, not hidden.** Upload a text file, or one over 10 MiB
