@@ -1,6 +1,6 @@
 ---
 Created: 2026-05-26
-Last-Modified: 2026-10-22
+Last-Modified: 2026-10-23
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -382,6 +382,11 @@ JSON SBOM, per-rule `evidence`; Mode 1 also adds `generation_log`; Mode 3 sets
     metadata via the HF API; it does **not** download model files, so the host
     stays light on disk and bandwidth. HF auth is optional: without a token the
     Hub allows fewer requests; `HF_TOKEN` raises the limit.
+    A Hub URL in any spelling (`www.huggingface.co`, `hf.co`, any case) is
+    rewritten to `https://huggingface.co/...`, the only form Pitloom reads. A
+    URL is checked (length, scheme, host) before it is logged, and logged with
+    its credentials masked, control characters escaped and cut at 200
+    characters.
   Both record Lumina as the SBOM's author (a software agent in `createdBy`) and Pitloom as the tool (`createdUsing`); Lumina is never the scanned project's supplier.
 - **Sync model:** asynchronous via the job queue (see
   [Background job execution](#background-job-execution)). Stage 0/1 runs the

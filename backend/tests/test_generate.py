@@ -289,3 +289,75 @@ def test_the_generator_line_names_the_pinned_commit(
         importlib.metadata, "distribution", lambda _n: _FakeDistribution(direct_url)
     )
     assert generate._pitloom_version() == expected  # pylint: disable=protected-access
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://www.huggingface.co/org/m",
+        "https://HuggingFace.co/org/m",
+        "https://hf.co/org/m",
+        "http://huggingface.co/org/m",
+    ],
+)
+def test_every_hub_spelling_goes_to_the_model_generator(
+    monkeypatch: pytest.MonkeyPatch, url: str
+) -> None:
+    """Pitloom reads only ``https://huggingface.co/...``; the other spellings
+    of the Hub are rewritten to it, and name the SBOM after the model."""
+    seen: list[str] = []
+    monkeypatch.setattr(generate, "_ensure_public_http_url", lambda _url: None)
+    monkeypatch.setattr(
+        generate, "generate_from_huggingface", lambda src, _out: seen.append(src)
+    )
+    generate._generate(url, "unused")  # pylint: disable=protected-access
+    assert seen == ["https://huggingface.co/org/m"]
+    assert generate.sbom_filename(url) == "m.spdx3.json"
+
+
+def test_a_git_url_is_not_taken_for_the_hub(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A repository that merely mentions the Hub in its path goes to Git."""
+    seen: list[str] = []
+    monkeypatch.setattr(generate, "_ensure_public_http_url", lambda _url: None)
+    monkeypatch.setattr(
+        generate, "generate_from_git", lambda src, _out, _check: seen.append(src)
+    )
+    url = "https://github.com/me/hf.co"
+    generate._generate(url, "unused")  # pylint: disable=protected-access
+    assert seen == [url]
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://user:SECRET@example.com/" + "a" * 5000 + "\nINJECTED line",
+        "ftp://user:SECRET@example.com/x\nINJECTED line",
+        "https://user:SECRET@/x\nINJECTED line",
+    ],
+    ids=["too-long", "scheme", "no-host"],
+)
+def test_a_refused_url_is_never_logged_raw(
+    caplog: pytest.LogCaptureFixture, url: str
+) -> None:
+    """Neither the server log, the generator log nor the notification holds
+    the URL's password, a raw newline or the whole over-long URL."""
+    caplog.set_level(logging.WARNING)
+    response = generate.generate_and_check(url, "ntia")
+    seen = [r.getMessage() for r in caplog.records]
+    seen += [line.message for line in response.generation_log or []]
+    seen += [n.message for n in response.run.notifications]
+    assert seen and all(len(m) < 1000 and "SECRET" not in m for m in seen)
+    assert all("INJECTED" not in m or "\n" not in m for m in seen)
+
+
+@pytest.mark.parametrize(
+    ("url", "shown"),
+    [
+        ("https://u:p@h/x", "https://***:***@h/x"),
+        ("https://h/a\nb\x1b[0m", "https://h/a\\nb\\x1b[0m"),
+        ("https://h/" + "a" * 300, "https://h/" + "a" * 190 + "..."),
+    ],
+    ids=["credentials", "controls", "cut"],
+)
+def test_display_url(url: str, shown: str) -> None:
+    assert generate._display_url(url) == shown  # pylint: disable=protected-access
