@@ -1,6 +1,6 @@
 <!--
 Created: 2026-05-26
-Last-Modified: 2026-10-20
+Last-Modified: 2026-10-22
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -111,7 +111,7 @@ its order. An entry with `ready: false` is shown but cannot be selected. Picking
 standard while a result with `sbom.text` is shown checks that SBOM again
 (`recheckSbom`, `POST /api/v1/sbom/check`) with no new generation or upload, and
 keeps the generator, its log and warnings of the first run.
-*G7 SBOM for AI* (`DEFAULT_STANDARD`, `g7ai`) is preselected when the API
+*CISA 2026 Minimum Elements* (`DEFAULT_STANDARD`, `cisa2026`) is preselected when the API
 lists it as ready; otherwise the first ready one is.
 Labels, a one-line description of what each check covers, and a source link
 come from one table, `STANDARD_INFO` in `screen-conformance.jsx`; an id

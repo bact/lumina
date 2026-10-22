@@ -81,7 +81,7 @@ Then run the check again.
 ## 3. Warm it up (the day before, on the demo network)
 
 Run each once from the page. This confirms the URL works from that machine and
-fills caches. The page has a "Try an example" list of cards for these ten (open
+fills caches. The page has a "Try an example" list of cards for these eleven (open
 at first, collapsed once you start a check; its header opens it again). A card is
 headed by the repository, model or file name; its body says what it is (the model
 file format, Safetensors, GGUF, ONNX, fastText or CRFsuite, and the parameter
@@ -99,7 +99,8 @@ the URL and picks the standard named below.
 | Qwen/Qwen2.5-0.5B-Instruct-GGUF | `https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF` | G7 SBOM for AI | 22 of 38 present; model Apache-2.0; parameter count read from the Hub's GGUF summary; a `descendantOf` link to the base model `Qwen2.5-0.5B-Instruct` (quantized) |
 | bact/sentimentdemo | `https://github.com/bact/sentimentdemo` | G7 SBOM for AI | 22 of 38 |
 | PyThaiNLP/pythainlp (about 12 s) | `https://github.com/PyThaiNLP/pythainlp` | G7 SBOM for AI | 21 of 38; three ONNX and five CRFsuite models |
-| pallets/flask | `https://github.com/pallets/flask` | NTIA, then BSI TR-03183-2 | NTIA 6 of 7; BSI 6 of 13, 2 optional not provided |
+| pallets/flask | `https://github.com/pallets/flask` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 12 of 14; NTIA 6 of 7; BSI 6 of 13, 2 optional not provided |
+| labs.etsi.org/rep/ocf/sdk | `https://labs.etsi.org/rep/ocf/sdk` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 11 of 14; NTIA 6 of 7; BSI 6 of 13, 2 optional not provided; a GitLab server (the repository redirects to `.git`) |
 
 These counts were measured on 2026-10-19 and 2026-10-20; a changed upstream
 repository or Hub card can move them by a rule or two. A model's "judged by"
@@ -161,7 +162,7 @@ and the SARIF log the checker made from it for the G7 SBOM for AI standard.
    that format states less. The SBOM records what each file states and nothing
    more.
 7. **A project with no AI model.** Click the card *pallets/flask* (it
-   picks *NTIA Minimum Elements*), then *Generate & check*, then click *BSI
+   picks *CISA 2026 Minimum Elements*), then *Generate & check*, then click *BSI
    TR-03183-2* to check the same SBOM again. BSI shows optional elements apart from *Missing*
    ("Not provided"): lacking them is not a gap.
 8. **Errors are shown, not hidden.** Upload a text file, or one over 10 MiB
@@ -226,9 +227,12 @@ address), so use Docker for the page.
 - Tested in a clean Python 3.14 environment (the same `pip install -r
   requirements.txt` the image runs): the install, all five standards through
   the API, SARIF import, and the Git-URL flow against a local Git server.
-- The ten demo URLs were run for real (four on 2026-10-19, and `microsoft/phi-4`, the
+- Ten demo URLs were run for real (four on 2026-10-19, and `microsoft/phi-4`, the
   Mistral, GGUF, Granite, `sonyinteractive/grooming-risk-classifier` and
   `JTS-AI/OpenJAI-v1.0-14B` models on 2026-10-20) and gave the counts in step 3.
+  `labs.etsi.org/rep/ocf/sdk` was generated and checked (NTIA, BSI) through the
+  backend on 2026-10-22, not yet through the page. Behind a DNS that resolves
+  that host to a private address, name it in `LUMINA_ALLOWED_PRIVATE_HOSTS`.
 - The web page was exercised with a headless browser against mocked and real
   API responses (see `scripts/ui-smoke.mjs`).
 - The Docker images themselves were **not built** on the machine where this
