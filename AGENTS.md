@@ -294,7 +294,9 @@ hand, and a screen reader when one is at hand.
   service.
 - Artefact-URL fetching (`POST /api/v1/artifact/check`) has an SSRF guard in
   `backend/app/generate.py`: http/https only, public addresses only. Set
-  `LUMINA_ALLOW_PRIVATE_URLS=1` only in development.
+  `LUMINA_ALLOW_PRIVATE_URLS=1` only in development. A host that must resolve
+  to a non-public address goes in `LUMINA_ALLOWED_PRIVATE_HOSTS` (exact
+  hostnames, operator-set; never a request option, which would defeat the guard).
 - Conformance comes from the checker alone: it reads the file (SPDX 2
   through `spdx-tools`, SPDX 3 through its own reader) and reports a file it
   cannot read as an `spdx.parsing-error` notification. Lumina only parses

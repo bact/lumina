@@ -96,14 +96,24 @@ def _is_public_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
     return True
 
 
+def _allowed_private_hosts() -> frozenset[str]:
+    """Hosts the operator trusts to resolve to a non-public address:
+    ``LUMINA_ALLOWED_PRIVATE_HOSTS``, comma-separated, matched exactly and
+    ignoring case (no wildcards, no subdomains)."""
+    raw = os.environ.get("LUMINA_ALLOWED_PRIVATE_HOSTS", "")
+    return frozenset(h.strip().lower() for h in raw.split(",") if h.strip())
+
+
 def _ensure_public_http_url(artifact_url: str) -> None:
     """Reject URLs that could reach internal services (SSRF guard).
 
     Only ``http``/``https`` URLs whose host resolves exclusively to public
     (global) addresses are accepted.  This blocks loopback, RFC 1918 ranges,
     link-local (including cloud metadata endpoints), and other reserved
-    space.  Set ``LUMINA_ALLOW_PRIVATE_URLS=1`` to disable the address check
-    in development (e.g. cloning from a Git server on the LAN).
+    space.  ``LUMINA_ALLOWED_PRIVATE_HOSTS`` names hosts (set by the operator,
+    never by a request) whose address is not checked; set
+    ``LUMINA_ALLOW_PRIVATE_URLS=1`` to disable the address check for every
+    host in development.
 
     Note: this is a resolve-time check; it does not defend against DNS
     rebinding between validation and clone.  Network-level egress policy is the
@@ -132,6 +142,9 @@ def _ensure_public_http_url(artifact_url: str) -> None:
         )
     if os.environ.get("LUMINA_ALLOW_PRIVATE_URLS") == "1":
         return
+    if host.lower() in _allowed_private_hosts():
+        logger.info("Fetching %r: host is in LUMINA_ALLOWED_PRIVATE_HOSTS", host)
+        return
     try:
         infos = socket.getaddrinfo(host, None)
     except (socket.gaierror, UnicodeError) as exc:
@@ -145,7 +158,8 @@ def _ensure_public_http_url(artifact_url: str) -> None:
             raise GenerationError(
                 "lumina.url-private-address",
                 f"Host {host!r} resolves to a non-public address ({ip}); "
-                "refusing to fetch it.",
+                "refusing to fetch it. The server's operator can allow a "
+                "trusted host with LUMINA_ALLOWED_PRIVATE_HOSTS.",
             )
 
 

@@ -539,7 +539,11 @@ These apply to all options once the deployment is working.
 
 7. **Artefact-URL fetching (SSRF).** Leave `LUMINA_ALLOW_PRIVATE_URLS` unset
    in production (a dev-only switch that lets the server fetch private
-   addresses). Add network-level egress rules so the containers cannot reach
+   addresses). A host that must be fetched although it resolves to a
+   non-public address (a Git server behind split-horizon DNS) is named in
+   `LUMINA_ALLOWED_PRIVATE_HOSTS` (comma-separated, exact hostnames, no
+   wildcards). Only the operator sets it, never a request: a per-request
+   override would let anyone who can reach the API reach the internal network. Add network-level egress rules so the containers cannot reach
    internal ranges or cloud metadata endpoints.
 
 ---

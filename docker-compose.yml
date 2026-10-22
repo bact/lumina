@@ -28,4 +28,5 @@ services:
       - ./backend/app:/app/app  # live-reload in dev
     environment:
       - HF_TOKEN          # passed through when set on the host (Hub rate limit)
+      - LUMINA_ALLOWED_PRIVATE_HOSTS  # hosts the operator trusts with a non-public address
     restart: unless-stopped

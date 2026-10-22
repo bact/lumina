@@ -65,6 +65,46 @@ def test_private_url_escape_hatch(monkeypatch: pytest.MonkeyPatch) -> None:
     _ensure_public_http_url("http://127.0.0.1/repo.git")
 
 
+_PRIVATE_DNS = [(2, 1, 6, "", ("172.29.10.40", 0))]
+
+
+@pytest.mark.parametrize(
+    ("allowed", "url", "passes"),
+    [
+        ("labs.etsi.org", "https://labs.etsi.org/x/y.git", True),
+        (" Other.example , LABS.ETSI.ORG ,", "https://Labs.Etsi.Org/x/y.git", True),
+        ("labs.etsi.org", "https://evil.labs.etsi.org/x.git", False),
+        ("labs.etsi.org", "https://etsi.org/x.git", False),
+        ("", "https://labs.etsi.org/x/y.git", False),
+        (",", "https://labs.etsi.org/x/y.git", False),
+    ],
+    ids=["listed", "case-and-spaces", "subdomain", "parent", "unset", "empty-entry"],
+)
+def test_allowed_private_hosts_are_exact_and_operator_set(
+    monkeypatch: pytest.MonkeyPatch, allowed: str, url: str, passes: bool
+) -> None:
+    """Only a listed host skips the address check; nothing else widens."""
+    monkeypatch.setattr("app.generate.socket.getaddrinfo", lambda *a, **k: _PRIVATE_DNS)
+    monkeypatch.setenv("LUMINA_ALLOWED_PRIVATE_HOSTS", allowed)
+    if passes:
+        _ensure_public_http_url(url)
+        return
+    with pytest.raises(GenerationError) as excinfo:
+        _ensure_public_http_url(url)
+    assert excinfo.value.descriptor_id == "lumina.url-private-address"
+    assert "LUMINA_ALLOWED_PRIVATE_HOSTS" in excinfo.value.message
+
+
+def test_an_allowed_host_still_gets_the_scheme_and_length_checks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The allowlist skips the address check only."""
+    monkeypatch.setenv("LUMINA_ALLOWED_PRIVATE_HOSTS", "labs.etsi.org")
+    with pytest.raises(GenerationError) as excinfo:
+        _ensure_public_http_url("ftp://labs.etsi.org/x")
+    assert excinfo.value.descriptor_id == "lumina.url-scheme-blocked"
+
+
 def test_creation_info_names_lumina_as_the_author_and_leaves_pitloom_the_tool() -> None:
     """Lumina ran Pitloom: Lumina is the author (a software agent), Pitloom the tool."""
     meta = creation_info()
