@@ -30,35 +30,71 @@ that are not concrete yet, live here.
   `Semaphore(1)` in `backend/app/jobs.py`.
 - `--memory 2Gi`: peak during git clone plus Pitloom scan.
 
-## Cost for about 30 users a day
+## Cost by number of users
 
 An estimate, not a quote: prices and free allowances change, so check the
-provider's page before relying on a figure. Assumes 30 users a day at about 3
-checks each (about 2,700 checks a month), half uploads and half generated
-from a Git or Hugging Face URL.
+provider's page before relying on a figure (the Cloud Run egress rate below is
+from memory and was not re-checked). Assumes 3 checks per user a day, half
+uploads and half generated from a Git or Hugging Face URL, 30 days a month.
 
 Measured on a laptop-class machine (Python 3.14, Pitloom at `main`):
 
 | Operation | CPU | Elapsed | Memory |
 | :-------- | :-- | :------ | :----- |
 | Check one example SBOM (CISA 2026) | about 1 s | about 1 s | about 50 MiB |
-| Generate from a mid-size Git repository, then check | about 4 s | about 7 s | about 170 MiB |
+| Generate from a mid-size Git repository, then check | about 5 s | about 8 s | about 170 MiB |
 
-That is about 10,000 vCPU-seconds a month (plan for 30,000 with large
-repositories), about 60,000 requests (page loads and job polling) and about 3
-GB sent to users.
+That is about 3 vCPU-seconds and 4.75 s of instance time per check on
+average, plus about 22 requests (page loads and job polling) and 1 MB sent to
+the user. Large repositories can cost three times as much CPU.
 
-| Option | Monthly cost | Notes |
-| :----- | :----------- | :---- |
-| **A** OCI Always Free VM plus Cloudflare Tunnel | $0 | A domain is optional (about $1). Arm capacity is often unavailable at signup, and Oracle may reclaim an idle instance. |
-| **B** Hugging Face Spaces, CPU Basic | $0 | Sleeps when idle; an in-memory job is lost if it sleeps. |
-| **C** Cloud Run, `--min-instances 0` | $0 | Far inside the free tier (2 M requests, 180 K vCPU-seconds, 360 K GiB-seconds); egress about $0.20. A job can be lost between polls. |
-| **C** Cloud Run, `--min-instances 1` | about $10 to $15 | Rough: an always-on instance, for reliable jobs. Use the provider's calculator. |
+| Users a day | Checks a month | vCPU-seconds | Requests | Sent to users |
+| ----------: | -------------: | -----------: | -------: | ------------: |
+| 10 | 900 | 2.7 K | 20 K | 1 GB |
+| 30 | 2,700 | 8 K | 60 K | 3 GB |
+| 100 | 9,000 | 27 K | 200 K | 9 GB |
+| 1,000 | 90,000 | 270 K | 2 M | 90 GB |
+
+Monthly cost for the options of [INSTALL.md](../INSTALL.md):
+
+| Option | 10 | 30 | 100 | 1,000 |
+| :----- | -: | -: | --: | ----: |
+| **A** OCI Always Free VM plus Cloudflare Tunnel | $0 | $0 | $0 | $0 |
+| **B** Hugging Face Spaces, CPU Basic | $0 | $0 | $0 | $0, or about $22 for CPU Upgrade |
+| **C** Cloud Run, `--min-instances 0` | $0 | $0 | about $1 | about $14 to $31 |
+| **C** Cloud Run, `--min-instances 1` | about $10 to $15 | same | same | same, plus the usage above |
+
+- **A:** the VM is free and so is its 10 TB outbound allowance. At 1,000 users
+  a day the work is 10% to 30% of one core. Oracle may reclaim an Always Free
+  instance it judges idle, which is a risk at 10 users a day, and Arm capacity
+  is often unavailable at signup. A domain is optional (about $1).
+- **B:** CPU Basic is free and CPU Upgrade (8 vCPU, 32 GB) is $0.03 an hour.
+  Free hardware sleeps after a period of inactivity (48 hours at the time of
+  writing), and an in-memory job is lost when it sleeps.
+- **C:** the free tier (2 M requests, 180 K vCPU-seconds, 360 K GiB-seconds)
+  covers up to about 100 users a day; the 100 row is egress only, beyond its
+  free 1 GB at about $0.12 a GB. At 1,000 users the usage costs about $14 with
+  the measured figures and about $31 with three times the CPU, of which about
+  $11 is egress. `--min-instances 1` adds a rough $10 to $15 for an always-on
+  instance.
+
+### Capacity comes before cost
+
+The job queue holds one job at a time (`Semaphore(1)`) and keeps its state in
+memory, so one instance serves every request. At 1,000 users a day, 1,500
+generations of about 8 s are about 3 hours of work; if a third of them arrive
+in one hour the single worker is nearly full and users queue. More than one
+Cloud Run instance does not help: a poll that reaches another instance does
+not find the job. Past a few hundred users a day the next step is the shared
+job store in [Staged backends](design.md#staged-backends) (a worker plus
+Redis), whose cost is not estimated here.
+
+### Clones
 
 Cloning is inbound traffic, which none of the three bills. Pitloom clones
-shallowly (`--depth 1`) and skips blobs over 10 MB (`BLOB_LIMIT`): `pallets/flask`
-fetched about 1 MB and `bact/ntia-conformance-checker` about 4 MB (31 MB on
-disk). The costs that depend on the clone are:
+shallowly (`--depth 1`) and skips blobs over 10 MB (`BLOB_LIMIT`):
+`pallets/flask` fetched about 1 MB and `bact/ntia-conformance-checker` about
+4 MB (31 MB on disk). The costs that depend on the clone are:
 
 - **Cloud Run disk is memory.** A 500 MB checkout takes 500 MB of the 2 GiB.
 - **Clone time is billed time** on Cloud Run.
