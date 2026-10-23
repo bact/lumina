@@ -115,16 +115,6 @@ def _display_url(url: str) -> str:
     return text + ("..." if len(url) > _SHOWN_URL_LENGTH else "")
 
 
-def _is_hub_url(artifact_url: str) -> bool:
-    """Whether Pitloom reads *artifact_url* as a Hugging Face Hub model, in any
-    spelling it accepts (``www.``, ``hf.co``, ``http``, any case)."""
-    # Imported lazily; see app.generators.base.
-    # pylint: disable-next=import-outside-toplevel
-    from pitloom.extract.remote.huggingface import is_huggingface_source
-
-    return is_huggingface_source(artifact_url)
-
-
 def _check_url_text(artifact_url: str) -> str:
     """Refuse an over-long, unparsable, non-http(s) or host-less URL, without
     resolving anything; returns the URL's host."""
@@ -292,14 +282,16 @@ def sbom_filename(artifact_url: str) -> str:
     (``huggingface.co/<org>/<model>/...``) or the repository name of a Git URL
     (without ``.git``; for a page URL the repository, not the folder);
     ``sbom.spdx3.json`` when the URL names nothing."""
-    if _is_hub_url(artifact_url):
+    # Imported lazily; see app.generators.base.
+    # pylint: disable=import-outside-toplevel
+    from pitloom.extract.remote import RemoteSourceError, parse_git_page
+    from pitloom.extract.remote.huggingface import is_huggingface_source
+
+    # pylint: enable=import-outside-toplevel
+    if is_huggingface_source(artifact_url):
         segments = [s for s in urlparse(artifact_url).path.split("/") if s][:2]
         name = segments[-1] if segments else ""
     else:
-        # Imported lazily; see app.generators.base.
-        # pylint: disable-next=import-outside-toplevel
-        from pitloom.extract.remote import RemoteSourceError, parse_git_page
-
         try:
             name = parse_git_page(artifact_url).repo_name
         except RemoteSourceError:  # a path Pitloom will refuse
@@ -310,7 +302,11 @@ def sbom_filename(artifact_url: str) -> str:
 
 def _generate(artifact_url: str, sbom_path: str) -> None:
     """Route *artifact_url* to the right generator, writing to *sbom_path*."""
-    if _is_hub_url(artifact_url):
+    # Imported lazily; see app.generators.base.
+    # pylint: disable-next=import-outside-toplevel
+    from pitloom.extract.remote.huggingface import is_huggingface_source
+
+    if is_huggingface_source(artifact_url):
         generate_from_huggingface(artifact_url, sbom_path)
     else:
         # Any other URL with a host is treated as a Git repository
