@@ -303,15 +303,21 @@ def test_the_generator_line_names_the_pinned_commit(
 def test_every_hub_spelling_goes_to_the_model_generator(
     monkeypatch: pytest.MonkeyPatch, url: str
 ) -> None:
-    """Pitloom reads only ``https://huggingface.co/...``; the other spellings
-    of the Hub are rewritten to it, and name the SBOM after the model."""
+    """Pitloom reads every spelling of the Hub itself: the URL is passed on as
+    given, and the SBOM is named after the model."""
     seen: list[str] = []
     monkeypatch.setattr(generate, "_ensure_public_http_url", lambda _url: None)
     monkeypatch.setattr(
         generate, "generate_from_huggingface", lambda src, _out: seen.append(src)
     )
     generate._generate(url, "unused")  # pylint: disable=protected-access
-    assert seen == ["https://huggingface.co/org/m"]
+    assert seen == [url]
+    assert generate.sbom_filename(url) == "m.spdx3.json"
+
+
+def test_a_hub_url_with_a_query_names_the_sbom_after_the_model() -> None:
+    """The query string is not part of the model name."""
+    url = "https://hf.co/org/m/tree/main?x=1#frag"
     assert generate.sbom_filename(url) == "m.spdx3.json"
 
 

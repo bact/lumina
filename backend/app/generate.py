@@ -64,10 +64,6 @@ from .sbom_source import load_sbom
 
 logger = logging.getLogger(__name__)
 
-# Hosts of a Hub model URL; Pitloom reads only ``huggingface.co``, so
-# :func:`_hub_url` rewrites the others.
-_HF_HOSTS = {"huggingface.co", "www.huggingface.co", "hf.co"}
-
 _ALLOWED_SCHEMES = {"http", "https"}
 
 # Longer URLs are refused before they are parsed, logged or echoed back.
@@ -119,13 +115,14 @@ def _display_url(url: str) -> str:
     return text + ("..." if len(url) > _SHOWN_URL_LENGTH else "")
 
 
-def _hub_url(artifact_url: str) -> str | None:
-    """The ``https://huggingface.co/...`` form of a Hub URL, or ``None`` when
-    *artifact_url* is not one (any case, ``www.`` and ``hf.co`` included)."""
-    parsed = urlparse(artifact_url)
-    if (parsed.hostname or "").lower() not in _HF_HOSTS:
-        return None
-    return parsed._replace(scheme="https", netloc="huggingface.co").geturl()
+def _is_hub_url(artifact_url: str) -> bool:
+    """Whether Pitloom reads *artifact_url* as a Hugging Face Hub model, in any
+    spelling it accepts (``www.``, ``hf.co``, ``http``, any case)."""
+    # Imported lazily; see app.generators.base.
+    # pylint: disable-next=import-outside-toplevel
+    from pitloom.extract.remote.huggingface import is_huggingface_source
+
+    return is_huggingface_source(artifact_url)
 
 
 def _check_url_text(artifact_url: str) -> str:
@@ -295,9 +292,8 @@ def sbom_filename(artifact_url: str) -> str:
     (``huggingface.co/<org>/<model>/...``) or the repository name of a Git URL
     (without ``.git``; for a page URL the repository, not the folder);
     ``sbom.spdx3.json`` when the URL names nothing."""
-    hub = _hub_url(artifact_url)
-    if hub is not None:
-        segments = [s for s in urlparse(hub).path.split("/") if s][:2]
+    if _is_hub_url(artifact_url):
+        segments = [s for s in urlparse(artifact_url).path.split("/") if s][:2]
         name = segments[-1] if segments else ""
     else:
         # Imported lazily; see app.generators.base.
@@ -314,9 +310,8 @@ def sbom_filename(artifact_url: str) -> str:
 
 def _generate(artifact_url: str, sbom_path: str) -> None:
     """Route *artifact_url* to the right generator, writing to *sbom_path*."""
-    hub = _hub_url(artifact_url)
-    if hub is not None:
-        generate_from_huggingface(hub, sbom_path)
+    if _is_hub_url(artifact_url):
+        generate_from_huggingface(artifact_url, sbom_path)
     else:
         # Any other URL with a host is treated as a Git repository
         # (GitHub, GitLab, Bitbucket, self-hosted, ...).
