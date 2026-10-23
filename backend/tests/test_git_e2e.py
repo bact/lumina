@@ -61,6 +61,7 @@ def _base(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
     )
     make_repo(root, "g/hostile", {"main": {"pyproject.toml": _HOSTILE}})
     make_repo(root, "g/mono", {"main": {"one/pyproject.toml": _DEMO}})
+    make_repo(root, "g/big", {"main": {"pyproject.toml": _DEMO, "d.txt": "x" * 300_000}})
     with serve_git(root, gitlab_style=True) as base:
         yield base
 
@@ -203,3 +204,31 @@ def test_the_job_api_runs_the_whole_chain(base: str) -> None:
     assert status["status"] == "done", status
     assert status["result"]["sbom"]["filename"] == "p.spdx3.json"
     assert shutil.which("git")
+
+
+@pytest.mark.parametrize(
+    ("cap", "descriptor"),
+    [("100000", "git.too-large"), ("", None)],
+    ids=["over-the-cap", "default-cap"],
+)
+def test_a_repository_over_the_clone_cap_is_refused(
+    base: str,
+    cap: str,
+    descriptor: str | None,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``LUMINA_MAX_CLONE_BYTES`` bounds the checkout: a 300 KB repository is
+    refused under a 100 KB cap, and read under the default (512 MiB)."""
+    monkeypatch.setenv("LUMINA_MAX_CLONE_BYTES", cap)
+    out = tmp_path / "o.json"
+    generate_args = (base + "/g/big", str(out), generate._ensure_public_http_url)  # pylint: disable=protected-access
+    if descriptor is None:
+        generate_from_git(*generate_args)
+        assert out.is_file()
+        return
+    with pytest.raises(GenerationError) as excinfo:
+        generate_from_git(*generate_args)
+    assert excinfo.value.descriptor_id == descriptor
+    assert "larger than" in excinfo.value.message
+    assert not out.exists()

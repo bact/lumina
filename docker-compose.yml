@@ -29,4 +29,5 @@ services:
     environment:
       - HF_TOKEN          # passed through when set on the host (Hub rate limit)
       - LUMINA_ALLOWED_PRIVATE_HOSTS  # hosts the operator trusts with a non-public address
+      - LUMINA_MAX_CLONE_BYTES  # most disk a cloned repository may take (default 512 MiB)
     restart: unless-stopped

@@ -549,6 +549,11 @@ These apply to all options once the deployment is working.
    override would let anyone who can reach the API reach the internal network. Add network-level egress rules so the containers cannot reach
    internal ranges or cloud metadata endpoints.
 
+8. **Repository size.** A repository is cloned shallowly into the container's
+   temporary directory (memory, on Cloud Run). One that takes more than
+   `LUMINA_MAX_CLONE_BYTES` (default 512 MiB) is refused with `git.too-large`;
+   raise it only with the instance's memory.
+
 ---
 
 ## Troubleshooting

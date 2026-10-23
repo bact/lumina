@@ -297,6 +297,9 @@ hand, and a screen reader when one is at hand.
   `LUMINA_ALLOW_PRIVATE_URLS=1` only in development. A host that must resolve
   to a non-public address goes in `LUMINA_ALLOWED_PRIVATE_HOSTS` (exact
   hostnames, operator-set; never a request option, which would defeat the guard).
+- A Git clone is stopped past `LUMINA_MAX_CLONE_BYTES` of disk (default
+  512 MiB; `git.too-large`); Cloud Run's disk is memory, so raise it only with
+  the instance's memory.
 - Conformance comes from the checker alone: it reads the file (SPDX 2
   through `spdx-tools`, SPDX 3 through its own reader) and reports a file it
   cannot read as an `spdx.parsing-error` notification. Lumina only parses

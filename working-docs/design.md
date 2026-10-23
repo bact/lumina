@@ -209,7 +209,7 @@ and no gap is reported.
 | `sarif.no-rule-outcomes` | Lumina | The log has no `ruleOutcomes`; only missing rules are counted |
 | `pitloom.log` | Lumina, Mode 1 | A WARNING-or-above record Pitloom logged while generating |
 | `pitloom.generation-failed`, `pitloom.url-unsupported` | Lumina, Mode 1 | Pitloom failed, or the URL has no host |
-| `git.clone-failed`, `git.timeout`, `git.output-too-large`, `git.not-found`, `git.offline` | Pitloom, via Mode 1 | The clone failed, exceeded 600 s or produced too much output, or `git` is missing |
+| `git.clone-failed`, `git.timeout`, `git.output-too-large`, `git.too-large`, `git.not-found`, `git.offline` | Pitloom, via Mode 1 | The clone failed, exceeded 600 s, produced too much output or took more than `LUMINA_MAX_CLONE_BYTES` of disk, or `git` is missing |
 | `git.url-invalid`, `git.ref-not-found`, `git.path-not-found`, `git.no-project`, `git.too-many-redirects` | Pitloom, via Mode 1 | A refused scheme or path, a branch or folder the repository does not have, no Python project in the folder (the message names the ones below it), or too many redirects |
 | `lumina.url-too-long`, `lumina.url-invalid`, `lumina.url-scheme-blocked`, `lumina.url-unresolvable`, `lumina.url-private-address` | Lumina, Mode 1 | The URL guard refused the URL: over 2048 characters, unparsable, not http/https, unresolvable, or resolving to a non-public address (unless the operator listed the host in `LUMINA_ALLOWED_PRIVATE_HOSTS`) |
 

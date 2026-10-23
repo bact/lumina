@@ -18,10 +18,21 @@ the generation log through the Pitloom logger.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from pathlib import Path
 
 from .base import GenerationError, creation_info
+
+# A shallow checkout of a repository lives in memory on Cloud Run (2 GiB), so a
+# public instance bounds it: 512 MiB is a quarter of that.
+_DEFAULT_MAX_CLONE_BYTES = 512 * 1024 * 1024
+
+
+def max_clone_bytes() -> int:
+    """``LUMINA_MAX_CLONE_BYTES``, or 512 MiB when unset or not a positive integer."""
+    raw = os.environ.get("LUMINA_MAX_CLONE_BYTES", "")
+    return int(raw) if raw.isdigit() and int(raw) > 0 else _DEFAULT_MAX_CLONE_BYTES
 
 
 def generate_from_git(
@@ -35,7 +46,9 @@ def generate_from_git(
     Raises :class:`GenerationError`: with the code Pitloom gives a refused or
     failed fetch (``git.clone-failed``, ``git.timeout``, ``git.ref-not-found``,
     ``git.path-not-found``, ``git.no-project``, ...), with *check_url*'s own for a
-    refused address, and ``pitloom.generation-failed`` for any other failure.
+    refused address, ``git.too-large`` for a checkout over
+    :func:`max_clone_bytes`, and ``pitloom.generation-failed`` for any other
+    failure.
     """
     # Imported lazily; see app.generators.base.
     # pylint: disable=import-outside-toplevel
@@ -47,6 +60,7 @@ def generate_from_git(
         generate_git_project_sbom(
             repo_url,
             check_url=check_url,
+            max_clone_bytes=max_clone_bytes(),
             output_path=Path(output_path),
             creation_metadata=creation_info(),
             # The repository is untrusted: Pitloom ignores its own
