@@ -388,16 +388,19 @@ ARG LUMINA_REF=<branch-or-tag>
 
 - Scale-to-zero means in-memory job state (SBOM generation) can be lost if
   the instance shuts down between polling calls. With `--min-instances=1` the
-  instance stays warm but consumes the free vCPU-second allowance (~4 days of
-  always-on per month before small charges apply). For reliable generation jobs,
+  instance stays warm but consumes the free vCPU-second allowance (about 2 days
+  of one vCPU per month before small charges apply). For reliable generation jobs,
   either set `--min-instances=1` or use the synchronous SBOM upload path.
 - Billing must be enabled even to use the free tier; set a budget alert.
+- The container's writable disk is memory: a cloned repository counts against
+  `--memory`. A very large repository can exhaust it and the instance is
+  restarted, losing the job.
 
 **Docker config:** [`docker/standalone/`](docker/standalone/) — nginx + uvicorn
 in one container via supervisord. Cloud Run injects `PORT=8080`; the container
 reads it at start.
 
-**Free tier:** 2 M requests/month · 360 K vCPU-seconds · 180 K GB-seconds.
+**Free tier:** 2 M requests/month · 180 K vCPU-seconds · 360 K GiB-seconds.
 
 ### Steps
 
