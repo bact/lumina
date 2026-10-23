@@ -98,9 +98,12 @@ shallowly (`--depth 1`) and skips blobs over 10 MB (`BLOB_LIMIT`):
 
 - **Cloud Run disk is memory.** A 500 MB checkout takes 500 MB of the 2 GiB.
 - **Clone time is billed time** on Cloud Run.
-- **No total size cap.** Only the per-blob filter and a 10-minute git timeout
-  (`GIT_TIMEOUT_SECONDS`) exist. A public instance can be pointed at a huge
-  repository: keep `--max-instances 1`, the memory limit and a budget alert.
+- **The checkout is capped.** `LUMINA_MAX_CLONE_BYTES` (default 512 MiB, a
+  quarter of the 2 GiB) stops a clone that takes more disk, as `git.too-large`,
+  on top of the per-blob filter and a 10-minute git timeout. The bandwidth up
+  to the stop is still spent. A public instance can still be pointed at many
+  large repositories: keep `--max-instances 1`, the memory limit and a budget
+  alert.
 
 ## Not concrete yet
 

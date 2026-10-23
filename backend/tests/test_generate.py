@@ -23,6 +23,7 @@ from app.conformance import Notification
 from app.generate import _ensure_public_http_url
 from app.generation_log import hide_temp_dir
 from app.generators import GenerationError, generate_from_huggingface
+from app.generators.git import max_clone_bytes
 from app.generators.base import creation_info
 
 SPDX3_FIXTURE = Path(__file__).parent / "fixtures" / "sbom" / "spdx3_g7ai.json"
@@ -369,3 +370,27 @@ def test_display_url(url: str, shown: str) -> None:
     """A URL is shown without credentials or control characters, and cut."""
     # pylint: disable-next=protected-access
     assert generate._display_url(url) == shown
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (None, 512 * 1024 * 1024),
+        ("", 512 * 1024 * 1024),
+        ("0", 512 * 1024 * 1024),
+        ("-5", 512 * 1024 * 1024),
+        ("lots", 512 * 1024 * 1024),
+        ("1048576", 1048576),
+    ],
+    ids=["unset", "empty", "zero", "negative", "text", "set"],
+)
+def test_the_clone_cap_is_the_setting_or_512_mib(
+    monkeypatch: pytest.MonkeyPatch, raw: str | None, expected: int
+) -> None:
+    """A missing, non-numeric or non-positive LUMINA_MAX_CLONE_BYTES gives the
+    default."""
+    if raw is None:
+        monkeypatch.delenv("LUMINA_MAX_CLONE_BYTES", raising=False)
+    else:
+        monkeypatch.setenv("LUMINA_MAX_CLONE_BYTES", raw)
+    assert max_clone_bytes() == expected
