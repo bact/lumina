@@ -65,8 +65,9 @@ guide) and [deployment-options.md](deployment-options.md).
   (TensorFlow Lite) answers with a sign-in redirect, so it is gone or private;
   the two Hugging Face Spaces (`kenhktsui/fasttext-language-identification`,
   `espnet/silero-vad`) do not resolve. A Space is a Git repository on
-  `huggingface.co/spaces/...`: Pitloom reads a `huggingface.co` address as a
-  model, so check that first. Each example must be a real run: the licence and
+  `huggingface.co/spaces/...`; Pitloom classifies every `huggingface.co`
+  address as a model (checked), so a Space is not readable until Pitloom
+  handles it. Each example must be a real run: the licence and
   the model format read from the result, not from a list.
 - [ ] **A PyPI package as input** (`pypi.org/project/<name>`): waits for
   Pitloom's `loom pypi`, which is on its roadmap and not built (Pitloom #313).
