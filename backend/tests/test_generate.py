@@ -360,4 +360,6 @@ def test_a_refused_url_is_never_logged_raw(
     ids=["credentials", "controls", "cut"],
 )
 def test_display_url(url: str, shown: str) -> None:
-    assert generate._display_url(url) == shown  # pylint: disable=protected-access
+    """A URL is shown without credentials or control characters, and cut."""
+    # pylint: disable-next=protected-access
+    assert generate._display_url(url) == shown
