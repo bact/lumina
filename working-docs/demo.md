@@ -198,6 +198,7 @@ sbomcheck -s spdx3 -c g7ai -r sarif -o model.g7ai.sarif.json model.spdx3.json
 | the page loads but every check says "Could not complete" | read `docker compose logs api`; the page shows the server's message |
 | *Generate & check* says the URL is refused | Lumina only accepts public `http(s)` addresses; a private or local address is refused on purpose (name one trusted host in `LUMINA_ALLOWED_PRIVATE_HOSTS` for the `api` service, or set `LUMINA_ALLOW_PRIVATE_URLS=1` only on a trusted network) |
 | a Git URL of a private repository fails | Lumina clones without credentials, so only public repositories work |
+| a Git URL fails with `git.too-large` | The repository takes more than `LUMINA_MAX_CLONE_BYTES` (default 512 MiB) of disk; pick a smaller one, or raise the setting on the `api` service |
 | a Hugging Face URL is slow or fails | Hub rate limits without a token; wait, or export `HF_TOKEN` for the `api` service (which also lets Lumina read private models: do not do this on a public instance), or go on to the next step |
 | after updating, results look old | pip keeps an already installed package of the same version number even when the pinned commit changed: rebuild with `docker compose build --no-cache api`, or in a virtual environment run `pip install --force-reinstall --no-deps -r requirements.txt` for the two pinned lines |
 | an upload is refused as too large | the default cap is 10 MiB; raise `LUMINA_MAX_SBOM_BYTES` and nginx's `client_max_body_size` together |
