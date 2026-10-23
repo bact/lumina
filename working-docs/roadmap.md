@@ -1,6 +1,6 @@
 ---
 Created: 2026-10-20
-Last-Modified: 2026-10-21
+Last-Modified: 2026-10-23
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -55,5 +55,18 @@ guide) and [deployment-options.md](deployment-options.md).
 - [ ] **Cloudflare**: designed, not built; the demo option is a static
   frontend on Cloudflare with the API elsewhere. See
   [design.md](design.md#cloudflare-designed-not-built).
+- [ ] **Non-GitHub examples** in "Try an example", after Pitloom 0.21.0 is
+  released and the pin is on it (the page forms of GitLab, Bitbucket, SourceHut
+  and others need it). Candidates, checked 2026-10-23 with `git ls-remote`
+  only (a run of Lumina on each, the licence and the model format are not
+  checked): `gitlab.com/ncz-os/mnemos-embedkit` (ONNX) and
+  `gitlab.com/armbiant/yolo-ultralytics` (ONNX, folder
+  `examples/YOLOv8-ONNXRuntime`) answer; `gitlab.com/gitlab-org/spamcheck`
+  (TensorFlow Lite) answers with a sign-in redirect, so it is gone or private;
+  the two Hugging Face Spaces (`kenhktsui/fasttext-language-identification`,
+  `espnet/silero-vad`) do not resolve. A Space is a Git repository on
+  `huggingface.co/spaces/...`: Pitloom reads a `huggingface.co` address as a
+  model, so check that first. Each example must be a real run: the licence and
+  the model format read from the result, not from a list.
 - [ ] **A PyPI package as input** (`pypi.org/project/<name>`): waits for
   Pitloom's `loom pypi`, which is on its roadmap and not built (Pitloom #313).
