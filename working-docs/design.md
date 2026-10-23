@@ -366,7 +366,10 @@ JSON SBOM, per-rule `evidence`; Mode 1 also adds `generation_log`; Mode 3 sets
   - **Git repository URLs** — all URL handling is Pitloom's
     (`pitloom.assemble.generate_git_project_sbom`; its docs: "SBOM from a Git
     URL"): a clone URL or the page of a repository, branch or folder on GitHub,
-    GitLab, Gitea/Forgejo/Codeberg, Bitbucket or SourceHut; the Git server's
+    GitLab, Gitea/Forgejo/Codeberg, Bitbucket, SourceHut, Gerrit's Gitiles, cgit
+    or Azure DevOps (the form on each: Pitloom's `docs/git-urls.md`). The UI
+    recommends the clone URL, which names the repository's default branch and is
+    never misread, and a page URL only for one branch, tag or folder; the Git server's
     redirect (GitLab's `project` to `project.git`) followed hop by hop;
     a shallow clone into a temporary directory that is removed afterwards; the
     repository's own `[tool.pitloom]` ignored and its build backend never run;

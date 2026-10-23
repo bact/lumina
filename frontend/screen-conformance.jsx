@@ -318,7 +318,7 @@ function ImportScreen() {
 
   return (
     <ScreenFrame eyebrow={t("nav.generate")} title={t("screen.generate.title")}
-      intro="Paste a Git repository URL or a Hugging Face Hub model URL. Lumina generates an SBOM for it (server-side, with Pitloom) and checks it against the minimum elements standard you pick. You can switch the standard afterwards without generating again.">
+      intro="Paste a Git repository's clone URL or a Hugging Face Hub model URL. Lumina generates an SBOM for it (server-side, with Pitloom) and checks it against the minimum elements standard you pick. You can switch the standard afterwards without generating again.">
       <StandardPicker state={standardList} value={standardId} onChange={pick} disabled={phase === "running"} />
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -330,6 +330,7 @@ function ImportScreen() {
           onChange={setUrl}
           onKeyDown={(e) => { if (e.key === "Enter" && phase !== "running") run(); }}
           disabled={phase === "running"}
+          aria-describedby="url-hint"
           style={{ flex: "1 1 260px", minWidth: 0 }}
         />
         <Button variant="primary" icon={phase === "running" ? "loader" : "play"}
@@ -337,6 +338,11 @@ function ImportScreen() {
           {phase === "running" ? "Working…" : "Generate & check"}
         </Button>
       </div>
+
+      <p id="url-hint" style={{ margin: 0, fontSize: 12.5, color: "var(--ink-3)" }}>
+        Use the repository's clone URL (the one the host's Clone button shows). To check one branch, tag or folder
+        instead, paste the address of that page; the Generator log says what Lumina read.
+      </p>
 
       <ExampleList idPrefix="example-generate" examples={DEMO_EXAMPLES} open={examplesOpen} onOpenChange={setExamplesOpen}
         disabled={phase === "running"} note={exampleNote} chosenKey={exampleNote ? chosenExample.key : undefined}
