@@ -64,8 +64,6 @@ from .sbom_source import load_sbom
 
 logger = logging.getLogger(__name__)
 
-_HF_HOSTS = {"huggingface.co", "www.huggingface.co"}
-
 _ALLOWED_SCHEMES = {"http", "https"}
 
 # Longer URLs are refused before they are parsed, logged or echoed back.
@@ -104,6 +102,46 @@ def _allowed_private_hosts() -> frozenset[str]:
     return frozenset(h.strip().lower() for h in raw.split(",") if h.strip())
 
 
+_URL_USERINFO = re.compile(r"://[^/\s@][^/\s]*@")
+_CONTROLS = re.compile("[\x00-\x1f\x7f-\x9f]")
+_SHOWN_URL_LENGTH = 200
+
+
+def _display_url(url: str) -> str:
+    """*url* made safe to log or echo: credentials masked, control characters
+    escaped, cut to :data:`_SHOWN_URL_LENGTH` characters."""
+    text = _URL_USERINFO.sub("://***:***@", url[:_SHOWN_URL_LENGTH])
+    text = _CONTROLS.sub(lambda m: ascii(m.group())[1:-1], text)
+    return text + ("..." if len(url) > _SHOWN_URL_LENGTH else "")
+
+
+def _check_url_text(artifact_url: str) -> str:
+    """Refuse an over-long, unparsable, non-http(s) or host-less URL, without
+    resolving anything; returns the URL's host."""
+    if len(artifact_url) > MAX_URL_LENGTH:
+        raise GenerationError(
+            "lumina.url-too-long", f"URL is longer than {MAX_URL_LENGTH} characters."
+        )
+    try:
+        parsed = urlparse(artifact_url)
+        host = parsed.hostname
+    except ValueError as exc:
+        raise GenerationError("lumina.url-invalid", f"Invalid URL: {exc}") from exc
+    if parsed.scheme.lower() not in _ALLOWED_SCHEMES:
+        raise GenerationError(
+            "lumina.url-scheme-blocked",
+            f"URL scheme {parsed.scheme!r} is not allowed; "
+            f"use http or https: '{_display_url(artifact_url)}'",
+        )
+    if not host:
+        raise GenerationError(
+            "pitloom.url-unsupported",
+            f"Unsupported artefact URL (expected a Git or Hugging Face Hub "
+            f"URL): '{_display_url(artifact_url)}'",
+        )
+    return host
+
+
 def _ensure_public_http_url(artifact_url: str) -> None:
     """Reject URLs that could reach internal services (SSRF guard).
 
@@ -119,27 +157,7 @@ def _ensure_public_http_url(artifact_url: str) -> None:
     rebinding between validation and clone.  Network-level egress policy is the
     real control for a hardened deploy.
     """
-    if len(artifact_url) > MAX_URL_LENGTH:
-        raise GenerationError(
-            "lumina.url-too-long", f"URL is longer than {MAX_URL_LENGTH} characters."
-        )
-    try:
-        parsed = urlparse(artifact_url)
-        host = parsed.hostname
-    except ValueError as exc:
-        raise GenerationError("lumina.url-invalid", f"Invalid URL: {exc}") from exc
-    if parsed.scheme.lower() not in _ALLOWED_SCHEMES:
-        raise GenerationError(
-            "lumina.url-scheme-blocked",
-            f"URL scheme {parsed.scheme!r} is not allowed; "
-            f"use http or https: {artifact_url!r}",
-        )
-    if not host:
-        raise GenerationError(
-            "pitloom.url-unsupported",
-            f"Unsupported artefact URL (expected a Git or Hugging Face Hub "
-            f"URL): {artifact_url!r}",
-        )
+    host = _check_url_text(artifact_url)
     if os.environ.get("LUMINA_ALLOW_PRIVATE_URLS") == "1":
         return
     if host.lower() in _allowed_private_hosts():
@@ -225,14 +243,15 @@ def generate_and_check(
     try:
         try:
             with _collect_warnings(warnings), recording(log):
-                note("lumina", "info", f"Generating an SBOM for {artifact_url}")
+                _check_url_text(artifact_url)
+                note("lumina", "info", f"Generating an SBOM for {_display_url(artifact_url)}")
                 _generate(artifact_url, sbom_path)
                 note("lumina", "info", "Pitloom finished; reading the SBOM it wrote")
         except GenerationError as exc:
             log.add("lumina", "error", f"[{exc.descriptor_id}] {exc.message}")
             logger.warning(
                 "Generation failed for %s: [%s] %s",
-                artifact_url,
+                _display_url(artifact_url),
                 exc.descriptor_id,
                 exc.message,
             )
@@ -263,15 +282,16 @@ def sbom_filename(artifact_url: str) -> str:
     (``huggingface.co/<org>/<model>/...``) or the repository name of a Git URL
     (without ``.git``; for a page URL the repository, not the folder);
     ``sbom.spdx3.json`` when the URL names nothing."""
-    parsed = urlparse(artifact_url)
-    if (parsed.hostname or "").lower() in _HF_HOSTS:
-        segments = [s for s in parsed.path.split("/") if s][:2]
+    # Imported lazily; see app.generators.base.
+    # pylint: disable=import-outside-toplevel
+    from pitloom.extract.remote import RemoteSourceError, parse_git_page
+    from pitloom.extract.remote.huggingface import is_huggingface_source
+
+    # pylint: enable=import-outside-toplevel
+    if is_huggingface_source(artifact_url):
+        segments = [s for s in urlparse(artifact_url).path.split("/") if s][:2]
         name = segments[-1] if segments else ""
     else:
-        # Imported lazily; see app.generators.base.
-        # pylint: disable-next=import-outside-toplevel
-        from pitloom.extract.remote import RemoteSourceError, parse_git_page
-
         try:
             name = parse_git_page(artifact_url).repo_name
         except RemoteSourceError:  # a path Pitloom will refuse
@@ -282,9 +302,11 @@ def sbom_filename(artifact_url: str) -> str:
 
 def _generate(artifact_url: str, sbom_path: str) -> None:
     """Route *artifact_url* to the right generator, writing to *sbom_path*."""
-    _ensure_public_http_url(artifact_url)
-    host = (urlparse(artifact_url).hostname or "").lower()
-    if host in _HF_HOSTS:
+    # Imported lazily; see app.generators.base.
+    # pylint: disable-next=import-outside-toplevel
+    from pitloom.extract.remote.huggingface import is_huggingface_source
+
+    if is_huggingface_source(artifact_url):
         generate_from_huggingface(artifact_url, sbom_path)
     else:
         # Any other URL with a host is treated as a Git repository

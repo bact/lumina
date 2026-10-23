@@ -382,6 +382,12 @@ JSON SBOM, per-rule `evidence`; Mode 1 also adds `generation_log`; Mode 3 sets
     metadata via the HF API; it does **not** download model files, so the host
     stays light on disk and bandwidth. HF auth is optional: without a token the
     Hub allows fewer requests; `HF_TOKEN` raises the limit.
+    A Hub URL in any spelling (`www.huggingface.co`, `hf.co`, `http`, any case)
+    is passed to Pitloom as given: Pitloom reads it as
+    `https://huggingface.co/...` and logs one `INFO:` line saying so. A
+    URL is checked (length, scheme, host) before it is logged, and logged with
+    its credentials masked, control characters escaped and cut at 200
+    characters.
   Both record Lumina as the SBOM's author (a software agent in `createdBy`) and Pitloom as the tool (`createdUsing`); Lumina is never the scanned project's supplier.
 - **Sync model:** asynchronous via the job queue (see
   [Background job execution](#background-job-execution)). Stage 0/1 runs the
