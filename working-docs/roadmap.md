@@ -1,6 +1,6 @@
 ---
 Created: 2026-10-20
-Last-Modified: 2026-10-23
+Last-Modified: 2026-10-27
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -32,8 +32,8 @@ guide) and [deployment-options.md](deployment-options.md).
   contrast), checked by `scripts/ui-smoke.mjs` and axe-core.
 - [x] **Locales**: the app shell and each screen's heading in English, German,
   Japanese, Thai, French and Irish.
-- [x] **Pinned by commit**: Pitloom (the merge of its #317) and the checker
-  (`82a63b9`), so builds do not move.
+- [x] **Pinned by commit**: Pitloom (the merge of its #357, 0.21.0 before the
+  release) and the checker (`82a63b9`), so builds do not move.
 - [x] **Internal docs in `working-docs/`**, user docs kept to `README.md` and
   `INSTALL.md`.
 
