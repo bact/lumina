@@ -416,6 +416,8 @@ await page.waitForSelector("nav");
 check((await page.getAttribute("main", "aria-label")) === "Generate & check screen", "main landmark label is localised, not a raw id");
 await chipsMatchApi("Generate & check");
 await noSampleData("Generate & check");
+check(await page.getByPlaceholder(/github/).getAttribute("aria-describedby") === "url-hint"
+  && (await page.locator("#url-hint").innerText()).includes("clone URL"), "Generate & check: the URL field is described by a clone-URL hint");
 await shot("1-generate");
 // The example cards fill the URL and pick the demo's standard (every card is checked below).
 const card = (key) => page.locator(`[data-example="${key}"]`);
