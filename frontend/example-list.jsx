@@ -36,6 +36,7 @@ const EXAMPLE_SUBJECTS = {
   tiny:       { kind: "model", name: "phi-tiny-random", format: "Safetensors", size: "80K", source: "a local file" },
   sentiment:  { kind: "project", name: "bact/sentimentdemo", models: "fastText model", source: "GitHub" },
   pythainlp:  { kind: "project", name: "PyThaiNLP/pythainlp", models: "ONNX and CRFsuite models", source: "GitHub" },
+  pythainlpgl:{ kind: "project", name: "gitlab.com/pythainlp/pythainlp", models: "ONNX models", source: "GitLab" },
   flask:      { kind: "project", name: "pallets/flask", models: "no AI model", source: "GitHub" },
   etsisdk:    { kind: "project", name: "labs.etsi.org/rep/ocf/sdk", models: "no AI model", source: "ETSI GitLab" },
   chainguard: { kind: "image", name: "Chainguard image", source: "Chainguard (apko)" },

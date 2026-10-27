@@ -81,7 +81,7 @@ Then run the check again.
 ## 3. Warm it up (the day before, on the demo network)
 
 Run each once from the page. This confirms the URL works from that machine and
-fills caches. The page has a "Try an example" list of cards for these eleven (open
+fills caches. The page has a "Try an example" list of cards for these twelve (open
 at first, collapsed once you start a check; its header opens it again). A card is
 headed by the repository, model or file name; its body says what it is (the model
 file format, Safetensors, GGUF, ONNX, fastText or CRFsuite, and the parameter
@@ -99,6 +99,7 @@ the URL and picks the standard named below.
 | Qwen/Qwen2.5-0.5B-Instruct-GGUF | `https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF` | G7 SBOM for AI | 22 of 38 present; model Apache-2.0; parameter count read from the Hub's GGUF summary; a `descendantOf` link to the base model `Qwen2.5-0.5B-Instruct` (quantized) |
 | bact/sentimentdemo | `https://github.com/bact/sentimentdemo` | G7 SBOM for AI | 22 of 38 |
 | PyThaiNLP/pythainlp (about 12 s) | `https://github.com/PyThaiNLP/pythainlp` | G7 SBOM for AI | 21 of 38; three ONNX and five CRFsuite models |
+| gitlab.com/pythainlp/pythainlp (about 18 s) | `https://gitlab.com/pythainlp/pythainlp` | G7 SBOM for AI | 27 of 38 present; three ONNX models; a GitLab mirror of the project above |
 | pallets/flask | `https://github.com/pallets/flask` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 12 of 14; NTIA 6 of 7; BSI 6 of 13, 2 optional not provided |
 | labs.etsi.org/rep/ocf/sdk | `https://labs.etsi.org/rep/ocf/sdk` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 11 of 14; NTIA 6 of 7; BSI 6 of 13, 2 optional not provided; a GitLab server (the repository redirects to `.git`) |
 

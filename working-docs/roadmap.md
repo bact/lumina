@@ -55,11 +55,12 @@ guide) and [deployment-options.md](deployment-options.md).
 - [ ] **Cloudflare**: designed, not built; the demo option is a static
   frontend on Cloudflare with the API elsewhere. See
   [design.md](design.md#cloudflare-designed-not-built).
-- [ ] **Non-GitHub examples** in "Try an example", after Pitloom 0.21.0 is
-  released and the pin is on it (the page forms of GitLab, Bitbucket and others
-  need it). An example must be a real run: the licence and the model format are
-  read from the result, not from a list. Checked 2026-10-23 by running Pitloom's
-  `loom project` on each:
+- [x] **A non-GitHub example** in "Try an example":
+  `gitlab.com/pythainlp/pythainlp` is a card now, run on the pin of Pitloom #357
+  (2026-10-27: 18 s, three ONNX models, G7 SBOM for AI 27 of 38 rules present). More examples (the page forms
+  of GitLab, Bitbucket and others) wait for the 0.21.0 release. An example must
+  be a real run: the licence and the model format are read from the result, not
+  from a list. Checked 2026-10-23 by running Pitloom's `loom project` on each:
   - **Usable:** `gitlab.com/pythainlp/pythainlp` (a GitLab mirror of PyThaiNLP):
     11 s, three ONNX models (`deepcut_onnx`, `thai2rom_encoder_onnx`,
     `thai2rom_decoder_onnx`), Apache-2.0.

@@ -76,6 +76,7 @@ const DEMO_EXAMPLES = [
   { subject: "qwengguf", standard: "g7ai", url: "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF", note: "a quantised model with a base model" },
   { subject: "sentiment", standard: "g7ai", url: "https://github.com/bact/sentimentdemo", note: "the model file is hashed" },
   { subject: "pythainlp", standard: "g7ai", url: "https://github.com/PyThaiNLP/pythainlp", note: "slowest, about 12 s" },
+  { subject: "pythainlpgl", standard: "g7ai", url: "https://gitlab.com/pythainlp/pythainlp", note: "a GitLab mirror of the project above, about 18 s" },
   { subject: "flask", standard: "cisa2026", url: "https://github.com/pallets/flask", note: "a plain Python project" },
   { subject: "etsisdk", standard: "cisa2026", url: "https://labs.etsi.org/rep/ocf/sdk", note: "a Python project on a GitLab server" },
 ].map(ex => ({ ...ex, key: ex.url }));
