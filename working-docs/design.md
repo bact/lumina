@@ -1,6 +1,6 @@
 ---
 Created: 2026-05-26
-Last-Modified: 2026-10-22
+Last-Modified: 2026-10-27
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -366,7 +366,11 @@ JSON SBOM, per-rule `evidence`; Mode 1 also adds `generation_log`; Mode 3 sets
   - **Git repository URLs** — all URL handling is Pitloom's
     (`pitloom.assemble.generate_git_project_sbom`; its docs: "SBOM from a Git
     URL"): a clone URL or the page of a repository, branch or folder on GitHub,
-    GitLab, Gitea/Forgejo/Codeberg, Bitbucket or SourceHut; the Git server's
+    GitLab, Gitea/Forgejo/Codeberg, Bitbucket or SourceHut (the form on each:
+    Pitloom's `docs/git-urls.md`; Azure DevOps page URLs are not read). The UI
+    recommends the clone URL, which names the repository and its default branch
+    (a path with a group or project called `src`, `tree` or `blob` can be read as
+    a page), and a page URL only for one branch, tag or folder; the Git server's
     redirect (GitLab's `project` to `project.git`) followed hop by hop;
     a shallow clone into a temporary directory that is removed afterwards; the
     repository's own `[tool.pitloom]` ignored and its build backend never run;
