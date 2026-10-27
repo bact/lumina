@@ -55,19 +55,27 @@ guide) and [deployment-options.md](deployment-options.md).
 - [ ] **Cloudflare**: designed, not built; the demo option is a static
   frontend on Cloudflare with the API elsewhere. See
   [design.md](design.md#cloudflare-designed-not-built).
-- [ ] **Non-GitHub examples** in "Try an example", after Pitloom 0.21.0 is
-  released and the pin is on it (the page forms of GitLab, Bitbucket, SourceHut
-  and others need it). Candidates, checked 2026-10-23 with `git ls-remote`
-  only (a run of Lumina on each, the licence and the model format are not
-  checked): `gitlab.com/ncz-os/mnemos-embedkit` (ONNX) and
-  `gitlab.com/armbiant/yolo-ultralytics` (ONNX, folder
-  `examples/YOLOv8-ONNXRuntime`) answer; `gitlab.com/gitlab-org/spamcheck`
-  (TensorFlow Lite) answers with a sign-in redirect, so it is gone or private;
-  the two Hugging Face Spaces (`kenhktsui/fasttext-language-identification`,
-  `espnet/silero-vad`) do not resolve. A Space is a Git repository on
-  `huggingface.co/spaces/...`; Pitloom classifies every `huggingface.co`
-  address as a model (checked), so a Space is not readable until Pitloom
-  handles it. Each example must be a real run: the licence and
-  the model format read from the result, not from a list.
+- [x] **A non-GitHub example** in "Try an example":
+  `gitlab.com/pythainlp/pythainlp` is a card now, run on the pin of Pitloom #357
+  (2026-10-27: 18 s, three ONNX models, G7 SBOM for AI 27 of 38 rules present). More examples (the page forms
+  of GitLab, Bitbucket and others) wait for the 0.21.0 release. An example must
+  be a real run: the licence and the model format are read from the result, not
+  from a list. Checked 2026-10-23 by running Pitloom's `loom project` on each:
+  - **Usable:** `gitlab.com/pythainlp/pythainlp` (a GitLab mirror of PyThaiNLP):
+    11 s, three ONNX models (`deepcut_onnx`, `thai2rom_encoder_onnx`,
+    `thai2rom_decoder_onnx`), Apache-2.0.
+  - **Usable as projects with no AI model:** `gitlab.com/ncz-os/mnemos-embedkit`
+    (Apache-2.0, not MIT) and `gitlab.com/armbiant/yolo-ultralytics` (AGPL-3.0):
+    neither repository holds a model file.
+  - **Removed:** `gitlab.com/gitlab-org/spamcheck` (answers with a sign-in
+    redirect: gone or private); the two Hugging Face Spaces of the first list
+    (`kenhktsui/fasttext-language-identification`, `espnet/silero-vad`) do not
+    exist.
+  - **Searched and not usable:** about 2,500 public GitLab projects, 180
+    Codeberg repositories and 390 Hugging Face Spaces, for a Python project
+    holding a model file in a package folder. Models kept in Git LFS are
+    pointer files after the clone, and Spaces seldom have a `pyproject.toml`
+    (Pitloom's note on Spaces: `working-docs/design/hugging-face-spaces-support.md`
+    in its repository, PR #350).
 - [ ] **A PyPI package as input** (`pypi.org/project/<name>`): waits for
   Pitloom's `loom pypi`, which is on its roadmap and not built (Pitloom #313).
