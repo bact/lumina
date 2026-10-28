@@ -51,7 +51,7 @@ lumina/
 ├── backend/
 │   ├── Dockerfile
 │   ├── pyproject.toml          Tool settings (mypy)
-│   ├── requirements.txt        Pinned deps; Pitloom and the checker by Git commit
+│   ├── requirements.txt        Pinned deps; Pitloom by release, the checker by Git commit
 │   ├── requirements-dev.txt    Test and lint tools
 │   ├── app/
 │   │   ├── main.py             FastAPI endpoints

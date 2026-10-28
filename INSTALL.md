@@ -566,7 +566,7 @@ These apply to all options once the deployment is working.
 | **OCI** Tunnel up but 502 from the public URL | Tunnel service mapping must point to `nginx:80`, not `localhost` or `api`. |
 | **OCI** Quick tunnel can't reach nginx | Compose network name is `<folder>_default`. Confirm with `docker network ls` and pass `--network` accordingly. |
 | **All** `curl /api/health` fails | Check container logs: `docker compose logs api` (Option A) or the platform's log viewer (B/C). Usually a Python dep error or the API still starting. |
-| **All** Build fails — dep install error | `ntia-conformance-checker` and Pitloom are installed from pinned Git commits (`backend/requirements.txt`). If GitHub is unreachable during build, retry. |
+| **All** Build fails — dep install error | `ntia-conformance-checker` is installed from a pinned Git commit and Pitloom from PyPI (`backend/requirements.txt`). If GitHub or PyPI is unreachable during build, retry. |
 | **All** Site loads but API calls fail in browser | The browser is hitting the API host directly, bypassing nginx. Use the public hostname (tunnel URL / HF Space URL / Cloud Run URL), not the raw IP or API port. |
 | **HF Spaces** Space stuck in "Building" | Check the **Logs** tab in the Space page. Common cause: pip install timeout on a slow dep — retry the build by pushing an empty commit. |
 | **HF Spaces** 503 on first request | Space is waking from sleep. Wait 30–60 s and retry. |

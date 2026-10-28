@@ -32,8 +32,8 @@ guide) and [deployment-options.md](deployment-options.md).
   contrast), checked by `scripts/ui-smoke.mjs` and axe-core.
 - [x] **Locales**: the app shell and each screen's heading in English, German,
   Japanese, Thai, French and Irish.
-- [x] **Pinned by commit**: Pitloom (the merge of its #357, 0.21.0 before the
-  release) and the checker (`2355afc`), so builds do not move.
+- [x] **Pinned**: Pitloom 0.21.0 (PyPI) and the checker by commit (`2355afc`),
+  so builds do not move.
 - [x] **Internal docs in `working-docs/`**, user docs kept to `README.md` and
   `INSTALL.md`.
 
@@ -57,9 +57,10 @@ guide) and [deployment-options.md](deployment-options.md).
   frontend on Cloudflare with the API elsewhere. See
   [design.md](design.md#cloudflare-designed-not-built).
 - [x] **A non-GitHub example** in "Try an example":
-  `gitlab.com/pythainlp/pythainlp` is a card now, run on the pin of Pitloom #357
-  (2026-10-27: 18 s, three ONNX models, G7 SBOM for AI 27 of 38 rules present). More examples (the page forms
-  of GitLab, Bitbucket and others) wait for the 0.21.0 release. An example must
+  `gitlab.com/pythainlp/pythainlp` is a card now, run on a pre-0.21.0
+  Pitloom commit (2026-10-27: 18 s, three ONNX models, G7 SBOM for AI 27 of 38
+  rules present). More examples (the page forms of GitLab, Bitbucket and
+  others) can be added now that 0.21.0 is out. An example must
   be a real run: the licence and the model format are read from the result, not
   from a list. Checked 2026-10-23 by running Pitloom's `loom project` on each:
   - **Usable:** `gitlab.com/pythainlp/pythainlp` (a GitLab mirror of PyThaiNLP):
