@@ -19,7 +19,7 @@ SBOM. For the full deployment options (VM, Hugging Face Spaces, Cloud Run) see
 
 Two containers from `docker-compose.yml`: `nginx` (the static page, which
 proxies `/api/`) and `api` (FastAPI). The `api` image installs the conformance
-checker and Pitloom by Git commit (`backend/requirements.txt`) and runs
+checker by Git commit and Pitloom by release (`backend/requirements.txt`) and runs
 `licenseid update` at build time, so licence ids are canonicalised.
 
 | Need | Why | Check |
@@ -104,9 +104,10 @@ the URL and picks the standard named below.
 | labs.etsi.org/rep/ocf/sdk | `https://labs.etsi.org/rep/ocf/sdk` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 11 of 14; NTIA 6 of 7; BSI 7 of 13, optional provided 1 of 2; a GitLab server (the repository redirects to `.git`) |
 
 These counts were measured on 2026-10-19 and 2026-10-20, and again on
-2026-10-28 with the pinned Pitloom and checker (`2355afc`) and the SPDX
-licence database: only the BSI figures changed (the rule-based BSI check). A
-changed upstream repository or Hub card can move them by a rule or two. A model's "judged by"
+2026-10-28 with the checker (`2355afc`) and the SPDX licence database: only
+the BSI figures changed (the rule-based BSI check). A run with Pitloom 0.21.0
+from PyPI, the release this guide pins, changed none of them. A changed
+upstream repository or Hub card can move them by a rule or two. A model's "judged by"
 note appears for every Hub model above, and four of them (Granite, the 303M
 classifier, OpenJAI and the GGUF model) show a notification "1 component(s) are
 not connected to the SBOM root": the base model's package has no link into the
@@ -203,7 +204,7 @@ sbomcheck -s spdx3 -c g7ai -r sarif -o model.g7ai.sarif.json model.spdx3.json
 | a Git URL of a private repository fails | Lumina clones without credentials, so only public repositories work |
 | a Git URL fails with `git.too-large` | The repository takes more than `LUMINA_MAX_CLONE_BYTES` (default 512 MiB) of disk; pick a smaller one, or raise the setting on the `api` service |
 | a Hugging Face URL is slow or fails | Hub rate limits without a token; wait, or export `HF_TOKEN` for the `api` service (which also lets Lumina read private models: do not do this on a public instance), or go on to the next step |
-| after updating, results look old | pip keeps an already installed package of the same version number even when the pinned commit changed: rebuild with `docker compose build --no-cache api`, or in a virtual environment run `pip install --force-reinstall --no-deps -r requirements.txt` for the two pinned lines |
+| after updating, results look old | pip keeps an already installed package of the same version number even when the checker's pinned commit changed: rebuild with `docker compose build --no-cache api`, or in a virtual environment run `pip install --force-reinstall --no-deps -r requirements.txt` for the two pinned lines |
 | an upload is refused as too large | the default cap is 10 MiB; raise `LUMINA_MAX_SBOM_BYTES` and nginx's `client_max_body_size` together |
 | switching the standard says "Could not switch the standard" | the SBOM was refused when sent again (for example over the size cap); the earlier result stays on screen |
 | nothing works | `docker compose down && docker compose up --build`; the files in `frontend/examples/` are the offline fallback |

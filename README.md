@@ -217,7 +217,7 @@ lumina/
 ├── backend/                    Python API
 │   ├── Dockerfile
 │   ├── pyproject.toml          mypy configuration
-│   ├── requirements.txt        Pinned; Pitloom and the checker by Git commit
+│   ├── requirements.txt        Pinned; Pitloom by release, the checker by Git commit
 │   ├── requirements-dev.txt    Test and lint tools
 │   ├── app/
 │   │   ├── main.py             FastAPI app + endpoints
