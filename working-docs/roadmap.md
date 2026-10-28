@@ -42,7 +42,8 @@ guide) and [deployment-options.md](deployment-options.md).
 - [ ] **Check the demo on the real machine**: build the Docker images (never
   built where the demo guide was written), run `licenseid update`, and
   compare the counts in [demo.md](demo.md) with the app's. The counts were
-  measured without the SPDX licence database and before Pitloom #311.
+  re-measured on 2026-10-28 through the API (not Docker) with the licence
+  database and the pinned Pitloom and checker.
 - [ ] **Native-speaker review** of the Thai and Irish text and of the German
   and Japanese page titles.
 - [ ] **Tag the checker pin** (`2355afc` has no tag and lives on unmerged
