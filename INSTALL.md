@@ -15,7 +15,7 @@ situation, then follow its section end-to-end.
 | Option | Platform | Cost | Always-on | Config in |
 | :----- | :------- | :--- | :-------- | :-------- |
 | **A** | VM with Docker Compose — OCI Always Free + Cloudflare Tunnel | $0 | Yes | [`docker/compose/`](docker/compose/) |
-| **B** | Hugging Face Spaces | Free tier | Mostly* | [`docker/hfspaces/`](docker/hfspaces/) |
+| **B** | Hugging Face Spaces | HF PRO plan (paid) to create; CPU Basic hardware is free | Mostly* | [`docker/hfspaces/`](docker/hfspaces/) |
 | **C** | Google Cloud Run | Free tier | No (scale-to-zero) | [`docker/standalone/`](docker/standalone/) |
 
 \* HF Spaces may sleep when inactive; the first request after a sleep takes
@@ -293,17 +293,29 @@ docker compose -f docker-compose.yml -f docker/compose/docker-compose.prod.yml d
 
 ## Option B — Hugging Face Spaces
 
-**What you need:** a [Hugging Face](https://huggingface.co/join) account (free).
-No card required.
+**What you need:** a [Hugging Face](https://huggingface.co/join) account with
+a paid plan (PRO for a personal account; Team or Enterprise for an
+organisation). Hugging Face allows only Static Spaces for free; Docker (and
+Gradio) Spaces need a paid plan to be created. Lumina needs the Docker SDK
+because it runs a backend, so a free account cannot use this option. Check
+the current rule in
+[Spaces Overview](https://huggingface.co/docs/hub/spaces-overview) before you
+subscribe: it has changed before.
 
 **Caveats:**
 
+- The paid plan is needed to *create* the Space. The CPU Basic hardware it
+  runs on has no hourly cost. Hugging Face does not document what happens to an
+  existing Docker Space if the plan later ends: keep the Dockerfile in a
+  repository so you can redeploy elsewhere (Option A or C), and do not delete
+  and recreate the Space, which may count as creating a new one.
 - Spaces may sleep when inactive; the first request after sleep takes 30–60 s.
 - In-memory job state (SBOM generation via `POST /api/v1/artifact/check`) is
   lost if the Space sleeps between submission and completion. For reliable
   generation, keep traffic flowing or use the synchronous SBOM upload path
   (`POST /api/v1/sbom/check`, completes in seconds).
-- Private Spaces require a paid HF plan.
+- Protected and private visibility also require a paid plan; a free-hardware
+  Space is public.
 
 **Docker config:** [`docker/hfspaces/`](docker/hfspaces/) — a single
 self-contained Dockerfile that clones Lumina from GitHub during the build.
@@ -315,8 +327,8 @@ The Space repo needs only this one file.
 
 1. **Create a Space** at <https://huggingface.co/new-space>:
    - **Space SDK:** Docker
-   - **Hardware:** CPU Basic (free)
-   - **Visibility:** Public (free)
+   - **Hardware:** CPU Basic (no hourly cost)
+   - **Visibility:** Public
 
 2. **Clone your new Space repo:**
 
