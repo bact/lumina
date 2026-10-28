@@ -32,7 +32,7 @@ guide) and [deployment-options.md](deployment-options.md).
   contrast), checked by `scripts/ui-smoke.mjs` and axe-core.
 - [x] **Locales**: the app shell and each screen's heading in English, German,
   Japanese, Thai, French and Irish.
-- [x] **Pinned**: Pitloom 0.21.0 (PyPI) and the checker by commit (`2355afc`),
+- [x] **Pinned**: Pitloom 0.21.1 (PyPI) and the checker by commit (`2355afc`),
   so builds do not move.
 - [x] **Internal docs in `working-docs/`**, user docs kept to `README.md` and
   `INSTALL.md`.
