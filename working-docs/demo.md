@@ -100,11 +100,13 @@ the URL and picks the standard named below.
 | bact/sentimentdemo | `https://github.com/bact/sentimentdemo` | G7 SBOM for AI | 22 of 38 |
 | PyThaiNLP/pythainlp (about 12 s) | `https://github.com/PyThaiNLP/pythainlp` | G7 SBOM for AI | 21 of 38; three ONNX and five CRFsuite models |
 | gitlab.com/pythainlp/pythainlp (about 18 s) | `https://gitlab.com/pythainlp/pythainlp` | G7 SBOM for AI | 27 of 38 present; three ONNX models; a GitLab mirror of the project above |
-| pallets/flask | `https://github.com/pallets/flask` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 12 of 14; NTIA 6 of 7; BSI 6 of 13, 2 optional not provided |
-| labs.etsi.org/rep/ocf/sdk | `https://labs.etsi.org/rep/ocf/sdk` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 11 of 14; NTIA 6 of 7; BSI 6 of 13, 2 optional not provided; a GitLab server (the repository redirects to `.git`) |
+| pallets/flask | `https://github.com/pallets/flask` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 12 of 14; NTIA 6 of 7; BSI 7 of 13, optional provided 1 of 2 |
+| labs.etsi.org/rep/ocf/sdk | `https://labs.etsi.org/rep/ocf/sdk` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 11 of 14; NTIA 6 of 7; BSI 7 of 13, optional provided 1 of 2; a GitLab server (the repository redirects to `.git`) |
 
-These counts were measured on 2026-10-19 and 2026-10-20; a changed upstream
-repository or Hub card can move them by a rule or two. A model's "judged by"
+These counts were measured on 2026-10-19 and 2026-10-20, and again on
+2026-10-28 with the pinned Pitloom and checker (`2355afc`) and the SPDX
+licence database: only the BSI figures changed (the rule-based BSI check). A
+changed upstream repository or Hub card can move them by a rule or two. A model's "judged by"
 note appears for every Hub model above, and four of them (Granite, the 303M
 classifier, OpenJAI and the GGUF model) show a notification "1 component(s) are
 not connected to the SBOM root": the base model's package has no link into the

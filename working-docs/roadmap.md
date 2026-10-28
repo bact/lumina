@@ -33,7 +33,7 @@ guide) and [deployment-options.md](deployment-options.md).
 - [x] **Locales**: the app shell and each screen's heading in English, German,
   Japanese, Thai, French and Irish.
 - [x] **Pinned by commit**: Pitloom (the merge of its #357, 0.21.0 before the
-  release) and the checker (`82a63b9`), so builds do not move.
+  release) and the checker (`2355afc`), so builds do not move.
 - [x] **Internal docs in `working-docs/`**, user docs kept to `README.md` and
   `INSTALL.md`.
 
@@ -42,10 +42,11 @@ guide) and [deployment-options.md](deployment-options.md).
 - [ ] **Check the demo on the real machine**: build the Docker images (never
   built where the demo guide was written), run `licenseid update`, and
   compare the counts in [demo.md](demo.md) with the app's. The counts were
-  measured without the SPDX licence database and before Pitloom #311.
+  re-measured on 2026-10-28 through the API (not Docker) with the licence
+  database and the pinned Pitloom and checker.
 - [ ] **Native-speaker review** of the Thai and Irish text and of the German
   and Japanese page titles.
-- [ ] **Tag the checker pin** (`82a63b9` has no tag and lives on unmerged
+- [ ] **Tag the checker pin** (`2355afc` has no tag and lives on unmerged
   checker branches); then move the pin to the tag.
 - [ ] **More standards**: EU CRA, EO 14028, FDA PMP, ISO/IEC 5230. None is in
   the API; the steps to add one are in `AGENTS.md`, "Adding a standard".
