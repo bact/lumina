@@ -470,11 +470,11 @@ alert.
        --allow-unauthenticated
    ```
 
-   Do not leave out `--no-cpu-throttling`. nginx opens the port at once, so
-   Cloud Run counts the container as started and, with throttling on, cuts
-   the CPU between requests: the Python API then never finishes starting and
-   every `/api/` call returns `502 Bad Gateway`. The same throttling would
-   starve a generation job, which runs in the background between polls.
+   Do not leave out `--no-cpu-throttling`. A generation job runs in the
+   background between the polls that check on it, and with throttling on,
+   Cloud Run cuts the CPU between requests: in a test the same job that takes
+   about 20 seconds was still running after 4 minutes. (Uploading an SBOM
+   for a check is a single request and is not affected.)
 
    Cloud Run prints the service URL (`https://lumina-xxxx-uc.a.run.app`).
 
@@ -537,7 +537,7 @@ brings it back without a rebuild.
 | `--max-instances` | `1` | One in-process job at a time |
 | `--memory` | `2Gi` | Peak during git clone + Pitloom scan |
 | `--cpu` | `1` | Checkout and conformance check are not CPU-bound |
-| `--no-cpu-throttling` | (set) | The API must start and jobs must run between requests; see step 5. The instance is billed for the whole time it is up (up to about 15 minutes after the last request), not only while a request runs |
+| `--no-cpu-throttling` | (set) | Generation jobs must run between requests; see step 5. The instance is billed for the whole time it is up (up to about 15 minutes after the last request), not only while a request runs |
 
 ---
 
@@ -624,6 +624,7 @@ These apply to all options once the deployment is working.
 | **All** Site loads but API calls fail in browser | The browser is hitting the API host directly, bypassing nginx. Use the public hostname (tunnel URL / HF Space URL / Cloud Run URL), not the raw IP or API port. |
 | **HF Spaces** Space stuck in "Building" | Check the **Logs** tab in the Space page. Common cause: pip install timeout on a slow dep — retry the build by pushing an empty commit. |
 | **HF Spaces** 503 on first request | Space is waking from sleep. Wait 30–60 s and retry. |
-| **Cloud Run** The page loads but every `/api/` call returns `502 Bad Gateway`, and the log shows no `Uvicorn running` line | CPU throttling: redeploy with `--no-cpu-throttling` (`gcloud run services update lumina --region ${REGION} --no-cpu-throttling`). |
+| **Cloud Run** The revision fails to deploy with "failed to start and listen on the port", and the log says `start-nginx: the API did not answer /api/health` | The API did not start within `LUMINA_API_WAIT` seconds (default 120). Read the log lines above that message for the Python error. |
+| **Cloud Run** A generation job stays "running" for minutes | CPU throttling: redeploy with `--no-cpu-throttling` (`gcloud run services update lumina --region ${REGION} --no-cpu-throttling`). |
 | **Cloud Run** Generation job lost between submission and poll | Instance scaled to zero. Set `--min-instances=1` or use the synchronous upload path (`POST /api/v1/sbom/check`). |
 | **Cloud Run** `gcloud builds submit` fails | Check Cloud Build quota (`cloudbuild.googleapis.com` must be enabled) and that billing is active. |

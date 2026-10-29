@@ -29,13 +29,21 @@ that are not concrete yet, live here.
 - `--max-instances 1`: one in-process job at a time, matching the
   `Semaphore(1)` in `backend/app/jobs.py`.
 - `--memory 2Gi`: peak during git clone plus Pitloom scan.
-- `--no-cpu-throttling`: required. nginx opens the port at once, so Cloud Run
-  counts the container as started and, with throttling, cuts the CPU between
-  requests; the API then never finishes starting (`502` on every `/api/`
-  call), and a background job gets CPU only while a poll is in flight. The
-  cost is instance-based billing (see the cost section). A start script that
-  holds nginx back until the API answers would fix the first problem but not
-  the second.
+- `--no-cpu-throttling`: required for generation. A background job gets CPU
+  only while a request is in flight: on 2026-10-29 the same job (a Git
+  repository, then check) took about 20 seconds with throttling off and was
+  still running after 4 minutes with it on. The cost is instance-based billing
+  (see the cost section).
+- Why nginx waits for the API (`docker/standalone/start-nginx.sh`): nginx is
+  the process that opens `$PORT`, and Cloud Run counts the container as
+  started once that port is open. The first deploy had nginx listen at once;
+  with throttling on, Cloud Run then cut the CPU while the API was still
+  importing its packages, the API never came up and every `/api/` call
+  returned `502`. Holding nginx back until `/api/health` answers keeps the
+  port closed, and the start-up CPU available, until the app is ready. Tested
+  on 2026-10-29 on a private Cloud Run service with throttling on: `200` on
+  every check, including after idle gaps. The inlined copy in
+  `docker/hfspaces/Dockerfile` must stay in step.
 
 ## Cost by number of users
 
