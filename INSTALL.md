@@ -16,7 +16,7 @@ situation, then follow its section end-to-end.
 | :----- | :------- | :--- | :-------- | :-------- |
 | **A** | VM with Docker Compose — OCI Always Free + Cloudflare Tunnel | $0 | Yes | [`docker/compose/`](docker/compose/) |
 | **B** | Hugging Face Spaces | HF PRO plan (paid) to create; CPU Basic hardware is free | Mostly* | [`docker/hfspaces/`](docker/hfspaces/) |
-| **C** | Google Cloud Run | Free tier | No (scale-to-zero) | [`docker/standalone/`](docker/standalone/) |
+| **C** | Google Cloud Run | Billing account required; billed by instance time (see Option C) | No (scale-to-zero) | [`docker/standalone/`](docker/standalone/) |
 
 \* HF Spaces may sleep when inactive; the first request after a sleep takes
 30–60 s to wake.
@@ -400,10 +400,10 @@ ARG LUMINA_REF=<branch-or-tag>
 
 - Scale-to-zero means in-memory job state (SBOM generation) can be lost if
   the instance shuts down between polling calls. With `--min-instances=1` the
-  instance stays warm but consumes the free vCPU-second allowance (about 2 days
-  of one vCPU per month before small charges apply). For reliable generation jobs,
-  either set `--min-instances=1` or use the synchronous SBOM upload path.
-- Billing must be enabled even to use the free tier; set a budget alert.
+  instance stays warm, and is billed for every second it is up. For reliable
+  generation jobs, either set `--min-instances=1` or use the synchronous SBOM
+  upload path.
+- Billing must be enabled even to use the free allowance; set a budget alert.
 - The container's writable disk is memory: a cloned repository counts against
   `--memory`. A very large repository can exhaust it and the instance is
   restarted, losing the job.
@@ -485,8 +485,21 @@ alert.
    curl -s https://lumina-xxxx-uc.a.run.app/api/v1/standards
    ```
 
-7. **Optional — custom domain:** Cloud Run console → service → **Manage custom
-   domains**. TLS certificate is provisioned automatically.
+7. **Optional — custom domain:** the `run.app` address cannot be renamed, so
+   you need a domain of your own, verified in Google Search Console. Cloud Run
+   offers three ways to attach it
+   ([Mapping custom domains](https://docs.cloud.google.com/run/docs/mapping-custom-domains)):
+   - **Domain mapping** (Cloud Run console → service → **Manage custom
+     domains**, or `gcloud beta run domain-mappings create --service lumina
+     --domain lumina.example.org --region ${REGION}`): the simplest, with an
+     automatic TLS certificate that takes about 15 minutes and up to 24 hours.
+     It is in Preview and Google does not recommend it for production.
+   - **Global external Application Load Balancer:** Google's recommended
+     option, with a fixed monthly cost for the load balancer.
+   - **Firebase Hosting:** proxies your domain to the service, under
+     Firebase's terms rather than Google Cloud's.
+
+   Add the DNS record that the console or command shows at your DNS provider.
 
 ### Updating
 
@@ -500,11 +513,27 @@ gcloud run deploy lumina \
     --region ${REGION}
 ```
 
+### Pausing and resuming
+
+Cloud Run has no pause. Removing public access makes every request return 403
+(allow a minute or two to take effect) and keeps the service, image and
+settings:
+
+```bash
+gcloud run services remove-iam-policy-binding lumina \
+    --region ${REGION} --member=allUsers --role=roles/run.invoker
+```
+
+Resume with the same command using `add-iam-policy-binding`. To remove the
+service instead, use `gcloud run services delete lumina --region ${REGION}`;
+the image stays in Artifact Registry, so a later `gcloud run deploy` (step 5)
+brings it back without a rebuild.
+
 ### Free tier settings
 
 | Flag | Value | Reason |
 | :--- | :---- | :----- |
-| `--min-instances` | `0` | Scale-to-zero; no idle charges |
+| `--min-instances` | `0` | Scale-to-zero: the instance is shut down about 15 minutes after the last request, and billed until then |
 | `--max-instances` | `1` | One in-process job at a time |
 | `--memory` | `2Gi` | Peak during git clone + Pitloom scan |
 | `--cpu` | `1` | Checkout and conformance check are not CPU-bound |

@@ -22,13 +22,20 @@ that are not concrete yet, live here.
 | :----- | :------- |
 | **A** VM with Docker Compose (OCI Always Free + Cloudflare Tunnel) | Always-on, full features, the unmodified `docker compose` stack. nginx and api stay on one host and talk over the compose network, so there are no cross-service URLs to re-wire. Survives a change of a platform's sleeping policy. |
 | **B** Hugging Face Spaces | Simplest setup, no infrastructure to manage, an `*.hf.space` HTTPS URL. Needs a paid HF plan to create the Space (see below). |
-| **C** Google Cloud Run | Scale-to-zero (no charges when idle), low traffic, Google Cloud ecosystem. |
+| **C** Google Cloud Run | Scale-to-zero (nothing runs while idle, but each visit bills the instance for about 15 minutes), low traffic, Google Cloud ecosystem. |
 
 ## Why the Cloud Run free-tier flags
 
 - `--max-instances 1`: one in-process job at a time, matching the
   `Semaphore(1)` in `backend/app/jobs.py`.
 - `--memory 2Gi`: peak during git clone plus Pitloom scan.
+- `--no-cpu-throttling`: required. nginx opens the port at once, so Cloud Run
+  counts the container as started and, with throttling, cuts the CPU between
+  requests; the API then never finishes starting (`502` on every `/api/`
+  call), and a background job gets CPU only while a poll is in flight. The
+  cost is instance-based billing (see the cost section). A start script that
+  holds nginx back until the API answers would fix the first problem but not
+  the second.
 
 ## Cost by number of users
 
@@ -61,8 +68,8 @@ Monthly cost for the options of [INSTALL.md](../INSTALL.md):
 | :----- | -: | -: | --: | ----: |
 | **A** OCI Always Free VM plus Cloudflare Tunnel | $0 | $0 | $0 | $0 |
 | **B** Hugging Face Spaces, CPU Basic | PRO plan | PRO plan | PRO plan | PRO plan, or plus about $22 for CPU Upgrade |
-| **C** Cloud Run, `--min-instances 0` | $0 | $0 | about $1 | about $14 to $31 |
-| **C** Cloud Run, `--min-instances 1` | about $10 to $15 | same | same | same, plus the usage above |
+| **C** Cloud Run, `--min-instances 0` (request-based billing; not valid with `--no-cpu-throttling`, unverified) | $0 | $0 | about $1 | about $14 to $31 |
+| **C** Cloud Run, `--min-instances 1` (same caveat) | about $10 to $15 | same | same | same, plus the usage above |
 
 - **A:** the VM is free and so is its 10 TB outbound allowance. At 1,000 users
   a day the work is 10% to 30% of one core. Oracle may reclaim an Always Free

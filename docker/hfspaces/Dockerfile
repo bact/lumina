@@ -9,6 +9,9 @@
 ## The Space repo itself can contain only this one file; Lumina is cloned from
 ## GitHub during the build.
 ##
+## Creating a Docker Space needs a paid Hugging Face plan (PRO for a personal
+## account); only Static Spaces are free. See INSTALL.md, Option B.
+##
 ## To use your own fork, change LUMINA_REPO to your fork URL, or edit the
 ## git clone line below.
 ##
