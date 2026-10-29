@@ -167,6 +167,7 @@ Requirement ids are the [SBOM requirements ontology][bom] ids, for example
 | Endpoint | Purpose |
 | - | - |
 | `GET /api/v1/standards` | Standards Lumina knows, with `ready` set when the checker supports them |
+| `GET /api/v1/dependencies` | Installed version of Pitloom, LicenseID and the NTIA Conformance Checker; the checker also reports its Git commit |
 | `POST /api/v1/sbom/check` | Upload an SBOM (SPDX 2 or 3; up to 10 MiB by default) and check it; the result carries the SBOM and per-rule evidence |
 | `POST /api/v1/artifact/check` | Generate an SBOM from a Git or Hugging Face URL, then check it (background job); the result carries the generated SBOM, per-rule evidence and the generator log |
 | `GET /api/v1/jobs/{job_id}` | Status and result of a background job |

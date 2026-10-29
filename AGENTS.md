@@ -57,6 +57,7 @@ lumina/
 │   │   ├── main.py             FastAPI endpoints
 │   │   ├── conformance.py      run_checker, CHECKER_STANDARDS, schemas
 │   │   ├── sarif_ingest.py     SARIF 2.1.0 → SbomCheckResponse
+│   │   ├── dependencies.py     Installed version (and Git commit) of each dependency, for the About screen
 │   │   ├── generation_log.py   Generation log: Lumina steps and Pitloom records
 │   │   ├── sbom_source.py      SbomSource (download + display text), @graph line index
 │   │   ├── evidence/           Per-rule evidence: SBOM elements and lines behind each outcome
@@ -113,7 +114,8 @@ the frontend that reads them (`ArtifactResult` in `frontend/result-view.jsx`,
 `RuleClusters` and `RuleEvidence` in `frontend/rule-evidence.jsx`,
 `SbomSource` in `frontend/sbom-source.jsx`, `GeneratorLog` in
 `frontend/generator-log.jsx`) and the mocked responses in
-`scripts/ui-smoke.mjs`.
+`scripts/ui-smoke.mjs`. The same goes for `DependencyList` in
+`dependencies.py`, which `AboutScreen` in `frontend/screen-about.jsx` reads.
 
 ### Adding a standard
 
@@ -202,8 +204,10 @@ when CISA 2026 is not preselected, when the SBOM download, rule values and
 evidence, Show in SBOM, the Generator log tab or the windowed 50,000-line source
 view break, when switching the standard does not re-check the same SBOM (and keep
 the generator and its log), when a failed switch loses the earlier result, or when
-a finished check or a chosen example is not announced, or when the
-"Nothing was checked" banner does not give its reason. It needs Node 18+ and
+a finished check or a chosen example is not announced, when the
+"Nothing was checked" banner does not give its reason, or when the About screen
+does not show each dependency's version (the short commit for one installed from
+Git) or a failed request's detail. It needs Node 18+ and
 a `node_modules` directory (outside the repository; never commit it) with
 `playwright-core`. The page's scripts are vendored in `frontend/vendor/` (see
 its README), so the test uses no network and fails on a request to any other

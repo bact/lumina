@@ -21,7 +21,10 @@
 //   - switching the standard re-checks the same SBOM (keeping the generator
 //     and its log), and a failed switch keeps the earlier result;
 //   - a finished check and a chosen example are announced, and the "Nothing
-//     was checked" banner gives its reason.
+//     was checked" banner gives its reason;
+//   - the About screen shows each dependency's version (the short commit for
+//     one installed from Git) from GET /api/v1/dependencies, and a failed
+//     request shows its detail.
 // It writes one screenshot per state to the output directory.
 //
 // Needs Node 18+ and playwright-core in one node_modules directory (not
@@ -62,6 +65,14 @@ const STANDARDS = [
   { id: "cisa2026", ready: true }, { id: "fsct2024", ready: true }, { id: "mof", ready: false },
   { id: "xyz2030", ready: false },
 ];
+// GET /api/v1/dependencies: a released package (version only) and one
+// installed from a Git commit (a development build string plus the commit).
+const DEPENDENCIES = [
+  { id: "pitloom", version: "9.8.7", commit: null },
+  { id: "licenseid", version: "6.5.4", commit: null },
+  { id: "ntia-conformance-checker", version: "0.1.dev1147+gabcdef123", commit: "abcdef1234567890abcdef1234567890abcdef12" },
+];
+const DETAIL_DEPS = "Dependency versions are not available in this mock.";
 // The checked SBOM as the API returns it (`sbom`), and evidence line ranges
 // computed from its `display` the way the backend does (1-based, inclusive).
 function sbomSource(obj, filename) {
@@ -208,6 +219,7 @@ const DETAIL_501 = "Minimum elements standard 'cisa2026' is not supported by nti
 
 async function mockApi(page) {
   await page.route("**/api/v1/standards", r => r.fulfill({ json: { standards: STANDARDS } }));
+  await page.route("**/api/v1/dependencies", r => r.fulfill({ json: { dependencies: DEPENDENCIES } }));
   await page.route("**/api/v1/artifact/check", r => {
     const body = JSON.parse(r.request().postData() || "{}");
     posted.push(body);
@@ -260,7 +272,7 @@ const errors = [];
 page.on("pageerror", e => errors.push(String(e)));
 // The browser logs each refused request the mocks send on purpose; anything
 // else on the console at error level is a failure.
-const DELIBERATE = /^Failed to load resource: the server responded with a status of (413|422|501) /;
+const DELIBERATE = /^Failed to load resource: the server responded with a status of (413|422|500|501) /;
 page.on("console", m => { if (m.type() === "error" && !DELIBERATE.test(m.text())) errors.push(m.text()); });
 await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, r => {
   if (/fonts\.(googleapis|gstatic)\.com/.test(r.request().url())) return r.fulfill({ body: "", contentType: "text/css" });
@@ -768,8 +780,31 @@ check(/present means the property exists, not that its value is right/i.test(bod
 check(STANDARDS.every(r => body.includes(r.id)), "About: lists every standard the API returns");
 const depNames = await page.$$eval("#about-deps-h + * > div", els => els.map(e => e.querySelector(":scope > div > div").textContent));
 check(JSON.stringify(depNames) === JSON.stringify(["Pitloom", "LicenseID", "NTIA Conformance Checker"]), `About: major dependencies in order (${depNames})`);
+check(/web frontend/i.test(body) && /Pitloom generates the SBOM/.test(body) && /NTIA\s+Conformance Checker runs the conformance check/.test(body) && /LicenseID helps\s+Pitloom/.test(body),
+  "About: the intro says Lumina is a web frontend and names who does the work");
+// Each dependency shows the version the API reports; one installed from a Git
+// commit shows the short commit, not the development build string.
+await page.waitForSelector("text=version 9.8.7");
+const depRows = await page.$$eval("#about-deps-h + * > div", els => els.map(e => e.innerText));
+check(depRows[0].includes("version 9.8.7") && depRows[1].includes("version 6.5.4") && depRows[2].includes("commit abcdef1"),
+  `About: each dependency shows the version the API reports (${JSON.stringify(depRows.map(r => r.split("\n").slice(0, 3).join(" / ")))})`);
+check(!depRows[2].includes("0.1.dev1147") && !depRows[2].includes("abcdef1234"), "About: a Git-installed dependency shows the short commit only");
 await noSampleData("About");
 await shot("9-about");
+// A failed request shows the API's detail and no version.
+await page.unroute("**/api/v1/dependencies");
+await page.route("**/api/v1/dependencies", r => r.fulfill({ status: 500, json: { detail: DETAIL_DEPS } }));
+await nav("Upload SBOM");
+await nav("About");
+await page.waitForSelector("text=Could not load the dependency versions");
+body = await text();
+check(body.includes(DETAIL_DEPS) && !/version 9\.8\.7|commit abcdef1/.test(body), "About: a failed dependencies request shows its detail and no version");
+await page.unroute("**/api/v1/dependencies");
+await page.route("**/api/v1/dependencies", r => r.fulfill({ json: { dependencies: DEPENDENCIES } }));
+await shot("9-about-deps-error");
+await nav("Upload SBOM");
+await nav("About");
+await page.waitForSelector("text=version 9.8.7");
 
 // Top bar: a plain-language title, whose link name contains it (label in name).
 const topTitle = "Generate and check SBOMs against minimum elements standards";

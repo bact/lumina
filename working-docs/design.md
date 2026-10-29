@@ -1,6 +1,6 @@
 ---
 Created: 2026-05-26
-Last-Modified: 2026-10-27
+Last-Modified: 2026-10-29
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -47,7 +47,7 @@ one per input mode plus About:
 | *Generate & check* (default) | [Mode 1](#mode-1--artefact-url-sbom-generation) | `POST /api/v1/artifact/check`, then `GET /api/v1/jobs/{job_id}` |
 | *Upload SBOM* | [Mode 2](#mode-2--sbom-upload) | `POST /api/v1/sbom/check` |
 | *Import SARIF* | [Mode 3](#mode-3--sarif-import) | `POST /api/v1/sarif/import` |
-| *About* | — | `GET /api/v1/standards` |
+| *About* | — | `GET /api/v1/standards`, `GET /api/v1/dependencies` |
 
 The standard picker lists exactly what `GET /api/v1/standards` returns (the UI
 spells *standard* out as *minimum elements standard*); an entry with `ready: false` is shown but cannot be picked. With a

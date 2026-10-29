@@ -6,28 +6,67 @@ SPDX-License-Identifier: Apache-2.0
 */
 // Lumina frontend -- About screen
 //
-// What Lumina is, what it stands on, its licence, and the standards the
+// What Lumina is, what it stands on (with the version of each dependency the
+// API reports, GET /api/v1/dependencies), its licence, and the standards the
 // API lists (GET /api/v1/standards) with what each check covers.
+
+const { useState: _useSA, useEffect: _useEA } = React;
+
+// The installed version of each dependency, as the API reports it. A
+// dependency the API does not list shows no version.
+function useDependencyVersions() {
+  const [state, setState] = _useSA({ versions: null, error: "" });
+  _useEA(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const response = await fetch("/api/v1/dependencies");
+        if (!response.ok) throw new Error(await apiErrorMessage(response));
+        const body = await response.json();
+        if (!body || !Array.isArray(body.dependencies)) throw new Error("The list of dependency versions is malformed.");
+        const versions = {};
+        for (const d of body.dependencies) versions[d.id] = d;
+        if (alive) setState({ versions, error: "" });
+      } catch (err) {
+        if (alive) setState({ versions: null, error: String(err.message || err) });
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+  return state;
+}
+
+// "0.21.1", or for a package installed from a Git commit, "commit 2355afc".
+function versionText(dep) {
+  if (!dep) return "";
+  if (dep.commit) return `commit ${dep.commit.slice(0, 7)}`;
+  return `version ${dep.version}`;
+}
 
 function AboutScreen() {
   const { t, locale } = useLocale();
   const standardList = useStandards();
+  const dependencyVersions = useDependencyVersions();
 
   // ── Dependencies Lumina leans on directly ──────────────────────────────
+  // `id` is the package name the API reports the version under.
   const dependencies = [
     {
+      id: "pitloom",
       name: "Pitloom",
       role: "SBOM generator",
       detail: "Generates the SPDX 3 SBOM for a Git repository or Hugging Face model on the Generate & check screen.",
       href: "https://github.com/bact/pitloom",
     },
     {
+      id: "licenseid",
       name: "LicenseID",
       role: "Licence identifier",
       detail: "Pitloom uses it while generating an SBOM, to recognise a licence text and name it with its SPDX licence identifier.",
       href: "https://github.com/bact/licenseid",
     },
     {
+      id: "ntia-conformance-checker",
       name: "NTIA Conformance Checker",
       role: "Conformance checker",
       detail: "Runs every check (the G7, CISA 2026, FSCT and BSI rules are in the bact fork Lumina pins). Lumina turns its SARIF log into the result the screens show.",
@@ -48,16 +87,28 @@ function AboutScreen() {
           </h1>
         </div>
         <p style={{ margin: "12px 0 0", fontSize: 15, color: "var(--ink-2)", lineHeight: 1.6, maxWidth: 640 }}>
-          Lumina checks a Software Bill of Materials (SBOM) against a
-          minimum elements standard and shows, rule by rule, which of its
-          elements the SBOM has a property for. Bring an SBOM, a SARIF log from a
-          checker, or a Git or Hugging Face URL to generate one from.
+          Lumina is a web frontend for checking a Software Bill of Materials
+          (SBOM) against a minimum elements standard. The actual work is done
+          by other open source tools: Pitloom generates the SBOM, the NTIA
+          Conformance Checker runs the conformance check, and LicenseID helps
+          Pitloom name the licences it finds. Lumina brings them together and
+          shows, rule by rule, whether the SBOM has the property each rule
+          asks for.
+        </p>
+        <p style={{ margin: "12px 0 0", fontSize: 15, color: "var(--ink-2)", lineHeight: 1.6, maxWidth: 640 }}>
+          Bring an SBOM, a SARIF log from a checker, or a Git or Hugging Face
+          URL to generate one from.
         </p>
       </div>
 
       {/* ── Dependencies ────────────────────────────────────────────────── */}
       <section aria-labelledby="about-deps-h">
         <Eyebrow id="about-deps-h">Major dependencies</Eyebrow>
+        {dependencyVersions.error && (
+          <div style={{ marginTop: 8 }}>
+            <ErrorCard title="Could not load the dependency versions">{dependencyVersions.error}</ErrorCard>
+          </div>
+        )}
         <Card padding={0} style={{ marginTop: 8 }}>
           {dependencies.map((d, i) => (
             <div key={d.name} style={{
@@ -68,6 +119,11 @@ function AboutScreen() {
               <div>
                 <div style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)" }}>{d.name}</div>
                 <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 2 }}>{d.role}</div>
+                {dependencyVersions.versions && dependencyVersions.versions[d.id] && (
+                  <Mono style={{ display: "block", fontSize: 12, color: "var(--ink-2)", marginTop: 4, overflowWrap: "anywhere" }}>
+                    {versionText(dependencyVersions.versions[d.id])}
+                  </Mono>
+                )}
               </div>
               <div style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.55 }}>{d.detail}</div>
               <a href={d.href} target="_blank" rel="noopener noreferrer" style={{
