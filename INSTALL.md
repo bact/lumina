@@ -16,7 +16,7 @@ situation, then follow its section end-to-end.
 | :----- | :------- | :--- | :-------- | :-------- |
 | **A** | VM with Docker Compose — OCI Always Free + Cloudflare Tunnel | $0 | Yes | [`docker/compose/`](docker/compose/) |
 | **B** | Hugging Face Spaces | HF PRO plan (paid) to create; CPU Basic hardware is free | Mostly* | [`docker/hfspaces/`](docker/hfspaces/) |
-| **C** | Google Cloud Run | Free tier | No (scale-to-zero) | [`docker/standalone/`](docker/standalone/) |
+| **C** | Google Cloud Run | Billing account required; billed by instance time (see Option C) | No (scale-to-zero) | [`docker/standalone/`](docker/standalone/) |
 
 \* HF Spaces may sleep when inactive; the first request after a sleep takes
 30–60 s to wake.
@@ -400,10 +400,10 @@ ARG LUMINA_REF=<branch-or-tag>
 
 - Scale-to-zero means in-memory job state (SBOM generation) can be lost if
   the instance shuts down between polling calls. With `--min-instances=1` the
-  instance stays warm but consumes the free vCPU-second allowance (about 2 days
-  of one vCPU per month before small charges apply). For reliable generation jobs,
-  either set `--min-instances=1` or use the synchronous SBOM upload path.
-- Billing must be enabled even to use the free tier; set a budget alert.
+  instance stays warm, and is billed for every second it is up. For reliable
+  generation jobs, either set `--min-instances=1` or use the synchronous SBOM
+  upload path.
+- Billing must be enabled even to use the free allowance; set a budget alert.
 - The container's writable disk is memory: a cloned repository counts against
   `--memory`. A very large repository can exhaust it and the instance is
   restarted, losing the job.
@@ -470,11 +470,11 @@ alert.
        --allow-unauthenticated
    ```
 
-   Do not leave out `--no-cpu-throttling`. nginx opens the port at once, so
-   Cloud Run counts the container as started and, with throttling on, cuts
-   the CPU between requests: the Python API then never finishes starting and
-   every `/api/` call returns `502 Bad Gateway`. The same throttling would
-   starve a generation job, which runs in the background between polls.
+   Do not leave out `--no-cpu-throttling`. A generation job runs in the
+   background between the polls that check on it, and with throttling on,
+   Cloud Run cuts the CPU between requests: in a test the same job that takes
+   about 20 seconds was still running after 4 minutes. (Uploading an SBOM
+   for a check is a single request and is not affected.)
 
    Cloud Run prints the service URL (`https://lumina-xxxx-uc.a.run.app`).
 
@@ -485,8 +485,21 @@ alert.
    curl -s https://lumina-xxxx-uc.a.run.app/api/v1/standards
    ```
 
-7. **Optional — custom domain:** Cloud Run console → service → **Manage custom
-   domains**. TLS certificate is provisioned automatically.
+7. **Optional — custom domain:** the `run.app` address cannot be renamed, so
+   you need a domain of your own, verified in Google Search Console. Cloud Run
+   offers three ways to attach it
+   ([Mapping custom domains](https://docs.cloud.google.com/run/docs/mapping-custom-domains)):
+   - **Domain mapping** (Cloud Run console → service → **Manage custom
+     domains**, or `gcloud beta run domain-mappings create --service lumina
+     --domain lumina.example.org --region ${REGION}`): the simplest, with an
+     automatic TLS certificate that takes about 15 minutes and up to 24 hours.
+     It is in Preview and Google does not recommend it for production.
+   - **Global external Application Load Balancer:** Google's recommended
+     option, with a fixed monthly cost for the load balancer.
+   - **Firebase Hosting:** proxies your domain to the service, under
+     Firebase's terms rather than Google Cloud's.
+
+   Add the DNS record that the console or command shows at your DNS provider.
 
 ### Updating
 
@@ -500,15 +513,31 @@ gcloud run deploy lumina \
     --region ${REGION}
 ```
 
+### Pausing and resuming
+
+Cloud Run has no pause. Removing public access makes every request return 403
+(allow a minute or two to take effect) and keeps the service, image and
+settings:
+
+```bash
+gcloud run services remove-iam-policy-binding lumina \
+    --region ${REGION} --member=allUsers --role=roles/run.invoker
+```
+
+Resume with the same command using `add-iam-policy-binding`. To remove the
+service instead, use `gcloud run services delete lumina --region ${REGION}`;
+the image stays in Artifact Registry, so a later `gcloud run deploy` (step 5)
+brings it back without a rebuild.
+
 ### Free tier settings
 
 | Flag | Value | Reason |
 | :--- | :---- | :----- |
-| `--min-instances` | `0` | Scale-to-zero; no idle charges |
+| `--min-instances` | `0` | Scale-to-zero: the instance is shut down about 15 minutes after the last request, and billed until then |
 | `--max-instances` | `1` | One in-process job at a time |
 | `--memory` | `2Gi` | Peak during git clone + Pitloom scan |
 | `--cpu` | `1` | Checkout and conformance check are not CPU-bound |
-| `--no-cpu-throttling` | (set) | The API must start and jobs must run between requests; see step 5. The instance is billed for the whole time it is up (up to about 15 minutes after the last request), not only while a request runs |
+| `--no-cpu-throttling` | (set) | Generation jobs must run between requests; see step 5. The instance is billed for the whole time it is up (up to about 15 minutes after the last request), not only while a request runs |
 
 ---
 
@@ -595,6 +624,7 @@ These apply to all options once the deployment is working.
 | **All** Site loads but API calls fail in browser | The browser is hitting the API host directly, bypassing nginx. Use the public hostname (tunnel URL / HF Space URL / Cloud Run URL), not the raw IP or API port. |
 | **HF Spaces** Space stuck in "Building" | Check the **Logs** tab in the Space page. Common cause: pip install timeout on a slow dep — retry the build by pushing an empty commit. |
 | **HF Spaces** 503 on first request | Space is waking from sleep. Wait 30–60 s and retry. |
-| **Cloud Run** The page loads but every `/api/` call returns `502 Bad Gateway`, and the log shows no `Uvicorn running` line | CPU throttling: redeploy with `--no-cpu-throttling` (`gcloud run services update lumina --region ${REGION} --no-cpu-throttling`). |
+| **Cloud Run** The revision fails to deploy with "failed to start and listen on the port", and the log says `start-nginx: the API did not answer /api/health` | The API did not start within `LUMINA_API_WAIT` seconds (default 120). Read the log lines above that message for the Python error. |
+| **Cloud Run** A generation job stays "running" for minutes | CPU throttling: redeploy with `--no-cpu-throttling` (`gcloud run services update lumina --region ${REGION} --no-cpu-throttling`). |
 | **Cloud Run** Generation job lost between submission and poll | Instance scaled to zero. Set `--min-instances=1` or use the synchronous upload path (`POST /api/v1/sbom/check`). |
 | **Cloud Run** `gcloud builds submit` fails | Check Cloud Build quota (`cloudbuild.googleapis.com` must be enabled) and that billing is active. |

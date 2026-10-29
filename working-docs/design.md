@@ -578,7 +578,11 @@ Cloudflare is designed below, not built.  Design points only:
   image (nginx + uvicorn via supervisord).  `docker/standalone/` reads the `PORT`
   env var (Cloud Run injects `8080`; the default `7860` serves HF Spaces and local
   testing) and writes the nginx server block at start time via `start.sh`.
-  `docker/hfspaces/` git-clones Lumina at build time.
+  supervisord starts nginx through `start-nginx.sh`, which waits for the API's
+  `/api/health` first, so the port opens only when the app is ready (reason in
+  [deployment-options.md](deployment-options.md)).
+  `docker/hfspaces/` git-clones Lumina at build time and inlines the same
+  scripts.
 - The Stage 2 upgrade (a `worker` service plus Redis) rides on the same host in
   Option A and as a separate Cloud Run job or HF Space in B/C; see
   [Staged backends](#staged-backends).

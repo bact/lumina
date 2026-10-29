@@ -22,13 +22,28 @@ that are not concrete yet, live here.
 | :----- | :------- |
 | **A** VM with Docker Compose (OCI Always Free + Cloudflare Tunnel) | Always-on, full features, the unmodified `docker compose` stack. nginx and api stay on one host and talk over the compose network, so there are no cross-service URLs to re-wire. Survives a change of a platform's sleeping policy. |
 | **B** Hugging Face Spaces | Simplest setup, no infrastructure to manage, an `*.hf.space` HTTPS URL. Needs a paid HF plan to create the Space (see below). |
-| **C** Google Cloud Run | Scale-to-zero (no charges when idle), low traffic, Google Cloud ecosystem. |
+| **C** Google Cloud Run | Scale-to-zero (nothing runs while idle, but each visit bills the instance for about 15 minutes), low traffic, Google Cloud ecosystem. |
 
 ## Why the Cloud Run free-tier flags
 
 - `--max-instances 1`: one in-process job at a time, matching the
   `Semaphore(1)` in `backend/app/jobs.py`.
 - `--memory 2Gi`: peak during git clone plus Pitloom scan.
+- `--no-cpu-throttling`: required for generation. A background job gets CPU
+  only while a request is in flight: on 2026-10-29 the same job (a Git
+  repository, then check) took about 20 seconds with throttling off and was
+  still running after 4 minutes with it on. The cost is instance-based billing
+  (see the cost section).
+- Why nginx waits for the API (`docker/standalone/start-nginx.sh`): nginx is
+  the process that opens `$PORT`, and Cloud Run counts the container as
+  started once that port is open. The first deploy had nginx listen at once;
+  with throttling on, Cloud Run then cut the CPU while the API was still
+  importing its packages, the API never came up and every `/api/` call
+  returned `502`. Holding nginx back until `/api/health` answers keeps the
+  port closed, and the start-up CPU available, until the app is ready. Tested
+  on 2026-10-29 on a private Cloud Run service with throttling on: `200` on
+  every check, including after idle gaps. The inlined copy in
+  `docker/hfspaces/Dockerfile` must stay in step.
 
 ## Cost by number of users
 
@@ -61,8 +76,8 @@ Monthly cost for the options of [INSTALL.md](../INSTALL.md):
 | :----- | -: | -: | --: | ----: |
 | **A** OCI Always Free VM plus Cloudflare Tunnel | $0 | $0 | $0 | $0 |
 | **B** Hugging Face Spaces, CPU Basic | PRO plan | PRO plan | PRO plan | PRO plan, or plus about $22 for CPU Upgrade |
-| **C** Cloud Run, `--min-instances 0` | $0 | $0 | about $1 | about $14 to $31 |
-| **C** Cloud Run, `--min-instances 1` | about $10 to $15 | same | same | same, plus the usage above |
+| **C** Cloud Run, `--min-instances 0` (request-based billing; not valid with `--no-cpu-throttling`, unverified) | $0 | $0 | about $1 | about $14 to $31 |
+| **C** Cloud Run, `--min-instances 1` (same caveat) | about $10 to $15 | same | same | same, plus the usage above |
 
 - **A:** the VM is free and so is its 10 TB outbound allowance. At 1,000 users
   a day the work is 10% to 30% of one core. Oracle may reclaim an Always Free

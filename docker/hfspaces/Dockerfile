@@ -9,10 +9,13 @@
 ## The Space repo itself can contain only this one file; Lumina is cloned from
 ## GitHub during the build.
 ##
+## Creating a Docker Space needs a paid Hugging Face plan (PRO for a personal
+## account); only Static Spaces are free. See INSTALL.md, Option B.
+##
 ## To use your own fork, change LUMINA_REPO to your fork URL, or edit the
 ## git clone line below.
 ##
-## NOTE: the supervisord/nginx/start.sh config below is inlined (heredocs) so
+## NOTE: the supervisord/nginx/start.sh/start-nginx.sh config below is inlined (heredocs) so
 ## this file works alone in a Space repo. The canonical copies live in
 ## docker/standalone/ -- keep them in sync when changing either.
 
@@ -50,7 +53,7 @@ stderr_logfile=/dev/stderr
 stderr_logfile_maxbytes=0
 
 [program:nginx]
-command=/usr/sbin/nginx -g "daemon off;"
+command=/start-nginx.sh
 autostart=true
 autorestart=true
 stdout_logfile=/dev/stdout
@@ -95,7 +98,25 @@ sed "s/__PORT__/${PORT}/g" /etc/nginx/lumina.conf.template \
     > /etc/nginx/sites-enabled/lumina.conf
 exec supervisord -n -c /etc/supervisor/supervisord.conf
 EOF
-RUN chmod +x /start.sh
+
+# Starts nginx once the API answers /api/health, so the port opens only when the
+# app is ready. Canonical copy: docker/standalone/start-nginx.sh.
+RUN cat > /start-nginx.sh << 'EOF'
+#!/bin/sh
+WAIT=${LUMINA_API_WAIT:-120}
+waited=0
+until python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=2)" 2>/dev/null; do
+    waited=$((waited + 1))
+    if [ "$waited" -ge "$WAIT" ]; then
+        echo "start-nginx: the API did not answer /api/health within ${WAIT}s" >&2
+        exit 1
+    fi
+    sleep 1
+done
+exec /usr/sbin/nginx -g "daemon off;"
+EOF
+
+RUN chmod +x /start.sh /start-nginx.sh
 
 EXPOSE 7860
 CMD ["/start.sh"]

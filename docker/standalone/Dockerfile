@@ -39,7 +39,10 @@ COPY docker/standalone/supervisord.conf /etc/supervisor/conf.d/lumina.conf
 
 # Entrypoint: writes nginx config from template, then starts supervisord
 COPY docker/standalone/start.sh /start.sh
-RUN chmod +x /start.sh
+
+# Starts nginx once the API answers, so the port opens only when the app is ready
+COPY docker/standalone/start-nginx.sh /start-nginx.sh
+RUN chmod +x /start.sh /start-nginx.sh
 
 ENV PORT=7860
 EXPOSE 7860
