@@ -1,6 +1,6 @@
 ---
 Created: 2026-10-20
-Last-Modified: 2026-10-23
+Last-Modified: 2026-10-29
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -21,7 +21,7 @@ that are not concrete yet, live here.
 | Option | Best for |
 | :----- | :------- |
 | **A** VM with Docker Compose (OCI Always Free + Cloudflare Tunnel) | Always-on, full features, the unmodified `docker compose` stack. nginx and api stay on one host and talk over the compose network, so there are no cross-service URLs to re-wire. Survives a change of a platform's sleeping policy. |
-| **B** Hugging Face Spaces | Simplest setup, no infrastructure to manage, a free `*.hf.space` HTTPS URL. |
+| **B** Hugging Face Spaces | Simplest setup, no infrastructure to manage, an `*.hf.space` HTTPS URL. Needs a paid HF plan to create the Space (see below). |
 | **C** Google Cloud Run | Scale-to-zero (no charges when idle), low traffic, Google Cloud ecosystem. |
 
 ## Why the Cloud Run free-tier flags
@@ -60,7 +60,7 @@ Monthly cost for the options of [INSTALL.md](../INSTALL.md):
 | Option | 10 | 30 | 100 | 1,000 |
 | :----- | -: | -: | --: | ----: |
 | **A** OCI Always Free VM plus Cloudflare Tunnel | $0 | $0 | $0 | $0 |
-| **B** Hugging Face Spaces, CPU Basic | $0 | $0 | $0 | $0, or about $22 for CPU Upgrade |
+| **B** Hugging Face Spaces, CPU Basic | PRO plan | PRO plan | PRO plan | PRO plan, or plus about $22 for CPU Upgrade |
 | **C** Cloud Run, `--min-instances 0` | $0 | $0 | about $1 | about $14 to $31 |
 | **C** Cloud Run, `--min-instances 1` | about $10 to $15 | same | same | same, plus the usage above |
 
@@ -68,10 +68,26 @@ Monthly cost for the options of [INSTALL.md](../INSTALL.md):
   a day the work is 10% to 30% of one core. Oracle may reclaim an Always Free
   instance it judges idle, which is a risk at 10 users a day, and Arm capacity
   is often unavailable at signup. A domain is optional (about $1).
-- **B:** CPU Basic is free and CPU Upgrade (8 vCPU, 32 GB) is $0.03 an hour.
+- **B:** Hugging Face Spaces overview (checked 2026-10-28): only Static
+  Spaces are free; Docker and Gradio Spaces "require a paid plan to create"
+  (PRO for a personal account), so every user count pays the plan's price
+  (not looked up here). The hardware is separate: CPU Basic has no hourly
+  cost and CPU Upgrade (8 vCPU, 32 GB) is $0.03 an hour. The docs do not say
+  whether an existing Docker Space keeps running on CPU Basic after the plan
+  ends; forum posts suggest older free Docker Spaces still run, with no
+  guarantee. A Static Space cannot run the API, so it does not fit alone.
   Free hardware sleeps after a period of inactivity (48 hours at the time of
   writing), and an in-memory job is lost when it sleeps.
-- **C:** the free tier (2 M requests, 180 K vCPU-seconds, 360 K GiB-seconds)
+- **C:** the figures below assume request-based billing, but the service has
+  to run with `--no-cpu-throttling` (found on 2026-10-29: with throttling the
+  API never starts behind nginx, and background jobs starve). That is
+  instance-based billing: the instance is charged for as long as it is up,
+  about 15 minutes after the last request, so one visit costs roughly 900
+  vCPU-seconds and 1,800 GiB-seconds instead of the 3 vCPU-seconds above.
+  The allowance and rates differ and were not looked up; treat the C rows as
+  unverified and re-estimate from
+  [Cloud Run pricing](https://cloud.google.com/run/pricing). The free tier
+  (2 M requests, 180 K vCPU-seconds, 360 K GiB-seconds)
   covers up to about 100 users a day; the 100 row is egress only, beyond its
   free 1 GB at about $0.12 a GB. At 1,000 users the usage costs about $14 with
   the measured figures and about $31 with three times the CPU, of which about
