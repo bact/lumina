@@ -22,6 +22,7 @@ from .conformance import (
     StandardId,
     run_checker,
 )
+from .dependencies import DependencyList, installed_dependencies
 from .generate import generate_and_check
 from .jobs import InProcessJobQueue
 from .sarif_ingest import SarifIngestError, parse_sarif
@@ -117,6 +118,12 @@ def list_standards() -> dict[str, Any]:
             for std_id in get_args(StandardId)
         ]
     }
+
+
+@app.get("/api/v1/dependencies", response_model=DependencyList)
+def list_dependencies() -> DependencyList:
+    """Return the installed version (and Git commit, if any) of each dependency."""
+    return installed_dependencies()
 
 
 @app.post("/api/v1/sbom/check", response_model=SbomCheckResponse)

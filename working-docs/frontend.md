@@ -1,6 +1,6 @@
 <!--
 Created: 2026-05-26
-Last-Modified: 2026-10-22
+Last-Modified: 2026-10-29
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -26,7 +26,7 @@ refused request shows the server's own error `detail`.
 | **Generate & check** (default) | `POST /api/v1/artifact/check`, then `GET /api/v1/jobs/{job_id}` | Paste a Git repository or Hugging Face Hub URL; the server generates an SPDX 3 SBOM with Pitloom and checks it. Polls the job every 2.5 s. |
 | **Upload SBOM** | `POST /api/v1/sbom/check` (multipart `file` + `standard`) | Check an SBOM file you have, or one of the four example SBOMs. |
 | **Import SARIF** | `POST /api/v1/sarif/import` (the SARIF JSON as the body) | Read a SARIF 2.1.0 log from a file or pasted text; an example button puts one of four real logs in the text box to read (and edit) before importing; nothing is re-checked. |
-| **About** | `GET /api/v1/standards` | Dependencies, licence, and the standards the API lists with what each check covers. |
+| **About** | `GET /api/v1/standards`, `GET /api/v1/dependencies` | What Lumina is (a web frontend; Pitloom, the NTIA Conformance Checker and LicenseID do the work), its dependencies with the version the API reports (the short commit for one installed from Git), the licence, and the standards the API lists with what each check covers. |
 
 The three check screens render the result with the same `ArtifactResult`
 view: counts, per-rule outcomes grouped by cluster, gaps and run notifications.
