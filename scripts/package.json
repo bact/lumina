@@ -1,0 +1,9 @@
+{
+  "name": "lumina-ui-smoke",
+  "private": true,
+  "description": "Dependencies of scripts/ui-smoke.mjs; install them outside the repository (see AGENTS.md).",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "playwright-core": "1.64.1"
+  }
+}

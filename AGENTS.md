@@ -69,8 +69,8 @@ lumina/
 │   ├── compose/                Production compose override (VM deploy)
 │   ├── hfspaces/               Hugging Face Spaces single-file Dockerfile
 │   └── standalone/             Single-container image (Cloud Run)
-├── scripts/                    OCI VM launch + cloud-init helpers; ui-smoke.mjs
-├── .github/                    CI (backend tests, UI smoke test, Dockerfile lint) and Dependabot
+├── scripts/                    OCI VM launch + cloud-init helpers; ui-smoke.mjs and its package.json
+├── .github/                    CI (`ci.yml`: backend tests, UI smoke test, Dockerfile lint) and Dependabot
 ├── .hadolint.yaml              Hadolint rules for the Dockerfile lint
 ├── working-docs/               Internal docs (see "Documentation" below)
 │   ├── design.md               Architecture and design decisions
@@ -222,7 +222,13 @@ node scripts/ui-smoke.mjs /tmp/lumina-shots
 ```
 
 `LUMINA_SMOKE_CHROMIUM` can be left unset when playwright-core finds its own
-browser. It prints one line per check, exits non-zero on a failure, and writes
+browser. CI (`.github/workflows/ci.yml`, job "UI smoke test") runs the same
+script on every push and pull request, installing the playwright-core version
+locked in `scripts/package-lock.json` and using the runner's own Chrome; a
+change to the script's requirements (Node version, browser, environment
+variables) changes that job too.
+
+The script prints one line per check, exits non-zero on a failure, and writes
 a full-page screenshot of every state to the given directory: look at them
 after a UI change.
 
