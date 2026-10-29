@@ -400,7 +400,12 @@ ARG LUMINA_REF=<branch-or-tag>
 in one container via supervisord. Cloud Run injects `PORT=8080`; the container
 reads it at start.
 
-**Free tier:** 2 M requests/month · 180 K vCPU-seconds · 360 K GiB-seconds.
+**Free tier:** 2 M requests/month · 180 K vCPU-seconds · 360 K GiB-seconds
+(the figures for the default, request-based billing). The service needs
+`--no-cpu-throttling`, which switches it to instance-based billing with its own
+rates and allowance: check
+[Cloud Run pricing](https://cloud.google.com/run/pricing) and keep the budget
+alert.
 
 ### Steps
 
@@ -435,8 +440,8 @@ reads it at start.
        --substitutions _IMAGE=${REGION}-docker.pkg.dev/${PROJECT}/lumina/app:latest
    ```
 
-   This path has not been tested by the maintainers: no Docker daemon or
-   Google Cloud project was available when it was written.
+   This path was run end to end on 2026-10-29 (build, deploy, generate and
+   check a Git repository on the live service).
 
 5. **Deploy:**
 
@@ -446,11 +451,18 @@ reads it at start.
        --region ${REGION} \
        --memory 2Gi \
        --cpu    1 \
+       --no-cpu-throttling \
        --min-instances 0 \
        --max-instances 1 \
        --timeout 600 \
        --allow-unauthenticated
    ```
+
+   Do not leave out `--no-cpu-throttling`. nginx opens the port at once, so
+   Cloud Run counts the container as started and, with throttling on, cuts
+   the CPU between requests: the Python API then never finishes starting and
+   every `/api/` call returns `502 Bad Gateway`. The same throttling would
+   starve a generation job, which runs in the background between polls.
 
    Cloud Run prints the service URL (`https://lumina-xxxx-uc.a.run.app`).
 
@@ -484,6 +496,7 @@ gcloud run deploy lumina \
 | `--max-instances` | `1` | One in-process job at a time |
 | `--memory` | `2Gi` | Peak during git clone + Pitloom scan |
 | `--cpu` | `1` | Checkout and conformance check are not CPU-bound |
+| `--no-cpu-throttling` | (set) | The API must start and jobs must run between requests; see step 5. The instance is billed for the whole time it is up (up to about 15 minutes after the last request), not only while a request runs |
 
 ---
 
@@ -570,5 +583,6 @@ These apply to all options once the deployment is working.
 | **All** Site loads but API calls fail in browser | The browser is hitting the API host directly, bypassing nginx. Use the public hostname (tunnel URL / HF Space URL / Cloud Run URL), not the raw IP or API port. |
 | **HF Spaces** Space stuck in "Building" | Check the **Logs** tab in the Space page. Common cause: pip install timeout on a slow dep — retry the build by pushing an empty commit. |
 | **HF Spaces** 503 on first request | Space is waking from sleep. Wait 30–60 s and retry. |
+| **Cloud Run** The page loads but every `/api/` call returns `502 Bad Gateway`, and the log shows no `Uvicorn running` line | CPU throttling: redeploy with `--no-cpu-throttling` (`gcloud run services update lumina --region ${REGION} --no-cpu-throttling`). |
 | **Cloud Run** Generation job lost between submission and poll | Instance scaled to zero. Set `--min-instances=1` or use the synchronous upload path (`POST /api/v1/sbom/check`). |
 | **Cloud Run** `gcloud builds submit` fails | Check Cloud Build quota (`cloudbuild.googleapis.com` must be enabled) and that billing is active. |

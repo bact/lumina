@@ -6,7 +6,7 @@
 # Cloud Build config for the single-container image (INSTALL.md, Option C):
 #   gcloud builds submit . --config docker/standalone/cloudbuild.yaml \
 #       --substitutions _IMAGE=<region>-docker.pkg.dev/<project>/lumina/app:latest
-# Not tested: no Docker daemon or Google Cloud project was available.
+# Run end to end on Cloud Build and Cloud Run on 2026-10-29.
 steps:
   - name: gcr.io/cloud-builders/docker
     args: ["build", "-f", "docker/standalone/Dockerfile", "-t", "${_IMAGE}", "."]

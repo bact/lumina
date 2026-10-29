@@ -1,6 +1,6 @@
 ---
 Created: 2026-10-20
-Last-Modified: 2026-10-23
+Last-Modified: 2026-10-29
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -71,7 +71,16 @@ Monthly cost for the options of [INSTALL.md](../INSTALL.md):
 - **B:** CPU Basic is free and CPU Upgrade (8 vCPU, 32 GB) is $0.03 an hour.
   Free hardware sleeps after a period of inactivity (48 hours at the time of
   writing), and an in-memory job is lost when it sleeps.
-- **C:** the free tier (2 M requests, 180 K vCPU-seconds, 360 K GiB-seconds)
+- **C:** the figures below assume request-based billing, but the service has
+  to run with `--no-cpu-throttling` (found on 2026-10-29: with throttling the
+  API never starts behind nginx, and background jobs starve). That is
+  instance-based billing: the instance is charged for as long as it is up,
+  about 15 minutes after the last request, so one visit costs roughly 900
+  vCPU-seconds and 1,800 GiB-seconds instead of the 3 vCPU-seconds above.
+  The allowance and rates differ and were not looked up; treat the C rows as
+  unverified and re-estimate from
+  [Cloud Run pricing](https://cloud.google.com/run/pricing). The free tier
+  (2 M requests, 180 K vCPU-seconds, 360 K GiB-seconds)
   covers up to about 100 users a day; the 100 row is egress only, beyond its
   free 1 GB at about $0.12 a GB. At 1,000 users the usage costs about $14 with
   the measured figures and about $31 with three times the CPU, of which about
