@@ -106,7 +106,8 @@ the URL and picks the standard named below.
 These counts were measured on 2026-10-19 and 2026-10-20, and again on
 2026-10-28 with the checker (`2355afc`) and the SPDX licence database: only
 the BSI figures changed (the rule-based BSI check). A run with Pitloom 0.21.0
-from PyPI, the release this guide pins, changed none of them. A changed
+from PyPI changed none of them; the guide now pins 0.21.1, a patch release
+(a log level and two small fixes). A changed
 upstream repository or Hub card can move them by a rule or two. A model's "judged by"
 note appears for every Hub model above, and four of them (Granite, the 303M
 classifier, OpenJAI and the GGUF model) show a notification "1 component(s) are
