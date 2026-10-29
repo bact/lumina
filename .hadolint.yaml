@@ -1,0 +1,11 @@
+# SPDX-FileContributor: Arthit Suriyawongkul
+# SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
+# SPDX-FileType: SOURCE
+# SPDX-License-Identifier: Apache-2.0
+
+# Hadolint settings for the Dockerfiles checked in .github/workflows/lint.yml.
+ignored:
+  # Pinning apt package versions breaks the build as soon as Debian replaces a
+  # version in the python:3.14-slim base image's repositories; the base image
+  # tag is the pin that matters.
+  - DL3008

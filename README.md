@@ -237,6 +237,6 @@ lumina/
 │   ├── cloud-init.sh           First-boot script: installs Docker on the VM
 │   └── ui-smoke.mjs            Headless-browser smoke test of the frontend (see AGENTS.md)
 ├── docker/                     Alternative deployment images (see INSTALL.md)
-├── .github/                    CI: backend tests; Dependabot
+├── .github/                    CI: backend tests, UI smoke test, Dockerfile lint; Dependabot
 └── INSTALL.md                  Free public-deployment guide
 ```

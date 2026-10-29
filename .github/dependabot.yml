@@ -12,3 +12,25 @@ updates:
   schedule:
     interval: "weekly"
   open-pull-requests-limit: 10
+
+# Actions are pinned by commit SHA; Dependabot bumps the SHA and its version
+# comment together.
+- package-ecosystem: "github-actions"
+  cooldown:
+    default-days: 7
+  directory: "/"
+  schedule:
+    interval: "weekly"
+
+# Base images of the Dockerfiles. docker/hfspaces/Dockerfile names the same
+# python image as docker/standalone/: bump the two together.
+- package-ecosystem: "docker"
+  cooldown:
+    default-days: 7
+  directories:
+  - "/backend"
+  - "/proxy"
+  - "/docker/standalone"
+  - "/docker/hfspaces"
+  schedule:
+    interval: "weekly"

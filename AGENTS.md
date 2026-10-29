@@ -70,7 +70,8 @@ lumina/
 │   ├── hfspaces/               Hugging Face Spaces single-file Dockerfile
 │   └── standalone/             Single-container image (Cloud Run)
 ├── scripts/                    OCI VM launch + cloud-init helpers; ui-smoke.mjs
-├── .github/                    CI (backend tests) and Dependabot
+├── .github/                    CI (backend tests, UI smoke test, Dockerfile lint) and Dependabot
+├── .hadolint.yaml              Hadolint rules for the Dockerfile lint
 ├── working-docs/               Internal docs (see "Documentation" below)
 │   ├── design.md               Architecture and design decisions
 │   ├── demo.md                 Demo guide: set up, warm up, script, troubleshooting
