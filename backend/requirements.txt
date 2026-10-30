@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Web framework
-fastapi==0.159.1
+fastapi==0.161.1
 uvicorn[standard]==0.54.0
 python-multipart==0.0.32  # required by FastAPI for Form / File uploads
 
