@@ -4,17 +4,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Web framework
-fastapi==0.159.1
+fastapi==0.162.0
 uvicorn[standard]==0.54.0
 python-multipart==0.0.32  # required by FastAPI for Form / File uploads
 
 # SBOM generation (artefact-URL input)
 # Generates SPDX 3 JSON-LD from a Git repository URL or a Hugging Face Hub model.
-# Pinned to a release (0.21.0 has the fixes the G7, CISA and FSCT results
-# depend on; 0.21.1 is a patch of it). The extras are the readers for the tier-1 model formats and for
-# Hub models; without one, a model file in a cloned repository is read without
+# Pinned to a release.
+# The extras are the readers for the tier-1 model formats and for Hub models;
+# without one, a model file in a cloned repository is read without
 # its format reader.
-pitloom[ai,content-type]==0.21.1
+pitloom[ai,content-type]==0.22.0
 
 # SPDX 2 support of the checker (it requires spdx-tools>=0.8.5); pinned exactly
 # here for reproducible builds. Lumina itself does not import it.
@@ -24,4 +24,4 @@ spdx-tools==0.8.5
 ntia-conformance-checker @ git+https://github.com/bact/ntia-conformance-checker.git@2355afcd7ec9af732f80680928849db6008e6e9a
 
 # Data validation
-pydantic==2.14.1
+pydantic==2.14.2
