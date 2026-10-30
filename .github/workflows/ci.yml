@@ -1,0 +1,138 @@
+# SPDX-FileContributor: Arthit Suriyawongkul
+# SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
+# SPDX-FileType: SOURCE
+# SPDX-License-Identifier: Apache-2.0
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to a pull request supersedes the older run; runs on main are
+# never cancelled, so every commit on main gets its own result.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      # Pitloom canonicalises licence ids with this database; without it every
+      # generated SBOM carries a warning and licence ids stay as written.
+      - name: Build licenseid database
+        run: licenseid update
+
+      - name: Test, type-check and lint
+        run: |
+          pytest
+          mypy
+          pylint app tests
+
+  # scripts/ui-smoke.mjs: every screen in headless Chromium against mocked API
+  # responses (see "UI smoke test" in AGENTS.md). It needs no network because
+  # the page's scripts are vendored in frontend/vendor/.
+  smoke:
+    name: UI smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: "24"
+
+      # The playwright-core version is locked in scripts/package-lock.json (so
+      # Dependabot can bump it). node_modules goes outside the repository.
+      - name: Install playwright-core
+        run: |
+          mkdir -p "$RUNNER_TEMP/smoke"
+          cp scripts/package.json scripts/package-lock.json "$RUNNER_TEMP/smoke/"
+          npm ci --prefix "$RUNNER_TEMP/smoke"
+
+      # playwright-core drives the Chrome the runner image already has; no
+      # browser is downloaded.
+      - name: Find Chrome
+        run: |
+          for candidate in google-chrome google-chrome-stable chromium chromium-browser; do
+            if path=$(command -v "$candidate"); then
+              echo "LUMINA_SMOKE_CHROMIUM=$path" >> "$GITHUB_ENV"
+              exit 0
+            fi
+          done
+          echo "::error::No Chrome or Chromium on this runner image"
+          exit 1
+
+      - name: Run the UI smoke test
+        env:
+          LUMINA_SMOKE_NODE_MODULES: ${{ runner.temp }}/smoke/node_modules
+        run: node scripts/ui-smoke.mjs "$RUNNER_TEMP/shots"
+
+      - name: Upload screenshots
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: ui-smoke-screenshots
+          path: ${{ runner.temp }}/shots
+          retention-days: 7
+          if-no-files-found: ignore
+
+  dockerfile-list:
+    name: Find Dockerfiles
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      dockerfiles: ${{ steps.list.outputs.dockerfiles }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      # docker/hfspaces/Dockerfile is left out: it writes its config files with
+      # heredocs, which hadolint cannot parse. backend/tests/test_docker_sync.py
+      # checks those copies against docker/standalone/ instead.
+      - id: list
+        run: |
+          files=$(git ls-files '*Dockerfile' | grep -v '^docker/hfspaces/' | jq -R . | jq -sc .)
+          echo "dockerfiles=$files" >> "$GITHUB_OUTPUT"
+
+  dockerfiles:
+    name: Dockerfile lint
+    needs: dockerfile-list
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        dockerfile: ${{ fromJSON(needs.dockerfile-list.outputs.dockerfiles) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387  # v3.5.0
+        with:
+          dockerfile: ${{ matrix.dockerfile }}
+          config: .hadolint.yaml
