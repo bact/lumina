@@ -454,7 +454,12 @@ check(await page.getByRole("region", { name: /^Try an example/ }).count() === 1
   "Generate & check: the examples are a named region and the choice is announced");
 // The list is a grid of cards, three lines each, grouped by kind; the chosen card is marked.
 const grid = await page.evaluate(() => [...document.querySelectorAll("#example-generate-region .example-card")].map(c => !!c.querySelector(".example-card-head .example-name") && !!c.querySelector(".example-card-body .example-what") && c.querySelector(".example-card-body .example-source").textContent.startsWith("From ") && !c.querySelector(".example-tag")));
-check(grid.length === 12 && grid.every(Boolean), `Generate & check: twelve cards, name as heading, what it is and source in the body, no standard (${grid.length})`);
+check(grid.length === 14 && grid.every(Boolean), `Generate & check: fourteen cards, name as heading, what it is and source in the body, no standard (${grid.length})`);
+// A model whose SBOM holds no parameter count (the Keras file) shows none, rather than an invented one.
+const whatOf = (url) => card(url).locator(".example-what").innerText();
+check(await whatOf("https://huggingface.co/tanganke/clip-vit-base-patch32_emnist_letters") === "Keras v3 model · with a dataset and a base model"
+  && await whatOf("https://huggingface.co/microsoft/Mage-VL-Cowork") === "Safetensors model · 4.7B parameters",
+  "Generate & check: the Keras card states no parameter count and the Mage card states 4.7B");
 check(await page.evaluate(() => JSON.stringify([...document.querySelectorAll("#example-generate-region .example-group-label")].map(e => e.textContent))) === JSON.stringify(["Models", "Projects"]), "Generate & check: the examples are grouped as Models and Projects");
 check(await card("https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad").getAttribute("aria-current") === "true"
   && await card("https://github.com/pallets/flask").getAttribute("aria-current") === null, "Generate & check: the chosen card is marked");
