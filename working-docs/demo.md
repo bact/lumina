@@ -1,6 +1,6 @@
 ---
 Created: 2026-10-18
-Last-Modified: 2026-10-22
+Last-Modified: 2026-11-02
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -81,10 +81,10 @@ Then run the check again.
 ## 3. Warm it up (the day before, on the demo network)
 
 Run each once from the page. This confirms the URL works from that machine and
-fills caches. The page has a "Try an example" list of cards for these twelve (open
+fills caches. The page has a "Try an example" list of cards for these fourteen (open
 at first, collapsed once you start a check; its header opens it again). A card is
 headed by the repository, model or file name; its body says what it is (the model
-file format, Safetensors, GGUF, ONNX, fastText or CRFsuite, and the parameter
+file format, Safetensors, GGUF, Keras, ONNX, fastText or CRFsuite, and the parameter
 count the Hub or the file states) and where it comes from. Choosing a card fills
 the URL and picks the standard named below.
 
@@ -96,6 +96,8 @@ the URL and picks the standard named below.
 | ibm-granite/granite-4.2-30b | `https://huggingface.co/ibm-granite/granite-4.2-30b` | G7 SBOM for AI | 25 of 38 present; model Apache-2.0; parameter count read from the Hub's Safetensors summary; a `descendantOf` link to its base model `granite-4.1-30b-base`; "judged by `granite-4.2-30b`" |
 | sonyinteractive/grooming-risk-classifier | `https://huggingface.co/sonyinteractive/grooming-risk-classifier` | G7 SBOM for AI | 25 of 38 present; text classification; model Apache-2.0; parameter count read from the Hub's Safetensors summary; a `descendantOf` link to its base model `embeddinggemma-300m` |
 | JTS-AI/OpenJAI-v1.0-14B | `https://huggingface.co/JTS-AI/OpenJAI-v1.0-14B` | G7 SBOM for AI | 25 of 38 present; text generation; model Apache-2.0; parameter count read from the Hub's Safetensors summary; a `descendantOf` link to its base model `Qwen3-14B` |
+| microsoft/Mage-VL-Cowork | `https://huggingface.co/microsoft/Mage-VL-Cowork` | G7 SBOM for AI | 25 of 38 present; image-text-to-text; model Apache-2.0; parameter count (4.7B) read from the Hub's Safetensors summary; a `descendantOf` link to its base model `Mage-VL`; "judged by `Mage-VL-Cowork`" |
+| tanganke/clip-vit-base-patch32_emnist_letters | `https://huggingface.co/tanganke/clip-vit-base-patch32_emnist_letters` | G7 SBOM for AI | 27 of 56 present; a Keras v3 file of 2.8 MB (Keras 3.10.0); the dataset `tanganke/emnist_letters` linked by `trainedOn` and the base model `clip-vit-base-patch32` by `descendantOf`; no licence on the Hub card, so none in the SBOM; no parameter count (Pitloom reads the Hub's metadata, not the Keras file) |
 | Qwen/Qwen2.5-0.5B-Instruct-GGUF | `https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF` | G7 SBOM for AI | 22 of 38 present; model Apache-2.0; parameter count read from the Hub's GGUF summary; a `descendantOf` link to the base model `Qwen2.5-0.5B-Instruct` (quantized) |
 | bact/sentimentdemo | `https://github.com/bact/sentimentdemo` | G7 SBOM for AI | 22 of 38 |
 | PyThaiNLP/pythainlp (about 12 s) | `https://github.com/PyThaiNLP/pythainlp` | G7 SBOM for AI | 21 of 38; three ONNX and five CRFsuite models |
@@ -103,14 +105,15 @@ the URL and picks the standard named below.
 | pallets/flask | `https://github.com/pallets/flask` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 12 of 14; NTIA 6 of 7; BSI 7 of 13, optional provided 1 of 2 |
 | labs.etsi.org/rep/ocf/sdk | `https://labs.etsi.org/rep/ocf/sdk` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 11 of 14; NTIA 6 of 7; BSI 7 of 13, optional provided 1 of 2; a GitLab server (the repository redirects to `.git`) |
 
-These counts were measured on 2026-10-19 and 2026-10-20, and again on
+The two newest rows (Mage-VL-Cowork and the EMNIST Keras model) were measured on
+2026-11-02 with Pitloom 0.22.0. The other counts were measured on 2026-10-19 and 2026-10-20, and again on
 2026-10-28 with the checker (`2355afc`) and the SPDX licence database: only
 the BSI figures changed (the rule-based BSI check). A run with Pitloom 0.21.0
 from PyPI changed none of them; the guide now pins 0.21.1, a patch release
 (a log level and two small fixes). A changed
 upstream repository or Hub card can move them by a rule or two. A model's "judged by"
-note appears for every Hub model above, and four of them (Granite, the 303M
-classifier, OpenJAI and the GGUF model) show a notification "1 component(s) are
+note appears for every Hub model above, and six of them (Granite, the 303M
+classifier, OpenJAI, Mage-VL-Cowork, the Keras model and the GGUF model) show a notification "1 component(s) are
 not connected to the SBOM root": the base model's package has no link into the
 root. That is a note, not a failure. A different count is not a failure; a
 crash, a hang or a red error banner is.

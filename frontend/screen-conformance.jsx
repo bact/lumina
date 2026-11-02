@@ -73,6 +73,8 @@ const DEMO_EXAMPLES = [
   { subject: "granite", standard: "g7ai", url: "https://huggingface.co/ibm-granite/granite-4.2-30b", note: "a base model linked by descendantOf" },
   { subject: "sony", standard: "g7ai", url: "https://huggingface.co/sonyinteractive/grooming-risk-classifier", note: "text classification" },
   { subject: "openjai", standard: "g7ai", url: "https://huggingface.co/JTS-AI/OpenJAI-v1.0-14B", note: "text generation" },
+  { subject: "mage", standard: "g7ai", url: "https://huggingface.co/microsoft/Mage-VL-Cowork", note: "image-text-to-text, with a base model" },
+  { subject: "emnist", standard: "g7ai", url: "https://huggingface.co/tanganke/clip-vit-base-patch32_emnist_letters", note: "a small Keras file; a dataset linked by trainedOn and a base model" },
   { subject: "qwengguf", standard: "g7ai", url: "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF", note: "a quantised model with a base model" },
   { subject: "sentiment", standard: "g7ai", url: "https://github.com/bact/sentimentdemo", note: "the model file is hashed" },
   { subject: "pythainlp", standard: "g7ai", url: "https://github.com/PyThaiNLP/pythainlp", note: "slowest, about 12 s" },

@@ -24,7 +24,8 @@ const { useState: _useSE, useRef: _useRefE } = React;
 
 // What each example is about. kind: model | project | image (the group it is
 // listed in). Fields not stated by the files are not invented: a size is the
-// parameter count the SBOM holds.
+// parameter count the SBOM holds, so a model whose SBOM holds none (the Keras
+// one) shows no size.
 const EXAMPLE_SUBJECTS = {
   distilbert: { kind: "model", name: "distilbert/distilbert-base-cased-distilled-squad", format: "Safetensors", size: "65M", extra: "with a dataset", source: "Hugging Face" },
   phi4:       { kind: "model", name: "microsoft/phi-4", format: "Safetensors", size: "14.7B", source: "Hugging Face" },
@@ -33,6 +34,8 @@ const EXAMPLE_SUBJECTS = {
   sony:       { kind: "model", name: "sonyinteractive/grooming-risk-classifier", format: "Safetensors", size: "303M", source: "Hugging Face" },
   openjai:    { kind: "model", name: "JTS-AI/OpenJAI-v1.0-14B", format: "Safetensors", size: "14.8B", source: "Hugging Face" },
   qwengguf:   { kind: "model", name: "Qwen/Qwen2.5-0.5B-Instruct-GGUF", format: "GGUF", size: "630M", source: "Hugging Face" },
+  mage:       { kind: "model", name: "microsoft/Mage-VL-Cowork", format: "Safetensors", size: "4.7B", source: "Hugging Face" },
+  emnist:     { kind: "model", name: "tanganke/clip-vit-base-patch32_emnist_letters", format: "Keras v3", extra: "with a dataset and a base model", source: "Hugging Face" },
   tiny:       { kind: "model", name: "phi-tiny-random", format: "Safetensors", size: "80K", source: "a local file" },
   sentiment:  { kind: "project", name: "bact/sentimentdemo", models: "fastText model", source: "GitHub" },
   pythainlp:  { kind: "project", name: "PyThaiNLP/pythainlp", models: "ONNX and CRFsuite models", source: "GitHub" },
@@ -50,7 +53,7 @@ const EXAMPLE_GROUPS = [
 // "Safetensors model · 14.7B parameters", "Project · fastText model", ...
 function exampleWhat(subject) {
   const s = EXAMPLE_SUBJECTS[subject];
-  if (s.kind === "model") return `${s.format} model · ${s.size} parameters${s.extra ? ` · ${s.extra}` : ""}`;
+  if (s.kind === "model") return [`${s.format} model`, s.size && `${s.size} parameters`, s.extra].filter(Boolean).join(" · ");
   if (s.kind === "project") return `Project · ${s.models}`;
   return "Container image · SPDX 2 SBOM";
 }
