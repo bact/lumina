@@ -10,14 +10,14 @@
 # Minimal image — just nginx + dev config. The frontend is a volume mount in
 # docker-compose.override.yml, so edits show up without a rebuild.
 
-FROM nginx:1.27-alpine AS dev
+FROM nginx:1.29-alpine AS dev
 
 COPY proxy/dev.conf /etc/nginx/conf.d/default.conf
 
 # ── prod stage (default) ─────────────────────────────────────────────────────
 # Self-contained image — no volume mounts required.
 
-FROM nginx:1.27-alpine AS prod
+FROM nginx:1.29-alpine AS prod
 
 COPY proxy/prod.conf /etc/nginx/conf.d/default.conf
 COPY frontend/   /app/
