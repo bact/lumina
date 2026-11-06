@@ -16,10 +16,11 @@ RUN apt-get update \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# SPDX licence list for Pitloom: without it licence ids stay as written (for
-# example "apache-2.0") and every generated SBOM carries a warning saying so.
-# A failed download does not fail the build; the warning then tells the truth.
-RUN licenseid update || echo "licenseid update failed: licence ids will not be canonicalised"
+# SPDX licence list for Pitloom, to name the licence of a LICENSE file from its
+# text. A declared licence (for example "Apache2") is read without it. Offline,
+# licenseid falls back to the list in its wheel. A failure does not fail the
+# build; the generation log then says the text match was skipped.
+RUN licenseid update || echo "licenseid update failed: LICENSE file texts will not be matched"
 
 COPY app/ ./app/
 

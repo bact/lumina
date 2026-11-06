@@ -1,6 +1,6 @@
 ---
 Created: 2026-10-20
-Last-Modified: 2026-10-27
+Last-Modified: 2026-11-06
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -32,7 +32,7 @@ guide) and [deployment-options.md](deployment-options.md).
   contrast), checked by `scripts/ui-smoke.mjs` and axe-core.
 - [x] **Locales**: the app shell and each screen's heading in English, German,
   Japanese, Thai, French and Irish.
-- [x] **Pinned**: Pitloom 0.21.1 (PyPI) and the checker by commit (`2355afc`),
+- [x] **Pinned**: Pitloom 0.23.0 (PyPI) and the checker by commit (`2355afc`),
   so builds do not move.
 - [x] **Internal docs in `working-docs/`**, user docs kept to `README.md` and
   `INSTALL.md`.
@@ -42,8 +42,9 @@ guide) and [deployment-options.md](deployment-options.md).
 - [ ] **Check the demo on the real machine**: build the Docker images (never
   built where the demo guide was written), run `licenseid update`, and
   compare the counts in [demo.md](demo.md) with the app's. The counts were
-  re-measured on 2026-10-28 through the API (not Docker) with the licence
-  database and the pinned Pitloom and checker.
+  re-measured on 2026-10-28, and again on 2026-11-06 with Pitloom 0.23.0,
+  through the API (not Docker) with the licence database and the pinned
+  checker.
 - [ ] **Native-speaker review** of the Thai and Irish text and of the German
   and Japanese page titles.
 - [ ] **Tag the checker pin** (`2355afc` has no tag and lives on unmerged

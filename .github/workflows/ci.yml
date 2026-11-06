@@ -43,8 +43,8 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt -r requirements-dev.txt
 
-      # Pitloom canonicalises licence ids with this database; without it every
-      # generated SBOM carries a warning and licence ids stay as written.
+      # Pitloom names the licence of a LICENSE file from its text with this
+      # database; a declared licence is read without it.
       - name: Build licenseid database
         run: licenseid update
 

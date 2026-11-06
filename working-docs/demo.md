@@ -1,6 +1,6 @@
 ---
 Created: 2026-10-18
-Last-Modified: 2026-11-02
+Last-Modified: 2026-11-06
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -20,7 +20,8 @@ SBOM. For the full deployment options (VM, Hugging Face Spaces, Cloud Run) see
 Two containers from `docker-compose.yml`: `nginx` (the static page, which
 proxies `/api/`) and `api` (FastAPI). The `api` image installs the conformance
 checker by Git commit and Pitloom by release (`backend/requirements.txt`) and runs
-`licenseid update` at build time, so licence ids are canonicalised.
+`licenseid update` at build time, so Pitloom can name the licence of a
+LICENSE file from its text (a declared licence is read without it).
 
 | Need | Why | Check |
 | :--- | :-- | :---- |
@@ -70,7 +71,8 @@ that the system was judged by `phi-tiny-random`.
 
 **Licence database.** Run one *Generate & check* (next step). The result must
 not carry a notification starting `licenseid database cannot be used`. If it
-does, the build could not download the licence list:
+does, the build could not install the licence list (Pitloom warns only when
+it needs the list: for a LICENSE file in a project that declares no licence):
 
 ```shell
 docker compose exec api licenseid update
@@ -108,9 +110,9 @@ the URL and picks the standard named below.
 The two newest rows (Mage-VL-Cowork and the EMNIST Keras model) were measured on
 2026-11-02 with Pitloom 0.22.0. The other counts were measured on 2026-10-19 and 2026-10-20, and again on
 2026-10-28 with the checker (`2355afc`) and the SPDX licence database: only
-the BSI figures changed (the rule-based BSI check). A run with Pitloom 0.21.0
-from PyPI changed none of them; the guide now pins 0.21.1, a patch release
-(a log level and two small fixes). A changed
+the BSI figures changed (the rule-based BSI check). A run of every row on
+2026-11-06 with Pitloom 0.23.0, the release this guide pins, changed none of
+them. A changed
 upstream repository or Hub card can move them by a rule or two. A model's "judged by"
 note appears for every Hub model above, and six of them (Granite, the 303M
 classifier, OpenJAI, Mage-VL-Cowork, the Keras model and the GGUF model) show a notification "1 component(s) are
@@ -221,7 +223,7 @@ For a curl-only demo of the API (no web page). Needs Python 3.14 and `git`.
 cd backend
 python3.14 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt          # one to four minutes
-licenseid update                         # SPDX licence list; without it licence ids are not canonicalised
+licenseid update                         # SPDX licence list; without it no licence is named from a LICENSE file's text
 uvicorn app.main:app --port 8000          # leave running; use a second terminal below
 # second terminal, from the repository root:
 cd backend && curl -s -F file=@../frontend/examples/phi-tiny-random.spdx3.json -F standard=g7ai \

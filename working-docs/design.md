@@ -1,6 +1,6 @@
 ---
 Created: 2026-05-26
-Last-Modified: 2026-10-29
+Last-Modified: 2026-11-06
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -380,7 +380,9 @@ JSON SBOM, per-rule `evidence`; Mode 1 also adds `generation_log`; Mode 3 sets
     `RemoteSourceError` code to a `GenerationError`. Pitloom logs each redirect
     (source and target URLs), the repository, branch and folder a URL named,
     and every refusal (a `WARNING:` as well as the error), and all of that
-    reaches the generation log and the notifications.
+    reaches the generation log and the notifications. Lumina keeps a record's
+    message text: the ` [code]` Pitloom's own stderr lines end with is not in
+    it (the code is the record's `pitloom_code`, which Lumina does not show).
   - **Hugging Face Hub URLs** — Pitloom's `generate_model_sbom(url)`
     (needs the `pitloom[ai]` extra, which brings `huggingface_hub`). Reads HF
     metadata via the HF API; it does **not** download model files, so the host
