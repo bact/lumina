@@ -14,7 +14,7 @@ python-multipart==0.0.32  # required by FastAPI for Form / File uploads
 # The extras are the readers for the tier-1 model formats and for Hub models;
 # without one, a model file in a cloned repository is read without
 # its format reader.
-pitloom[ai,content-type]==0.22.1
+pitloom[ai,content-type]==0.23.0
 
 # SPDX 2 support of the checker (it requires spdx-tools>=0.8.5); pinned exactly
 # here for reproducible builds. Lumina itself does not import it.
