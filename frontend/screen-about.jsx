@@ -93,7 +93,7 @@ function AboutScreen() {
           Conformance Checker runs the conformance check, and LicenseID helps
           Pitloom name the licences it finds. Lumina brings them together and
           shows, rule by rule, whether the SBOM has the property each rule
-          asks for.
+          asks for. &mdash; <a href="https://pitloom.web.app/">https://pitloom.web.app/</a>
         </p>
         <p style={{ margin: "12px 0 0", fontSize: 15, color: "var(--ink-2)", lineHeight: 1.6, maxWidth: 640 }}>
           Bring an SBOM, a SARIF log from a checker, or a Git or Hugging Face
@@ -208,10 +208,10 @@ function AboutScreen() {
       </section>
 
       <MarginNote title="A note">
-        Lumina is research software developed in the open. Field mappings and
-        standard citations track public guidance documents but are not legal
-        advice -- verify against the canonical source before relying on a
-        conformance result.
+        Lumina is research software developed in the open.
+        Field mappings and standard citations track public guidance documents
+        but still in development and are not legal advice
+        -- verify against the canonical source before relying on a conformance result.
       </MarginNote>
     </div>
   );
