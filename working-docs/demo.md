@@ -1,6 +1,6 @@
 ---
 Created: 2026-10-18
-Last-Modified: 2026-11-06
+Last-Modified: 2026-11-07
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -110,9 +110,9 @@ the URL and picks the standard named below.
 The two newest rows (Mage-VL-Cowork and the EMNIST Keras model) were measured on
 2026-11-02 with Pitloom 0.22.0. The other counts were measured on 2026-10-19 and 2026-10-20, and again on
 2026-10-28 with the checker (`2355afc`) and the SPDX licence database: only
-the BSI figures changed (the rule-based BSI check). A run of every row on
-2026-11-06 with Pitloom 0.23.0, the release this guide pins, changed none of
-them. A changed
+the BSI figures changed (the rule-based BSI check). Runs of every row on
+2026-11-06 with Pitloom 0.23.0 and on 2026-11-07 with Pitloom 0.23.1 (the
+release this guide pins) and LicenseID 0.7.2 changed none of them. A changed
 upstream repository or Hub card can move them by a rule or two. A model's "judged by"
 note appears for every Hub model above, and six of them (Granite, the 303M
 classifier, OpenJAI, Mage-VL-Cowork, the Keras model and the GGUF model) show a notification "1 component(s) are
