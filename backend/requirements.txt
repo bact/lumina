@@ -16,6 +16,11 @@ python-multipart==0.0.32  # required by FastAPI for Form / File uploads
 # its format reader.
 pitloom[ai,content-type]==0.23.3
 
+# Licence database and SPDX licence-id matching, used by Pitloom (it requires
+# licenseid>=0.8.1,<0.9); pinned exactly here for reproducible builds. Lumina
+# itself does not import it.
+licenseid==0.8.2
+
 # SPDX 2 support of the checker (it requires spdx-tools>=0.8.5); pinned exactly
 # here for reproducible builds. Lumina itself does not import it.
 spdx-tools==0.8.5
