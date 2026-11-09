@@ -112,7 +112,7 @@ The two newest rows (Mage-VL-Cowork and the EMNIST Keras model) were measured on
 2026-10-28 with the checker (`2355afc`) and the SPDX licence database: only
 the BSI figures changed (the rule-based BSI check). Runs of every row on
 2026-11-06 with Pitloom 0.23.0, on 2026-11-07 with Pitloom 0.23.1 and
-LicenseID 0.7.2, and on 2026-11-08, 2026-11-09 and 2026-11-09 with Pitloom 0.23.3
+LicenseID 0.7.2, and on 2026-11-08 and 2026-11-09 with Pitloom 0.23.3
 (the release this guide pins) and LicenseID 0.8.1, 0.8.2 and 0.8.4 (the
 release it pins) changed none of them. A changed
 upstream repository or Hub card can move them by a rule or two. A model's "judged by"
