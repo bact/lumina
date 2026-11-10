@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: Lumina - Web-based demo for Pitloom SBOM generator
+title: Lumina - A web-based demo for Pitloom SBOM generator
 authors:
   - family-names: Suriyawongkul
     given-names: Arthit
