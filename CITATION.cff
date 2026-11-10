@@ -8,7 +8,7 @@ authors:
 abstract: Generates SPDX 3 SBOMs directly from Git and Hugging Face URLs
 repository-code: "https://github.com/bact/lumina"
 type: software
-version: 0.1
+version: 1.0
 license-url: "https://spdx.org/licenses/Apache-2.0"
 keywords:
   - sbom
