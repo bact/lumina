@@ -9,6 +9,8 @@ SPDX-License-Identifier: CC0-1.0
 
 A web demo for the [Pitloom] software bill of materials (SBOM) generator.
 
+📢 **News:** We were demoed at the [ETSI Security Conference 2026](https://www.etsi.org/posters-demo-presenters/implementing-ai-supply-chain-transparency-using-g7-software-bill-of-materials-for-ai-and-spdx-3/)!
+
 - **Generate:** Create an SPDX 3 SBOM directly from any Git or Hugging Face Hub URL.
 - **Validate:** Check the generated SBOM against minimum element standards.
 
@@ -24,6 +26,10 @@ in the SBOM source, the SBOM itself (download and highlighted source), and, for
 a generated SBOM, the generator's log. With a result on screen, picking another
 minimum elements standard checks the same SBOM again without generating or
 uploading it again.
+
+We were demoed at ETSI Security Conference 2026
+https://www.etsi.org/posters-demo-presenters/implementing-ai-supply-chain-transparency-using-g7-software-bill-of-materials-for-ai-and-spdx-3/
+
 
 ---
 
