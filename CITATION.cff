@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: Lumina - Web-based demo for Pitloom SBOM generator
+authors:
+  - family-names: Suriyawongkul
+    given-names: Arthit
+    orcid: https://orcid.org/0000-0002-9698-1899
+abstract: Generates SPDX 3 SBOMs directly from Git and Hugging Face URLs
+repository-code: "https://github.com/bact/lumina"
+type: software
+version: 0.1
+license-url: "https://spdx.org/licenses/Apache-2.0"
+keywords:
+  - sbom
+  - software bill of materials
+  - spdx
+  - supply chain security
+  - aibom
+  - transparency
+  - metadata
+  - ai sbom
+  - software supply chain security
+date-released: 2026-11-09
