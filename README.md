@@ -27,10 +27,6 @@ a generated SBOM, the generator's log. With a result on screen, picking another
 minimum elements standard checks the same SBOM again without generating or
 uploading it again.
 
-We were demoed at ETSI Security Conference 2026
-https://www.etsi.org/posters-demo-presenters/implementing-ai-supply-chain-transparency-using-g7-software-bill-of-materials-for-ai-and-spdx-3/
-
-
 ---
 
 ## Quick start with Docker
