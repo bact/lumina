@@ -7,7 +7,11 @@ SPDX-License-Identifier: CC0-1.0
 
 # Lumina
 
-A web-based Software Bill of Materials (SBOM) conformance checker.
+A web-based Software Bill of Materials (SBOM) generator and conformance checker.
+
+It demonstrates what [Pitloom] can generate.
+
+[Pitloom]: https://github.com/bact/pitloom
 
 Lumina checks an SBOM against a minimum elements standard and shows, rule
 by rule, whether the SBOM has the property each rule asks for -- so the answer
