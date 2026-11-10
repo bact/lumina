@@ -7,18 +7,15 @@ SPDX-License-Identifier: CC0-1.0
 
 # Lumina
 
-A web-based Software Bill of Materials (SBOM) generator and conformance checker.
+A web demo for the [Pitloom] software bill of materials (SBOM) generator.
 
-It demonstrates what [Pitloom] can generate.
+- **Generate:** Create an SPDX 3 SBOM directly from any Git or Hugging Face Hub URL.
+- **Validate:** Check the generated SBOM against minimum element standards.
+
+*Note: The conformance checks are run by a custom branch of the [ntia-conformance-checker][checker].*
 
 [Pitloom]: https://github.com/bact/pitloom
-
-Lumina checks an SBOM against a minimum elements standard and shows, rule
-by rule, whether the SBOM has the property each rule asks for -- so the answer
-to *"are we conformant?"* stops being a folder of PDFs. Bring an SBOM file, a
-SARIF log from a checker, or a Git or Hugging Face URL for Lumina to generate
-an SBOM from. The checks themselves are run by
-[ntia-conformance-checker][checker].
+[checker]: https://github.com/bact/ntia-conformance-checker
 
 The web UI has four screens: *Generate & check* (a URL), *Upload SBOM*,
 *Import SARIF* and *About*. It shows only what the API returns: per rule, the
@@ -196,7 +193,6 @@ supports it; the UI lists what `GET /api/v1/standards` returns. See
 **Roadmap:** EU CRA, EO 14028, FDA PMP, and ISO/IEC 5230 are planned; none is
 in the API yet.
 
-[checker]: https://github.com/bact/ntia-conformance-checker
 [sarif]: https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html
 [bom]: https://bact.github.io/bom/
 
