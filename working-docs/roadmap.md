@@ -45,6 +45,15 @@ guide) and [deployment-options.md](deployment-options.md).
   re-measured on 2026-10-28, and again on 2026-11-11 with Pitloom 0.24.0 and LicenseID 0.8.4,
   through the API (not Docker) with the licence database and the pinned
   checker.
+- [ ] **Trust list for model files**: `LUMINA_TRUST_MODEL_FILES=1` trusts
+  every repository, which suits a limited demo only. Planned instead: an
+  operator-set list of patterns (never a request option), such as
+  `github.com/PyThaiNLP/*` for every repository of a GitHub organisation or
+  `gitlab.com/pythainlp/*` for a GitLab group, or one exact repository URL.
+  A repository that matches gets `trust_model_files=True`; any other stays
+  unread (listed and hashed). It needs the same URL parsing as the SSRF guard
+  in `generate.py`, and a test per host that a pattern does not match a
+  look-alike name (`github.com/PyThaiNLP-evil/x`).
 - [ ] **Native-speaker review** of the Thai and Irish text and of the German
   and Japanese page titles.
 - [ ] **Tag the checker pin** (`2355afc` has no tag and lives on unmerged

@@ -23,7 +23,7 @@ from app.conformance import Notification
 from app.generate import _ensure_public_http_url
 from app.generation_log import hide_temp_dir
 from app.generators import GenerationError, generate_from_huggingface
-from app.generators.git import max_clone_bytes
+from app.generators.git import generate_from_git, max_clone_bytes, trust_model_files
 from app.generators.base import creation_info
 
 SPDX3_FIXTURE = Path(__file__).parent / "fixtures" / "sbom" / "spdx3_g7ai.json"
@@ -394,3 +394,50 @@ def test_the_clone_cap_is_the_setting_or_512_mib(
     else:
         monkeypatch.setenv("LUMINA_MAX_CLONE_BYTES", raw)
     assert max_clone_bytes() == expected
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (None, False),
+        ("", False),
+        ("0", False),
+        ("no", False),
+        ("1", True),
+        ("true", True),
+        (" TRUE ", True),
+        ("yes", True),
+    ],
+    ids=["unset", "empty", "zero", "no", "one", "true", "spaced", "yes"],
+)
+def test_model_files_are_trusted_only_when_the_operator_says_so(
+    monkeypatch: pytest.MonkeyPatch, raw: str | None, expected: bool
+) -> None:
+    """LUMINA_TRUST_MODEL_FILES is off unless it is 1, true or yes."""
+    if raw is None:
+        monkeypatch.delenv("LUMINA_TRUST_MODEL_FILES", raising=False)
+    else:
+        monkeypatch.setenv("LUMINA_TRUST_MODEL_FILES", raw)
+    assert trust_model_files() is expected
+
+
+@pytest.mark.parametrize("trusted", [False, True])
+def test_the_git_generator_passes_the_cap_and_the_trust_to_pitloom(
+    monkeypatch: pytest.MonkeyPatch, trusted: bool
+) -> None:
+    """Pitloom gets the clone cap as ``max_download_bytes`` and the trust
+    setting as ``trust_model_files``; the repository's own config is ignored."""
+    import pitloom.assemble  # pylint: disable=import-outside-toplevel
+
+    seen: dict[str, object] = {}
+    monkeypatch.setattr(
+        pitloom.assemble,
+        "generate_git_project_sbom",
+        lambda url, **kwargs: seen.update(kwargs, url=url),
+    )
+    monkeypatch.setenv("LUMINA_MAX_CLONE_BYTES", "1048576")
+    monkeypatch.setenv("LUMINA_TRUST_MODEL_FILES", "1" if trusted else "0")
+    generate_from_git("https://example.org/r.git", "out.json", lambda _url: None)
+    assert seen["url"] == "https://example.org/r.git"
+    assert seen["max_download_bytes"] == 1048576
+    assert seen["trust_model_files"] is trusted

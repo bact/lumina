@@ -311,8 +311,12 @@ hand, and a screen reader when one is at hand.
 - A Git clone is stopped past `LUMINA_MAX_CLONE_BYTES` of disk (default
   512 MiB; `git.too-large`); Cloud Run's disk is memory, so raise it only with
   the instance's memory. Lumina passes it to Pitloom as `max_download_bytes`
-  (Pitloom's own default is also 512 MiB since 0.24.0) and never sets
-  `trust_model_files`: a repository's model files stay unread.
+  (Pitloom's own default is also 512 MiB since 0.24.0).
+- Model files of a cloned repository are read only when the operator sets
+  `LUMINA_TRUST_MODEL_FILES=1` (Pitloom's `trust_model_files`); unset, they are
+  listed and hashed but not read, because the readers run on an untrusted file.
+  Never a request option. The public demo sets it; a trust list by pattern
+  (a GitHub organisation, a GitLab group) is planned: see `working-docs/roadmap.md`.
 - Conformance comes from the checker alone: it reads the file (SPDX 2
   through `spdx-tools`, SPDX 3 through its own reader) and reports a file it
   cannot read as an `spdx.parsing-error` notification. Lumina only parses

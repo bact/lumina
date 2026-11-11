@@ -43,6 +43,7 @@ git clone https://github.com/bact/lumina.git
 cd lumina
 git checkout main                  # or the tag made for the demo
 export HF_TOKEN=hf_...             # optional: a read token from huggingface.co, avoids Hub rate limits
+export LUMINA_TRUST_MODEL_FILES=1  # read the model files of a cloned repository (the Git cards below need it)
 docker compose up --build
 ```
 
@@ -101,9 +102,9 @@ the URL and picks the standard named below.
 | microsoft/Mage-VL-Cowork | `https://huggingface.co/microsoft/Mage-VL-Cowork` | G7 SBOM for AI | 25 of 38 present; image-text-to-text; model Apache-2.0; parameter count (4.7B) read from the Hub's Safetensors summary; a `descendantOf` link to its base model `Mage-VL`; "judged by `Mage-VL-Cowork`" |
 | tanganke/clip-vit-base-patch32_emnist_letters | `https://huggingface.co/tanganke/clip-vit-base-patch32_emnist_letters` | G7 SBOM for AI | 27 of 56 present; a Keras v3 file of 2.8 MB (Keras 3.10.0); the dataset `tanganke/emnist_letters` linked by `trainedOn` and the base model `clip-vit-base-patch32` by `descendantOf`; no licence on the Hub card, so none in the SBOM; no parameter count (Pitloom reads the Hub's metadata, not the Keras file) |
 | Qwen/Qwen2.5-0.5B-Instruct-GGUF | `https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF` | G7 SBOM for AI | 22 of 38 present; model Apache-2.0; parameter count read from the Hub's GGUF summary; a `descendantOf` link to the base model `Qwen2.5-0.5B-Instruct` (quantized) |
-| bact/sentimentdemo | `https://github.com/bact/sentimentdemo` | G7 SBOM for AI | 13 of 38; the fastText model is listed without metadata |
-| PyThaiNLP/pythainlp (about 12 s) | `https://github.com/PyThaiNLP/pythainlp` | G7 SBOM for AI | 13 of 38; three ONNX and five CRFsuite models, listed without metadata |
-| gitlab.com/pythainlp/pythainlp (about 18 s) | `https://gitlab.com/pythainlp/pythainlp` | G7 SBOM for AI | 13 of 38 present; three ONNX models, listed without metadata; a GitLab mirror of the project above |
+| bact/sentimentdemo | `https://github.com/bact/sentimentdemo` | G7 SBOM for AI | 22 of 38 |
+| PyThaiNLP/pythainlp (about 12 s) | `https://github.com/PyThaiNLP/pythainlp` | G7 SBOM for AI | 21 of 38; three ONNX and five CRFsuite models |
+| gitlab.com/pythainlp/pythainlp (about 18 s) | `https://gitlab.com/pythainlp/pythainlp` | G7 SBOM for AI | 27 of 38 present; three ONNX models; a GitLab mirror of the project above |
 | pallets/flask | `https://github.com/pallets/flask` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 12 of 14; NTIA 6 of 7; BSI 7 of 13, optional provided 1 of 2 |
 | labs.etsi.org/rep/ocf/sdk | `https://labs.etsi.org/rep/ocf/sdk` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 11 of 14; NTIA 6 of 7; BSI 7 of 13, optional provided 1 of 2; a GitLab server (the repository redirects to `.git`) |
 
@@ -113,14 +114,13 @@ The two newest rows (Mage-VL-Cowork and the EMNIST Keras model) were measured on
 the BSI figures changed (the rule-based BSI check). Runs of every row on
 2026-11-06 with Pitloom 0.23.0, on 2026-11-07 with Pitloom 0.23.1 and
 LicenseID 0.7.2, and on 2026-11-08 and 2026-11-09 with Pitloom 0.23.3 and
-LicenseID 0.8.1, 0.8.2 and 0.8.4 changed none of them. The Git rows (the
-last three G7 SBOM for AI rows) were measured again on 2026-11-10 with Pitloom
-0.23.4 and on 2026-11-11 with Pitloom 0.24.0 (the release this guide pins)
-and LicenseID 0.8.4 (the release it pins): they fell to 13 of 38 because
-Pitloom does not run a model reader on a file downloaded from a Git URL
-(unless it is told to trust the model files, which Lumina never does: the
-repository is untrusted). It lists the model file without metadata and its
-log says so. The other rows did not change, 0.24.0 included. A changed
+LicenseID 0.8.1, 0.8.2 and 0.8.4, and on 2026-11-11 with Pitloom 0.24.0 (the
+release this guide pins) and LicenseID 0.8.4 (the release it pins), changed
+none of them. Since Pitloom 0.23.4 the three Git rows (the last three G7 SBOM for
+AI rows) keep their counts only with `LUMINA_TRUST_MODEL_FILES=1`: without it
+Pitloom does not run a model reader on a file downloaded from a Git URL, lists
+the file without metadata (the *Generator log* says so) and the three rows fall
+to 13 of 38. A changed
 upstream repository or Hub card can move them by a rule or two. A model's "judged by"
 note appears for every Hub model above, and six of them (Granite, the 303M
 classifier, OpenJAI, Mage-VL-Cowork, the Keras model and the GGUF model) show a notification "1 component(s) are
@@ -170,18 +170,15 @@ and the SARIF log the checker made from it for the G7 SBOM for AI standard.
    Then click the card *microsoft/phi-4*: a
    model with no dataset. Its parameter count comes from the Safetensors summary
    on the Hub; no weights are downloaded. The *Generator log* says so: it reads the Hub metadata and downloads no model files.
-5. **A project that ships a fastText model.** Click the card *bact/sentimentdemo*, then *Generate & check*. Pitloom finds the model file and hashes it (SHA-256 and SHA-512). It
-   does not run the fastText reader on a file downloaded from a Git URL, so the
-   model is listed without metadata (the *Generator log* says so). Its
+5. **A project that ships a fastText model.** Click the card *bact/sentimentdemo*, then *Generate & check*. Pitloom finds the model file and hashes it (SHA-256 and SHA-512). Its
    name is just "model": the file name is all the file states, and the SBOM says
    so. The System producer rule is *Missing* while one line inside it says the
    project has a producer: the rule judges every root package, and the model
    has none.
-6. **A project that ships ONNX and CRFsuite models.** Click the card *PyThaiNLP/pythainlp*, then *Generate & check*. Slowest step (about 12 seconds). Pitloom lists the three ONNX and five
-   CRFsuite models without metadata, because it does not run a model reader on a
-   file downloaded from a Git URL (the *Generator log* says so); it hashes them
-   and records nothing the files might state. The Hub metadata of a Hugging Face
-   model is still read.
+6. **A project that ships ONNX and CRFsuite models.** Click the card *PyThaiNLP/pythainlp*, then *Generate & check*. Slowest step (about 12 seconds). Three ONNX models carry a version and a
+   parameter count read from the files; five CRFsuite models carry less, because
+   that format states less. The SBOM records what each file states and nothing
+   more.
 7. **A project with no AI model.** Click the card *pallets/flask* (it
    picks *CISA 2026 Minimum Elements*), then *Generate & check*, then click *BSI
    TR-03183-2* to check the same SBOM again. BSI shows optional elements apart from *Missing*
