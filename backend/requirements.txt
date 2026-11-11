@@ -14,7 +14,7 @@ python-multipart==0.0.32  # required by FastAPI for Form / File uploads
 # The extras are the readers for the tier-1 model formats and for Hub models;
 # without one, a model file in a cloned repository is read without
 # its format reader.
-pitloom[ai,content-type]==0.23.3
+pitloom[ai,content-type]==0.24.0
 
 # Licence database and SPDX licence-id matching, used by Pitloom (it requires
 # licenseid>=0.8.1,<0.9); pinned exactly here for reproducible builds. Lumina

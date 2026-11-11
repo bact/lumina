@@ -1,6 +1,6 @@
 ---
 Created: 2026-10-18
-Last-Modified: 2026-11-09
+Last-Modified: 2026-11-11
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -43,6 +43,7 @@ git clone https://github.com/bact/lumina.git
 cd lumina
 git checkout main                  # or the tag made for the demo
 export HF_TOKEN=hf_...             # optional: a read token from huggingface.co, avoids Hub rate limits
+export LUMINA_TRUST_MODEL_FILES=1  # read the model files of a cloned repository (the Git cards below need it)
 docker compose up --build
 ```
 
@@ -112,9 +113,14 @@ The two newest rows (Mage-VL-Cowork and the EMNIST Keras model) were measured on
 2026-10-28 with the checker (`2355afc`) and the SPDX licence database: only
 the BSI figures changed (the rule-based BSI check). Runs of every row on
 2026-11-06 with Pitloom 0.23.0, on 2026-11-07 with Pitloom 0.23.1 and
-LicenseID 0.7.2, and on 2026-11-08 and 2026-11-09 with Pitloom 0.23.3
-(the release this guide pins) and LicenseID 0.8.1, 0.8.2 and 0.8.4 (the
-release it pins) changed none of them. A changed
+LicenseID 0.7.2, and on 2026-11-08 and 2026-11-09 with Pitloom 0.23.3 and
+LicenseID 0.8.1, 0.8.2 and 0.8.4, and on 2026-11-11 with Pitloom 0.24.0 (the
+release this guide pins) and LicenseID 0.8.4 (the release it pins), changed
+none of them. Since Pitloom 0.23.4 the three Git rows (the last three G7 SBOM for
+AI rows) keep their counts only with `LUMINA_TRUST_MODEL_FILES=1`: without it
+Pitloom does not run a model reader on a file downloaded from a Git URL, lists
+the file without metadata (the *Generator log* says so) and the three rows fall
+to 13 of 38. A changed
 upstream repository or Hub card can move them by a rule or two. A model's "judged by"
 note appears for every Hub model above, and six of them (Granite, the 303M
 classifier, OpenJAI, Mage-VL-Cowork, the Keras model and the GGUF model) show a notification "1 component(s) are

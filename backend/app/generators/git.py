@@ -35,6 +35,20 @@ def max_clone_bytes() -> int:
     return int(raw) if raw.isdigit() and int(raw) > 0 else _DEFAULT_MAX_CLONE_BYTES
 
 
+def trust_model_files() -> bool:
+    """``LUMINA_TRUST_MODEL_FILES`` (``1``, ``true`` or ``yes``); off when unset.
+
+    On, Pitloom runs its model readers on the model files of a cloned
+    repository, which it does not for an untrusted one (the files are then only
+    listed and hashed).  Only the operator sets it, never a request.
+    """
+    return os.environ.get("LUMINA_TRUST_MODEL_FILES", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
 def generate_from_git(
     repo_url: str, output_path: str, check_url: Callable[[str], None]
 ) -> None:
@@ -60,7 +74,8 @@ def generate_from_git(
         generate_git_project_sbom(
             repo_url,
             check_url=check_url,
-            max_clone_bytes=max_clone_bytes(),
+            max_download_bytes=max_clone_bytes(),
+            trust_model_files=trust_model_files(),
             output_path=Path(output_path),
             creation_metadata=creation_info(),
             # The repository is untrusted: Pitloom ignores its own

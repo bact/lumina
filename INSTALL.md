@@ -608,6 +608,13 @@ These apply to all options once the deployment is working.
    `LUMINA_MAX_CLONE_BYTES` (default 512 MiB) is refused with `git.too-large`;
    raise it only with the instance's memory.
 
+9. **Model files of a repository.** Pitloom reads the model files of a cloned
+   repository (ONNX, fastText, CRFsuite, ...) only if the operator sets
+   `LUMINA_TRUST_MODEL_FILES=1`. Without it they are listed and hashed but not
+   read, so a Git URL gets fewer rules satisfied (the G7 SBOM for AI check
+   loses the model's own metadata). The readers parse an untrusted file, so
+   turn it on only for a limited or private demo, not for an open service.
+
 ---
 
 ## Troubleshooting
