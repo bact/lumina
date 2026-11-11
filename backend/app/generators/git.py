@@ -60,7 +60,7 @@ def generate_from_git(
         generate_git_project_sbom(
             repo_url,
             check_url=check_url,
-            max_clone_bytes=max_clone_bytes(),
+            max_download_bytes=max_clone_bytes(),
             output_path=Path(output_path),
             creation_metadata=creation_info(),
             # The repository is untrusted: Pitloom ignores its own

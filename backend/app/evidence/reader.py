@@ -231,14 +231,27 @@ class SbomReader:
     def _item(self, key: str, value: Any, line: int) -> EvidenceItem:
         return text_item(key, self._describe(value), line)
 
+    def _license_label(self, element: dict[str, Any]) -> str | None:
+        """A licence expression, or for a ``LicenseRef`` that the element maps
+        (``simplelicensing_customIdToUri``) to a licence text, that text's name
+        (or text) instead of the opaque id."""
+        expression = element.get("simplelicensing_licenseExpression")
+        for entry in as_list(element.get("simplelicensing_customIdToUri")):
+            if isinstance(entry, dict) and entry.get("key") == expression:
+                text = self._data(entry.get("value"))
+                mapped = text and (
+                    text.get("name") or text.get("simplelicensing_licenseText")
+                )
+                if isinstance(mapped, str):
+                    return mapped
+        return expression if isinstance(expression, str) else None
+
     def _describe(self, value: Any) -> str:
         """A readable rendering of a property value; an element reference
         shows the element's name (or licence expression) first."""
         if isinstance(value, str):
             target = self._data(value)
-            label = target and (
-                target.get("name") or target.get("simplelicensing_licenseExpression")
-            )
+            label = target and (target.get("name") or self._license_label(target))
             return f"{label} ({value.strip()})" if isinstance(label, str) else value
         if isinstance(value, list):
             return ", ".join(self._describe(v) for v in value[:MAX_ITEMS])

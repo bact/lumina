@@ -310,7 +310,9 @@ hand, and a screen reader when one is at hand.
   hostnames, operator-set; never a request option, which would defeat the guard).
 - A Git clone is stopped past `LUMINA_MAX_CLONE_BYTES` of disk (default
   512 MiB; `git.too-large`); Cloud Run's disk is memory, so raise it only with
-  the instance's memory.
+  the instance's memory. Lumina passes it to Pitloom as `max_download_bytes`
+  (Pitloom's own default is also 512 MiB since 0.24.0) and never sets
+  `trust_model_files`: a repository's model files stay unread.
 - Conformance comes from the checker alone: it reads the file (SPDX 2
   through `spdx-tools`, SPDX 3 through its own reader) and reports a file it
   cannot read as an `spdx.parsing-error` notification. Lumina only parses

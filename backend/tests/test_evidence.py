@@ -181,6 +181,40 @@ def test_bsi_and_cisa_evidence(
     assert entry.status == ("found" if key else "absent")
 
 
+def test_a_licence_ref_shows_the_text_it_maps_to(tmp_path: Path) -> None:
+    """Pitloom 0.24.0 writes a licence that is not an SPDX expression as a
+    ``LicenseExpression`` of one ``LicenseRef-loom-text-...`` that
+    ``customIdToUri`` maps to a ``SimpleLicensingText``; the evidence shows
+    that text, not the id."""
+    sbom = json.loads((SBOM_DIR / _BSI_OK).read_text(encoding="utf-8"))
+    graph = sbom["@graph"]
+    expression = next(
+        e for e in graph if e.get("simplelicensing_licenseExpression") == "MIT"
+    )
+    ref = "LicenseRef-loom-text-0123456789abcdef"
+    text_id = "https://example.com/spdx/license-text-01"
+    expression["simplelicensing_licenseExpression"] = ref
+    expression["simplelicensing_customIdToUri"] = [
+        {"type": "DictionaryEntry", "key": ref, "value": text_id}
+    ]
+    graph.append(
+        {
+            "type": "simplelicensing_SimpleLicensingText",
+            "spdxId": text_id,
+            "creationInfo": "_:creationinfo",
+            "name": "Example Licence 1.0",
+            "simplelicensing_licenseText": "Permission is granted to ...",
+        }
+    )
+    path = tmp_path / "licence-ref.spdx3.json"
+    path.write_text(json.dumps(sbom, indent=2), encoding="utf-8")
+    (entry,) = _rules(_check(path, "bsi"))["BOM-BSI2025-COMP-014"].evidence
+    (item,) = entry.items
+    assert item.key == "hasDeclaredLicense"
+    assert "Example Licence 1.0" in item.value
+    assert ref not in item.value
+
+
 def test_spdx2_and_non_json_get_the_source_but_no_evidence() -> None:
     """Evidence is for SPDX 3 JSON only; the source is always returned."""
     spdx2 = _check(SBOM_DIR / "spdx2_missing_supplier.spdx.json", "ntia")
