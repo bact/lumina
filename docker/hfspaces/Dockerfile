@@ -19,7 +19,7 @@
 ## this file works alone in a Space repo. The canonical copies live in
 ## docker/standalone/ -- keep them in sync when changing either.
 
-FROM python:3.14-slim
+FROM python:3.15-slim
 
 ENV PORT=7860
 
