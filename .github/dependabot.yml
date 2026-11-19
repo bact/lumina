@@ -40,6 +40,15 @@ updates:
     base-images:
       patterns:
       - "*"
+  # Python stays on 3.14 until the dependencies of the content-type extra
+  # (magika, onnxruntime) publish 3.15 wheels: the 3.15 image failed to build
+  # in Cloud Build (no onnxruntime for 3.15). CI tests on 3.14 too. Patch
+  # updates of the image still come through.
+  ignore:
+  - dependency-name: "python"
+    update-types:
+    - "version-update:semver-major"
+    - "version-update:semver-minor"
 
 # playwright-core, for scripts/ui-smoke.mjs.
 - package-ecosystem: "npm"
