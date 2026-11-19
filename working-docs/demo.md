@@ -84,7 +84,7 @@ Then run the check again.
 ## 3. Warm it up (the day before, on the demo network)
 
 Run each once from the page. This confirms the URL works from that machine and
-fills caches. The page has a "Try an example" list of cards for these fifteen (open
+fills caches. The page has a "Try an example" list of cards for these twenty (open
 at first, collapsed once you start a check; its header opens it again). A card is
 headed by the repository, model or file name; its body says what it is (the model
 file format, Safetensors, GGUF, Keras, ONNX, fastText or CRFsuite, and the parameter
@@ -106,10 +106,18 @@ the URL and picks the standard named below.
 | bact/sentimentdemo | `https://github.com/bact/sentimentdemo` | G7 SBOM for AI | 22 of 38 |
 | PyThaiNLP/pythainlp (about 12 s) | `https://github.com/PyThaiNLP/pythainlp` | G7 SBOM for AI | 21 of 38; three ONNX and five CRFsuite models |
 | gitlab.com/pythainlp/pythainlp (about 18 s) | `https://gitlab.com/pythainlp/pythainlp` | G7 SBOM for AI | 27 of 38 present; three ONNX models; a GitLab mirror of the project above |
+| graemeconradie/olmocr (about 17 s) | `https://codeberg.org/graemeconradie/olmocr` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 9 of 14; NTIA 5 of 7; BSI 6 of 13, optional provided 0 of 2; a Codeberg repository (a fork of an OCR toolkit for LLM datasets) with a large dependency tree, 68 packages; a warning that the build-time code of a downloaded repository is not run |
+| tazz4843/piper1-gpl | `https://codeberg.org/tazz4843/piper1-gpl` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 11 of 14; NTIA 6 of 7; BSI 7 of 13, optional provided 1 of 2; a Codeberg repository (a neural text-to-speech engine), 22 packages, GPL-2.0-or-later; warnings that its `pyproject.toml` has no usable `[project]` table and that `setup.py` is read as a fallback |
+| andrewpeterson/amp | `https://bitbucket.org/andrewpeterson/amp` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 10 of 14; NTIA 5 of 7; BSI 6 of 13, optional provided 0 of 2; a Bitbucket repository (atomistic machine learning), 8 packages; a warning that file discovery for the `mesonpy` build backend is not backend-aware yet |
+| awetzel/halo_analysis | `https://bitbucket.org/awetzel/halo_analysis` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 11 of 14; NTIA 6 of 7; BSI 7 of 13, optional provided 1 of 2; a Bitbucket repository (astronomy research code), 6 packages, no warnings |
+| ~sircmpwn/core.sr.ht | `https://git.sr.ht/~sircmpwn/core.sr.ht` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 10 of 14; NTIA 5 of 7; BSI 8 of 13, optional provided 1 of 2; a SourceHut repository (the shared core of SourceHut), 16 packages, no warnings |
 | pallets/flask | `https://github.com/pallets/flask` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 12 of 14; NTIA 6 of 7; BSI 7 of 13, optional provided 1 of 2 |
 | labs.etsi.org/rep/ocf/sdk | `https://labs.etsi.org/rep/ocf/sdk` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 11 of 14; NTIA 6 of 7; BSI 7 of 13, optional provided 1 of 2; a GitLab server (the repository redirects to `.git`) |
 
-The OpenThai2.1-OCR row was measured on 2026-11-20 with Pitloom 0.24.0. The two
+The OpenThai2.1-OCR row and the five rows of repositories on Codeberg, Bitbucket and
+SourceHut were measured on 2026-11-20 with Pitloom 0.24.0 and LicenseID 0.8.4; those five
+need no model-file trust (the SBOMs hold no AI model). A repository on one of these hosts can
+move or go private, as `bitbucket.org/presik/presik_pos` did before it was tried. The two
 next newest rows (Mage-VL-Cowork and the EMNIST Keras model) were measured on
 2026-11-02 with Pitloom 0.22.0. The other counts were measured on 2026-10-19 and 2026-10-20, and again on
 2026-10-28 with the checker (`2355afc`) and the SPDX licence database: only

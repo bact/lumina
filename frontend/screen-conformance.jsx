@@ -80,6 +80,11 @@ const DEMO_EXAMPLES = [
   { subject: "sentiment", standard: "g7ai", url: "https://github.com/bact/sentimentdemo", note: "the model file is hashed" },
   { subject: "pythainlp", standard: "g7ai", url: "https://github.com/PyThaiNLP/pythainlp", note: "slowest, about 12 s" },
   { subject: "pythainlpgl", standard: "g7ai", url: "https://gitlab.com/pythainlp/pythainlp", note: "a GitLab mirror of the project above, about 18 s" },
+  { subject: "olmocr", standard: "cisa2026", url: "https://codeberg.org/graemeconradie/olmocr", note: "an OCR toolkit for LLM datasets on Codeberg, with a large dependency tree" },
+  { subject: "piper", standard: "cisa2026", url: "https://codeberg.org/tazz4843/piper1-gpl", note: "a neural text-to-speech engine on Codeberg, GPL-2.0-or-later" },
+  { subject: "amp", standard: "cisa2026", url: "https://bitbucket.org/andrewpeterson/amp", note: "atomistic machine learning on Bitbucket, built with meson-python" },
+  { subject: "halo", standard: "cisa2026", url: "https://bitbucket.org/awetzel/halo_analysis", note: "astronomy research code on Bitbucket" },
+  { subject: "srhtcore", standard: "cisa2026", url: "https://git.sr.ht/~sircmpwn/core.sr.ht", note: "the shared core of SourceHut, on SourceHut" },
   { subject: "flask", standard: "cisa2026", url: "https://github.com/pallets/flask", note: "a plain Python project" },
   { subject: "etsisdk", standard: "cisa2026", url: "https://labs.etsi.org/rep/ocf/sdk", note: "a Python project on a GitLab server" },
 ].map(ex => ({ ...ex, key: ex.url }));

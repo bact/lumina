@@ -1,6 +1,6 @@
 ---
 Created: 2026-10-20
-Last-Modified: 2026-11-11
+Last-Modified: 2026-11-20
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -83,6 +83,17 @@ guide) and [deployment-options.md](deployment-options.md).
     redirect: gone or private); the two Hugging Face Spaces of the first list
     (`kenhktsui/fasttext-language-identification`, `espnet/silero-vad`) do not
     exist.
+  - **Added 2026-11-20 (Pitloom 0.24.0), one Git server each besides GitHub and
+    GitLab:** Codeberg (`graemeconradie/olmocr`, `tazz4843/piper1-gpl`), Bitbucket
+    (`andrewpeterson/amp`, `awetzel/halo_analysis`) and SourceHut
+    (`~sircmpwn/core.sr.ht`), each a real run, none holding a model file. Tried and
+    left out: `codeberg.org/entai2965/ocr_tools` (no `pyproject.toml`, `setup.cfg`
+    or `setup.py`: Pitloom reads Python projects only), `bitbucket.org/presik/presik_pos`
+    (asks for credentials: private or gone), and others on the same hosts
+    that work but add little (`wjwillemse/nifigator`, `timcera/astronomia`,
+    `zzzeek/mako`, three more `*.sr.ht` projects). Codeberg's search API
+    refuses anonymous searches ("high influx of requests"), so the candidates came
+    from a web search.
   - **Searched and not usable:** about 2,500 public GitLab projects, 180
     Codeberg repositories and 390 Hugging Face Spaces, for a Python project
     holding a model file in a package folder. Models kept in Git LFS are
