@@ -36,6 +36,7 @@ const EXAMPLE_SUBJECTS = {
   qwengguf:   { kind: "model", name: "Qwen/Qwen2.5-0.5B-Instruct-GGUF", format: "GGUF", size: "630M", source: "Hugging Face" },
   mage:       { kind: "model", name: "microsoft/Mage-VL-Cowork", format: "Safetensors", size: "4.7B", source: "Hugging Face" },
   emnist:     { kind: "model", name: "tanganke/clip-vit-base-patch32_emnist_letters", format: "Keras v3", extra: "with a dataset and a base model", source: "Hugging Face" },
+  ocr:        { kind: "model", name: "iapp/OpenThai2.1-OCR-Text-20261118", format: "ONNX", extra: "Thai and English OCR", source: "Hugging Face" },
   tiny:       { kind: "model", name: "phi-tiny-random", format: "Safetensors", size: "80K", source: "a local file" },
   sentiment:  { kind: "project", name: "bact/sentimentdemo", models: "fastText model", source: "GitHub" },
   pythainlp:  { kind: "project", name: "PyThaiNLP/pythainlp", models: "ONNX and CRFsuite models", source: "GitHub" },

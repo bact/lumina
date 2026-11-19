@@ -1,6 +1,6 @@
 ---
 Created: 2026-10-18
-Last-Modified: 2026-11-11
+Last-Modified: 2026-11-20
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -84,7 +84,7 @@ Then run the check again.
 ## 3. Warm it up (the day before, on the demo network)
 
 Run each once from the page. This confirms the URL works from that machine and
-fills caches. The page has a "Try an example" list of cards for these fourteen (open
+fills caches. The page has a "Try an example" list of cards for these fifteen (open
 at first, collapsed once you start a check; its header opens it again). A card is
 headed by the repository, model or file name; its body says what it is (the model
 file format, Safetensors, GGUF, Keras, ONNX, fastText or CRFsuite, and the parameter
@@ -101,6 +101,7 @@ the URL and picks the standard named below.
 | JTS-AI/OpenJAI-v1.0-14B | `https://huggingface.co/JTS-AI/OpenJAI-v1.0-14B` | G7 SBOM for AI | 25 of 38 present; text generation; model Apache-2.0; parameter count read from the Hub's Safetensors summary; a `descendantOf` link to its base model `Qwen3-14B` |
 | microsoft/Mage-VL-Cowork | `https://huggingface.co/microsoft/Mage-VL-Cowork` | G7 SBOM for AI | 25 of 38 present; image-text-to-text; model Apache-2.0; parameter count (4.7B) read from the Hub's Safetensors summary; a `descendantOf` link to its base model `Mage-VL`; "judged by `Mage-VL-Cowork`" |
 | tanganke/clip-vit-base-patch32_emnist_letters | `https://huggingface.co/tanganke/clip-vit-base-patch32_emnist_letters` | G7 SBOM for AI | 27 of 56 present; a Keras v3 file of 2.8 MB (Keras 3.10.0); the dataset `tanganke/emnist_letters` linked by `trainedOn` and the base model `clip-vit-base-patch32` by `descendantOf`; no licence on the Hub card, so none in the SBOM; no parameter count (Pitloom reads the Hub's metadata, not the Keras file) |
+| iapp/OpenThai2.1-OCR-Text-20261118 | `https://huggingface.co/iapp/OpenThai2.1-OCR-Text-20261118` | G7 SBOM for AI | 18 of 38 present; image-to-text; model Apache-2.0; no parameter count, dataset or base model (the Hub states none); "judged by `OpenThai2.1-OCR-Text-20261118`" |
 | Qwen/Qwen2.5-0.5B-Instruct-GGUF | `https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF` | G7 SBOM for AI | 22 of 38 present; model Apache-2.0; parameter count read from the Hub's GGUF summary; a `descendantOf` link to the base model `Qwen2.5-0.5B-Instruct` (quantized) |
 | bact/sentimentdemo | `https://github.com/bact/sentimentdemo` | G7 SBOM for AI | 22 of 38 |
 | PyThaiNLP/pythainlp (about 12 s) | `https://github.com/PyThaiNLP/pythainlp` | G7 SBOM for AI | 21 of 38; three ONNX and five CRFsuite models |
@@ -108,7 +109,8 @@ the URL and picks the standard named below.
 | pallets/flask | `https://github.com/pallets/flask` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 12 of 14; NTIA 6 of 7; BSI 7 of 13, optional provided 1 of 2 |
 | labs.etsi.org/rep/ocf/sdk | `https://labs.etsi.org/rep/ocf/sdk` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 11 of 14; NTIA 6 of 7; BSI 7 of 13, optional provided 1 of 2; a GitLab server (the repository redirects to `.git`) |
 
-The two newest rows (Mage-VL-Cowork and the EMNIST Keras model) were measured on
+The OpenThai2.1-OCR row was measured on 2026-11-20 with Pitloom 0.24.0. The two
+next newest rows (Mage-VL-Cowork and the EMNIST Keras model) were measured on
 2026-11-02 with Pitloom 0.22.0. The other counts were measured on 2026-10-19 and 2026-10-20, and again on
 2026-10-28 with the checker (`2355afc`) and the SPDX licence database: only
 the BSI figures changed (the rule-based BSI check). Runs of every row on
