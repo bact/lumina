@@ -6,7 +6,7 @@
 # Web framework
 fastapi==0.162.0
 uvicorn[standard]==0.54.0
-python-multipart==0.0.32  # required by FastAPI for Form / File uploads
+python-multipart==0.0.33  # required by FastAPI for Form / File uploads
 
 # SBOM generation (artefact-URL input)
 # Generates SPDX 3 JSON-LD from a Git repository URL or a Hugging Face Hub model.
