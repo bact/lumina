@@ -25,7 +25,9 @@ const { useState: _useSE, useRef: _useRefE } = React;
 // What each example is about. kind: model | project | image (the group it is
 // listed in). Fields not stated by the files are not invented: a size is the
 // parameter count the SBOM holds, so a model whose SBOM holds none (the Keras
-// one) shows no size.
+// one) shows no size. A project's name is owner/repository as its host
+// writes them in the repository path, without the host (the source line names
+// it) or the host's own decorations: no SourceHut "~", no "rep/" install path.
 const EXAMPLE_SUBJECTS = {
   distilbert: { kind: "model", name: "distilbert/distilbert-base-cased-distilled-squad", format: "Safetensors", size: "65M", extra: "with a dataset", source: "Hugging Face" },
   phi4:       { kind: "model", name: "microsoft/phi-4", format: "Safetensors", size: "14.7B", source: "Hugging Face" },
@@ -40,14 +42,14 @@ const EXAMPLE_SUBJECTS = {
   tiny:       { kind: "model", name: "phi-tiny-random", format: "Safetensors", size: "80K", source: "a local file" },
   sentiment:  { kind: "project", name: "bact/sentimentdemo", models: "fastText model", source: "GitHub" },
   pythainlp:  { kind: "project", name: "PyThaiNLP/pythainlp", models: "ONNX and CRFsuite models", source: "GitHub" },
-  pythainlpgl:{ kind: "project", name: "gitlab.com/pythainlp/pythainlp", models: "ONNX models", source: "GitLab" },
+  pythainlpgl:{ kind: "project", name: "pythainlp/pythainlp", models: "ONNX models", source: "GitLab" },
   olmocr:     { kind: "project", name: "graemeconradie/olmocr", models: "no AI model", source: "Codeberg" },
   piper:      { kind: "project", name: "tazz4843/piper1-gpl", models: "no AI model", source: "Codeberg" },
   amp:        { kind: "project", name: "andrewpeterson/amp", models: "no AI model", source: "Bitbucket" },
   halo:       { kind: "project", name: "awetzel/halo_analysis", models: "no AI model", source: "Bitbucket" },
-  srhtcore:   { kind: "project", name: "~sircmpwn/core.sr.ht", models: "no AI model", source: "SourceHut" },
+  srhtcore:   { kind: "project", name: "sircmpwn/core.sr.ht", models: "no AI model", source: "SourceHut" },
   flask:      { kind: "project", name: "pallets/flask", models: "no AI model", source: "GitHub" },
-  etsisdk:    { kind: "project", name: "labs.etsi.org/rep/ocf/sdk", models: "no AI model", source: "ETSI GitLab" },
+  etsisdk:    { kind: "project", name: "ocf/sdk", models: "no AI model", source: "ETSI GitLab" },
   chainguard: { kind: "image", name: "Chainguard image", source: "Chainguard (apko)" },
 };
 const EXAMPLE_GROUPS = [

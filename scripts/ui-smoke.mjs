@@ -467,6 +467,13 @@ check(await sourceOf("https://codeberg.org/graemeconradie/olmocr") === "From Cod
   && await sourceOf("https://bitbucket.org/andrewpeterson/amp") === "From Bitbucket"
   && await sourceOf("https://git.sr.ht/~sircmpwn/core.sr.ht") === "From SourceHut",
   "Generate & check: the cards of Codeberg, Bitbucket and SourceHut projects name their host");
+// Every project card names owner/repository alone, whatever the host: no host
+// name, no SourceHut "~", no install path.
+const projectNames = await page.evaluate(() => [...document.querySelectorAll("#example-generate-region .example-card")]
+  .filter(c => c.querySelector(".example-what").textContent.startsWith("Project"))
+  .map(c => c.querySelector(".example-name").textContent));
+check(projectNames.length === 10 && projectNames.every(n => /^[^~/.\s][^/\s]*\/[^/\s]+$/.test(n)),
+  `Generate & check: every project card is named owner/repository (${projectNames.join(", ")})`);
 check(await page.evaluate(() => JSON.stringify([...document.querySelectorAll("#example-generate-region .example-group-label")].map(e => e.textContent))) === JSON.stringify(["Models", "Projects"]), "Generate & check: the examples are grouped as Models and Projects");
 check(await card("https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad").getAttribute("aria-current") === "true"
   && await card("https://github.com/pallets/flask").getAttribute("aria-current") === null, "Generate & check: the chosen card is marked");
