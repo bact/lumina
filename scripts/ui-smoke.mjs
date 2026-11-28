@@ -459,7 +459,7 @@ check(grid.length === 20 && grid.every(Boolean), `Generate & check: twenty cards
 const whatOf = (url) => card(url).locator(".example-what").innerText();
 check(await whatOf("https://huggingface.co/tanganke/clip-vit-base-patch32_emnist_letters") === "Keras v3 model · with a dataset and a base model"
   && await whatOf("https://huggingface.co/microsoft/Mage-VL-Cowork") === "Safetensors model · 4.7B parameters"
-  && await whatOf("https://huggingface.co/iapp/OpenThai2.1-OCR-Text-20261118") === "ONNX model · Thai and English OCR",
+  && await whatOf("https://huggingface.co/iapp/OpenThai2.2-OCR-Text-20261127") === "ONNX model · Thai and English OCR",
   "Generate & check: the Keras and ONNX cards state no parameter count and the Mage card states 4.7B");
 // Git servers other than GitHub and GitLab: each card names its host.
 const sourceOf = (url) => card(url).locator(".example-source").innerText();

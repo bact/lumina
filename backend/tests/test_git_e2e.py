@@ -156,7 +156,7 @@ def test_the_whole_chain_gives_a_result_with_the_log_the_user_reads(base: str) -
     assert not [n for n in response.run.notifications if n.level == "error"]
     assert response.generation_log is not None
     log = "\n".join(line.message for line in response.generation_log)
-    assert "redirected to" in log and "folder svc/a" in log
+    assert "redirects to" in log and "directory 'svc/a'" in log
     assert response.run.generator.startswith("pitloom ")
 
 
