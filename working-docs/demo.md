@@ -1,6 +1,6 @@
 ---
 Created: 2026-10-18
-Last-Modified: 2026-11-20
+Last-Modified: 2026-11-28
 SPDX-FileContributor: Arthit Suriyawongkul
 SPDX-FileCopyrightText: 2026-present Arthit Suriyawongkul
 SPDX-FileType: DOCUMENTATION
@@ -101,21 +101,29 @@ the URL and picks the standard named below.
 | JTS-AI/OpenJAI-v1.0-14B | `https://huggingface.co/JTS-AI/OpenJAI-v1.0-14B` | G7 SBOM for AI | 25 of 38 present; text generation; model Apache-2.0; parameter count read from the Hub's Safetensors summary; a `descendantOf` link to its base model `Qwen3-14B` |
 | microsoft/Mage-VL-Cowork | `https://huggingface.co/microsoft/Mage-VL-Cowork` | G7 SBOM for AI | 25 of 38 present; image-text-to-text; model Apache-2.0; parameter count (4.7B) read from the Hub's Safetensors summary; a `descendantOf` link to its base model `Mage-VL`; "judged by `Mage-VL-Cowork`" |
 | tanganke/clip-vit-base-patch32_emnist_letters | `https://huggingface.co/tanganke/clip-vit-base-patch32_emnist_letters` | G7 SBOM for AI | 27 of 56 present; a Keras v3 file of 2.8 MB (Keras 3.10.0); the dataset `tanganke/emnist_letters` linked by `trainedOn` and the base model `clip-vit-base-patch32` by `descendantOf`; no licence on the Hub card, so none in the SBOM; no parameter count (Pitloom reads the Hub's metadata, not the Keras file) |
-| iapp/OpenThai2.1-OCR-Text-20261118 | `https://huggingface.co/iapp/OpenThai2.1-OCR-Text-20261118` | G7 SBOM for AI | 18 of 38 present; image-to-text; model Apache-2.0; no parameter count, dataset or base model (the Hub states none); "judged by `OpenThai2.1-OCR-Text-20261118`" |
+| iapp/OpenThai2.2-OCR-Text-20261127 | `https://huggingface.co/iapp/OpenThai2.2-OCR-Text-20261127` | G7 SBOM for AI | 18 of 38 present; image-to-text; model Apache-2.0; no parameter count, dataset or base model (the Hub states none); "judged by `OpenThai2.2-OCR-Text-20261127`" |
 | Qwen/Qwen2.5-0.5B-Instruct-GGUF | `https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF` | G7 SBOM for AI | 22 of 38 present; model Apache-2.0; parameter count read from the Hub's GGUF summary; a `descendantOf` link to the base model `Qwen2.5-0.5B-Instruct` (quantized) |
 | bact/sentimentdemo | `https://github.com/bact/sentimentdemo` | G7 SBOM for AI | 22 of 38 |
-| PyThaiNLP/pythainlp (about 12 s) | `https://github.com/PyThaiNLP/pythainlp` | G7 SBOM for AI | 21 of 38; three ONNX and five CRFsuite models |
+| PyThaiNLP/pythainlp (about 12 s) | `https://github.com/PyThaiNLP/pythainlp` | G7 SBOM for AI | 22 of 38; three ONNX and five CRFsuite models |
 | gitlab.com/pythainlp/pythainlp (about 18 s) | `https://gitlab.com/pythainlp/pythainlp` | G7 SBOM for AI | 27 of 38 present; three ONNX models; a GitLab mirror of the project above |
 | graemeconradie/olmocr (about 17 s) | `https://codeberg.org/graemeconradie/olmocr` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 9 of 14; NTIA 5 of 7; BSI 6 of 13, optional provided 0 of 2; a Codeberg repository (a fork of an OCR toolkit for LLM datasets) with a large dependency tree, 68 packages; a warning that the build-time code of a downloaded repository is not run |
-| tazz4843/piper1-gpl | `https://codeberg.org/tazz4843/piper1-gpl` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 11 of 14; NTIA 6 of 7; BSI 7 of 13, optional provided 1 of 2; a Codeberg repository (a neural text-to-speech engine), 22 packages, GPL-2.0-or-later; warnings that its `pyproject.toml` has no usable `[project]` table and that `setup.py` is read as a fallback |
-| andrewpeterson/amp | `https://bitbucket.org/andrewpeterson/amp` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 10 of 14; NTIA 5 of 7; BSI 6 of 13, optional provided 0 of 2; a Bitbucket repository (atomistic machine learning), 8 packages; a warning that file discovery for the `mesonpy` build backend is not backend-aware yet |
-| awetzel/halo_analysis | `https://bitbucket.org/awetzel/halo_analysis` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 11 of 14; NTIA 6 of 7; BSI 7 of 13, optional provided 1 of 2; a Bitbucket repository (astronomy research code), 6 packages, no warnings |
-| ~sircmpwn/core.sr.ht | `https://git.sr.ht/~sircmpwn/core.sr.ht` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 10 of 14; NTIA 5 of 7; BSI 8 of 13, optional provided 1 of 2; a SourceHut repository (the shared core of SourceHut), 16 packages, no warnings |
-| pallets/flask | `https://github.com/pallets/flask` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 12 of 14; NTIA 6 of 7; BSI 7 of 13, optional provided 1 of 2 |
-| labs.etsi.org/rep/ocf/sdk | `https://labs.etsi.org/rep/ocf/sdk` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 11 of 14; NTIA 6 of 7; BSI 7 of 13, optional provided 1 of 2; a GitLab server (the repository redirects to `.git`) |
+| tazz4843/piper1-gpl | `https://codeberg.org/tazz4843/piper1-gpl` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 12 of 14; NTIA 6 of 7; BSI 6 of 13, optional provided 0 of 2; a Codeberg repository (a neural text-to-speech engine), 22 packages, GPL-2.0-or-later; warnings that its `pyproject.toml` has no usable `[project]` table and that `setup.py` is read as a fallback |
+| andrewpeterson/amp | `https://bitbucket.org/andrewpeterson/amp` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 11 of 14; NTIA 5 of 7; BSI 6 of 13, optional provided 0 of 2; a Bitbucket repository (atomistic machine learning), 8 packages; a warning that file discovery for the `mesonpy` build backend is not backend-aware yet |
+| awetzel/halo_analysis | `https://bitbucket.org/awetzel/halo_analysis` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 12 of 14; NTIA 6 of 7; BSI 6 of 13, optional provided 0 of 2; a Bitbucket repository (astronomy research code), 6 packages, no warnings |
+| ~sircmpwn/core.sr.ht | `https://git.sr.ht/~sircmpwn/core.sr.ht` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 11 of 14; NTIA 5 of 7; BSI 7 of 13, optional provided 0 of 2; a SourceHut repository (the shared core of SourceHut), 16 packages, no warnings |
+| pallets/flask | `https://github.com/pallets/flask` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 13 of 14; NTIA 6 of 7; BSI 6 of 13, optional provided 0 of 2 |
+| labs.etsi.org/rep/ocf/sdk | `https://labs.etsi.org/rep/ocf/sdk` | CISA 2026, then NTIA and BSI TR-03183-2 | CISA 2026 12 of 14; NTIA 6 of 7; BSI 6 of 13, optional provided 0 of 2; a GitLab server (the repository redirects to `.git`) |
 
-The OpenThai2.1-OCR row and the five rows of repositories on Codeberg, Bitbucket and
-SourceHut were measured on 2026-11-20 with Pitloom 0.24.0 and LicenseID 0.8.4; those five
+Every row was measured again on 2026-11-28 with Pitloom 0.25.1 (the release this
+guide pins) and LicenseID 0.10.0 (the release it pins), and the OpenThai OCR row
+was moved to `OpenThai2.2-OCR-Text-20261127` (same counts as 2.1). Pitloom 0.25
+links a dependency's licence with `hasDeclaredLicense` (what the package states)
+where 0.24 used `hasConcludedLicense`: the CISA 2026 component licence rule is
+now met (one rule more for most projects), and the BSI concluded and effective
+licence rules are not (one required rule fewer, and the optional effective licence
+is no longer provided). PyThaiNLP gained a G7 SBOM for AI rule (21 to 22 of 38).
+The five rows of repositories on Codeberg, Bitbucket and
+SourceHut were first measured on 2026-11-20 with Pitloom 0.24.0 and LicenseID 0.8.4; those five
 need no model-file trust (the SBOMs hold no AI model). A repository on one of these hosts can
 move or go private, as `bitbucket.org/presik/presik_pos` did before it was tried. The two
 next newest rows (Mage-VL-Cowork and the EMNIST Keras model) were measured on
@@ -124,8 +132,7 @@ next newest rows (Mage-VL-Cowork and the EMNIST Keras model) were measured on
 the BSI figures changed (the rule-based BSI check). Runs of every row on
 2026-11-06 with Pitloom 0.23.0, on 2026-11-07 with Pitloom 0.23.1 and
 LicenseID 0.7.2, and on 2026-11-08 and 2026-11-09 with Pitloom 0.23.3 and
-LicenseID 0.8.1, 0.8.2 and 0.8.4, and on 2026-11-11 with Pitloom 0.24.0 (the
-release this guide pins) and LicenseID 0.8.4 (the release it pins), changed
+LicenseID 0.8.1, 0.8.2 and 0.8.4, and on 2026-11-11 with Pitloom 0.24.0 and LicenseID 0.8.4, changed
 none of them. Since Pitloom 0.23.4 the three Git rows (the last three G7 SBOM for
 AI rows) keep their counts only with `LUMINA_TRUST_MODEL_FILES=1`: without it
 Pitloom does not run a model reader on a file downloaded from a Git URL, lists
